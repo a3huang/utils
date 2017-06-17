@@ -93,3 +93,43 @@ def plot_grouped_bar2(df, cat1, cat2, col, stacked=False):
     plt.legend(title=cat2, loc=(1, 0.5))
     plt.xlabel(col)
     plt.title('%s vs. %s' % (cat1, cat2))
+
+def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
+    if col:
+        col = _index_to_name(df, col)
+        a = df[col]
+    else:
+        col = df.name
+        a = df.copy()
+
+    a = a.dropna()
+
+    if prop == True:
+        weights = np.ones_like(a) / len(a)
+        ylabel = 'proportions'
+    else:
+        weights = np.ones_like(a)
+        ylabel = 'counts'
+
+    a.hist(weights=weights, bins=bins, **kwargs)
+    plt.title(col)
+
+# seems to have errors with astype(ordered=True)
+def plot_box(df, col1, col2, **kwargs):
+    df = df.copy()
+
+    col1 = _index_to_name(df, col1)
+    col2 = _index_to_name(df, col2)
+
+    df[col1] = _top_n_cat(df[col1])
+
+    df[col1] = df[col1].astype('category', ordered=True)
+    a = df[col1].cat.categories
+    df[col1] = df[col1].cat.reorder_categories(list(reversed(a)))
+
+    df.boxplot(by=col1, column=col2, vert=False)
+
+    plt.xlabel(col2)
+    plt.ylabel(col1)
+    plt.suptitle('')
+    plt.title('%s vs. %s' % (col1, col2))
