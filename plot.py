@@ -23,7 +23,7 @@ def plot_missing(df, n=5):
     b = a.sort_values(ascending=False)[:n]
     b[::-1].plot.barh()
 
-    df.xlabel('proportions')
+    plt.xlabel('proportions')
 
 # col should be categorical
 def plot_bar(df, col=None, prop=True, **kwargs):
@@ -47,8 +47,7 @@ def plot_bar(df, col=None, prop=True, **kwargs):
     plt.xlabel(xlabel)
     plt.title(col)
 
-# col should be contiuous or binary
-def plot_grouped_bar(df, cat, col, stacked=False):
+def plot_grouped_bar1(df, cat, col, is_cat=True, **kwargs):
     df = df.copy()
 
     cat = _index_to_name(df, cat)
@@ -56,9 +55,16 @@ def plot_grouped_bar(df, cat, col, stacked=False):
 
     df[cat] = _top_n_cat(df[cat])
 
-    df.groupby(cat)[col].mean().sort_index(ascending=False).plot.barh(stacked=stacked)
+    if is_cat or df[col].dtype == 'O':
+        df[col] = _top_n_cat(df[col])
+        a = df.groupby(cat)[col].value_counts().unstack().sort_index(ascending=False)
+        a.plot.barh(**kwargs)
+        plt.xlabel('proportions')
+    else:
+        a = df.groupby(cat)[col].mean().sort_index(ascending=False)
+        a.plot.barh(**kwargs)
+        plt.xlabel(col)
 
-    plt.xlabel('proportions')
     plt.title('%s vs. %s' % (cat, col))
 
 # col should be continuous or binary
