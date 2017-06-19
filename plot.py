@@ -153,9 +153,20 @@ def plot_heatmap(df, cat1, cat2, col):
     df[cat1] = _top_n_cat(df[cat1])
     df[cat2] = _top_n_cat(df[cat2])
 
-    sns.heatmap(pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean))
+    ax = sns.heatmap(pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean))
+    ax.collections[0].colorbar.set_label(col, rotation=-90, labelpad=15)
 
-    plt.title(col)
+def plot_contours(df, cat1, cat2, col):
+    df = df.copy()
+
+    cat1 = _index_to_name(df, cat1)
+    cat2 = _index_to_name(df, cat2)
+    col = _index_to_name(df, col)
+
+    df[cat1] = _top_n_cat(df[cat1])
+    df[cat2] = _top_n_cat(df[cat2])
+
+    sns.interactplot(cat1, cat2, col, data=df)
 
 # add winsorize option?
 def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
@@ -242,7 +253,7 @@ def plot_faceted_density(df, cat, col, **kwargs):
     df[cat] = _top_n_cat(df[cat])
 
     g = sns.FacetGrid(df, col=cat, col_wrap=4)
-    g.map(sns.distplot, col, hist=False, **kwargs)
+    g.map(sns.kdeplot, col, shade=True, **kwargs)
     g.set_xticklabels(rotation=45)
 
 # seems to have errors with astype(ordered=True)
@@ -277,6 +288,9 @@ def plot_faceted_box(df, cat1, cat2, col, **kwargs):
 
     g = sns.FacetGrid(df, col=cat1, col_wrap=4)
     g.map(sns.boxplot, cat2, col, **kwargs)
+
+def plot_scatter(df, cont1, cont2, **kwargs):
+    sns.lmplot(cont1, cont2, data=df)
 
 def plot_grouped_scatter(df, cat, cont1, cont2, ax=None):
     df = df.copy()
