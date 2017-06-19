@@ -374,3 +374,13 @@ def plot_clusters(df, model=None, pca_model=None, n=1000, figsize=(6, 4), **kwar
 
     fig, ax = plt.subplots(figsize=figsize)
     plot_pca(df, 'cluster', pca_model, n=None, ax=ax, **kwargs)
+
+# pass in model instead?
+def plot_coeff(columns, coeff, figsize=(6, 4), **kwargs):
+    a = pd.DataFrame(sorted(zip(columns, coeff), key=lambda x: abs(x[1]), reverse=True))
+
+    fig, ax = plt.subplots(figsize=figsize)
+    a.sort_index(ascending=False).set_index(0).plot.barh(ax=ax)
+    plt.legend().remove()
+    plt.ylabel('Variable')
+    plt.title('Coefficients')
