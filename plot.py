@@ -76,7 +76,7 @@ def plot_grouped_bar1(df, cat, col, is_cat=True, **kwargs):
     plt.title('%s vs. %s' % (cat, col))
 
 # col should be continuous or binary
-def plot_grouped_bar2(df, cat1, cat2, col, stacked=False):
+def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, **kwargs):
     df = df.copy()
 
     cat1 = _index_to_name(df, cat1)
@@ -90,15 +90,19 @@ def plot_grouped_bar2(df, cat1, cat2, col, stacked=False):
     if stacked:
         pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)\
             .sort_index(axis=0, ascending=False)\
-            .plot.barh(ax=ax, stacked=True, color=reversed(plt.rcParams['axes.color_cycle'][:5]))
+            .plot.barh(ax=ax, stacked=True,
+                       color=reversed(plt.rcParams['axes.color_cycle'][:5]), **kwargs)
+        ax.legend(title=cat2, loc=(1, 0.5))
 
     else:
         pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)\
             .sort_index(axis=0, ascending=False)\
             .sort_index(axis=1, ascending=False)\
-            .plot.barh(ax=ax, legend='reverse')
+            .plot.barh(ax=ax, **kwargs)
 
-    plt.legend(title=cat2, loc=(1, 0.5))
+        handles, labels = ax.get_legend_handles_labels()
+        ax.legend(handles[::-1], labels[::-1], title=cat2, loc=(1, 0.5))
+
     plt.xlabel(col)
     plt.title('%s vs. %s' % (cat1, cat2))
 
@@ -111,11 +115,12 @@ def plot_grouped_means(df, cat, col, **kwargs):
 
     df[cat] = _top_n_cat(df[cat])
 
-    a = df.groupby(cat)[col].mean().plot()
-    plt.xlabel(cat)
+    a = df.groupby(cat)[col].mean().plot(**kwargs)
 
+    plt.xlabel(cat)
     plt.title('%s vs. %s' % (cat, col))
 
+# add winsorize option?
 def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
     if col:
         col = _index_to_name(df, col)
@@ -159,6 +164,19 @@ def plot_grouped_hist(df, cat, col, prop=True, **kwargs):
     ax.legend(title=cat, loc=(1, 0.5))
     ax.set_title(col)
 
+def plot_faceted_hist(df, cat, col, **kwargs):
+    df = df.copy()
+
+    cat = _index_to_name(df, cat)
+    col = _index_to_name(df, col)
+
+    df[cat] = _top_n_cat(df[cat])
+
+    col_order = df[cat].value_counts().sort_index().index
+
+    g = sns.FacetGrid(df, col=cat, col_wrap=4, col_order=col_order)
+    g.map(plt.hist, col, **kwargs)
+
 def plot_grouped_density(df, cat, col, prop=True, **kwargs):
     df = df.copy()
 
@@ -190,9 +208,22 @@ def plot_grouped_box(df, col1, col2, **kwargs):
     a = df[col1].cat.categories
     df[col1] = df[col1].cat.reorder_categories(list(reversed(a)))
 
-    df.boxplot(by=col1, column=col2, vert=False)
+    df.boxplot(by=col1, column=col2, vert=False, **kwargs)
 
     plt.xlabel(col2)
     plt.ylabel(col1)
     plt.suptitle('')
     plt.title('%s vs. %s' % (col1, col2))
+
+def plot_faceted_box(df, cat1, cat2, col, **kwargs):
+    df = df.copy()
+
+    cat1 = _index_to_name(df, cat1)
+    cat2 = _index_to_name(df, cat2)
+    col = _index_to_name(df, col)
+
+    df[cat1] = _top_n_cat(df[cat1])
+    df[cat2] = _top_n_cat(df[cat2])
+
+    g = sns.FacetGrid(df, col=cat1, col_wrap=4)
+    g.map(sns.boxplot, cat2, col, **kwargs)
