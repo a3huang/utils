@@ -13,6 +13,14 @@ def _top_n_cat(a, n=5):
     top = counts.iloc[:n].index
     return a.apply(lambda x: x if x in top else 'other')
 
+def winsorize(df, col, p):
+    n = int(1/p)
+    sorted_col = df[col].sort_values().reset_index(drop=True)
+    quantiles = pd.qcut(sorted_col.reset_index()['index'], n).cat.codes
+    a = pd.concat([sorted_col, quantiles], axis=1)
+    quantiles_to_keep = a[0].unique()[1:-1]
+    return a[a[0].isin(quantiles_to_keep)][col]
+
 def plot_missing(df, n=5):
     a = df.isnull().mean(axis=0)
     a = a[a > 0]
@@ -132,7 +140,7 @@ def plot_grouped_hist(df, cat, col, prop=True, **kwargs):
         else:
             weights = np.ones_like(v)
 
-        v.hist(label=str(k), alpha=0.75, weights=weights, ax=ax)
+        v.hist(label=str(k), alpha=0.75, weights=weights, ax=ax, **kwargs)
 
     ax.legend(title=cat, loc=(1, 0.5))
     ax.set_title(col)
@@ -150,7 +158,7 @@ def plot_grouped_density(df, cat, col, prop=True, **kwargs):
     fig, ax = plt.subplots()
 
     for k, v in groups:
-        v.plot.density(label=str(k), ax=ax)
+        v.plot.density(label=str(k), ax=ax, **kwargs)
 
     ax.legend(title=cat, loc=(1, 0.5))
     ax.set_title(col)
