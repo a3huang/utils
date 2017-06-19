@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
@@ -23,6 +24,8 @@ def winsorize(df, col, p):
     a = pd.concat([sorted_col, quantiles], axis=1)
     quantiles_to_keep = a[0].unique()[1:-1]
     return a[a[0].isin(quantiles_to_keep)][col]
+
+################################################################################
 
 def plot_missing(df, n=5):
     a = df.isnull().mean(axis=0)
@@ -299,7 +302,7 @@ def plot_grouped_scatter(df, cat, cont1, cont2, ax=None):
     plt.legend(title=cat, loc=(1, 0.5))
     plt.title('%s vs. %s' % (cont1, cont2))
 
-def plot_pca_components(df, cat, model=None, n=1000, ax=None):
+def plot_pca(df, cat, model=None, n=1000, ax=None):
     df = df.copy()
     s = StandardScaler()
 
@@ -315,3 +318,35 @@ def plot_pca_components(df, cat, model=None, n=1000, ax=None):
     df['Component 2'] = model.fit_transform(s.fit_transform(X))[:, 1]
 
     plot_grouped_scatter(df, cat, 'Component 1', 'Component 2', ax=ax)
+
+def plot_faceted_pca(df, cat, models):
+
+    r = int(len(models) / 2.0)
+
+    fig, ax = plt.subplots(r, 2)
+    ax = ax.flatten()
+
+    for i, j in zip(models, ax):
+        df.pipe(plot_pca_components, cat, model=i, ax=j)
+        j.set_title(repr(i.__class__).split('.')[-1].split("'")[0][:15])
+
+        if j != ax[-1]:
+            j.legend().remove()
+
+    plt.tight_layout()
+
+def plot_clusters(df, model=None, pca_model=None, n=1000, ax=None):
+    df = df.copy()
+    s = StandardScaler()
+
+    if model is None:
+        model = KMeans(n_clusters=5)
+
+    if n is not None:
+        df = df.sample(n)
+
+    model.fit(s.fit_transform(df))
+
+    df['cluster'] = model.labels_
+
+    plot_pca(df, 'cluster', pca_model, n=None, ax=ax)
