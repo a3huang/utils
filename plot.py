@@ -102,6 +102,20 @@ def plot_grouped_bar2(df, cat1, cat2, col, stacked=False):
     plt.xlabel(col)
     plt.title('%s vs. %s' % (cat1, cat2))
 
+# col should be continuous or binary
+def plot_grouped_means(df, cat, col, **kwargs):
+    df = df.copy()
+
+    cat = _index_to_name(df, cat)
+    col = _index_to_name(df, col)
+
+    df[cat] = _top_n_cat(df[cat])
+
+    a = df.groupby(cat)[col].mean().plot()
+    plt.xlabel(cat)
+
+    plt.title('%s vs. %s' % (cat, col))
+
 def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
     if col:
         col = _index_to_name(df, col)
