@@ -132,9 +132,24 @@ def plot_grouped_means2(df, cat1, cat2, col):
     df[cat2] = _top_n_cat(df[cat2])
 
     pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).plot()
+
     plt.legend(title=cat2, loc=(1, 0.5))
     plt.ylabel(col)
     plt.title('%s vs. %s' % (cat1, cat2))
+
+def plot_heatmap(df, cat1, cat2, col):
+    df = df.copy()
+
+    cat1 = _index_to_name(df, cat1)
+    cat2 = _index_to_name(df, cat2)
+    col = _index_to_name(df, col)
+
+    df[cat1] = _top_n_cat(df[cat1])
+    df[cat2] = _top_n_cat(df[cat2])
+
+    sns.heatmap(pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean))
+
+    plt.title(col)
 
 # add winsorize option?
 def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
