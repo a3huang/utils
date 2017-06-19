@@ -105,7 +105,7 @@ def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
     a = a.dropna()
 
     if prop == True:
-        weights = np.ones_like(a) / len(a)
+        weights = np.ones_like(a) / float(len(a))
         ylabel = 'proportions'
     else:
         weights = np.ones_like(a)
@@ -114,8 +114,49 @@ def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
     a.hist(weights=weights, bins=bins, **kwargs)
     plt.title(col)
 
+def plot_grouped_hist(df, cat, col, prop=True, **kwargs):
+    df = df.copy()
+
+    cat = _index_to_name(df, cat)
+    col = _index_to_name(df, col)
+
+    df[cat] = _top_n_cat(df[cat])
+
+    groups = df.groupby(cat)[col]
+
+    fig, ax = plt.subplots()
+
+    for k, v in groups:
+        if prop == True:
+            weights = np.ones_like(v) / float(len(v))
+        else:
+            weights = np.ones_like(v)
+
+        v.hist(label=str(k), alpha=0.75, weights=weights, ax=ax)
+
+    ax.legend(title=cat, loc=(1, 0.5))
+    ax.set_title(col)
+
+def plot_grouped_density(df, cat, col, prop=True, **kwargs):
+    df = df.copy()
+
+    cat = _index_to_name(df, cat)
+    col = _index_to_name(df, col)
+
+    df[cat] = _top_n_cat(df[cat])
+
+    groups = df.groupby(cat)[col]
+
+    fig, ax = plt.subplots()
+
+    for k, v in groups:
+        v.plot.density(label=str(k), ax=ax)
+
+    ax.legend(title=cat, loc=(1, 0.5))
+    ax.set_title(col)
+
 # seems to have errors with astype(ordered=True)
-def plot_box(df, col1, col2, **kwargs):
+def plot_grouped_box(df, col1, col2, **kwargs):
     df = df.copy()
 
     col1 = _index_to_name(df, col1)
