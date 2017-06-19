@@ -3,6 +3,9 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
 def _index_to_name(df, col):
     if isinstance(col, int):
         col = df.columns[col]
@@ -207,6 +210,7 @@ def plot_faceted_hist(df, cat, col, **kwargs):
 
     g = sns.FacetGrid(df, col=cat, col_wrap=4, col_order=col_order)
     g.map(plt.hist, col, **kwargs)
+    g.set_xticklabels(rotation=45)
 
 def plot_grouped_density(df, cat, col, prop=True, **kwargs):
     df = df.copy()
@@ -225,6 +229,18 @@ def plot_grouped_density(df, cat, col, prop=True, **kwargs):
 
     ax.legend(title=cat, loc=(1, 0.5))
     ax.set_title(col)
+
+def plot_faceted_density(df, cat, col, **kwargs):
+    df = df.copy()
+
+    cat = _index_to_name(df, cat)
+    col = _index_to_name(df, col)
+
+    df[cat] = _top_n_cat(df[cat])
+
+    g = sns.FacetGrid(df, col=cat, col_wrap=4)
+    g.map(sns.distplot, col, hist=False, **kwargs)
+    g.set_xticklabels(rotation=45)
 
 # seems to have errors with astype(ordered=True)
 def plot_grouped_box(df, col1, col2, **kwargs):
@@ -258,3 +274,44 @@ def plot_faceted_box(df, cat1, cat2, col, **kwargs):
 
     g = sns.FacetGrid(df, col=cat1, col_wrap=4)
     g.map(sns.boxplot, cat2, col, **kwargs)
+
+def plot_grouped_scatter(df, cat, cont1, cont2, ax=None):
+    df = df.copy()
+
+    cat = _index_to_name(df, cat)
+    cont1 = _index_to_name(df, cont1)
+    cont2 = _index_to_name(df, cont2)
+
+    df[cat] = _top_n_cat(df[cat])
+    top = df[cat].value_counts()
+    df[cat] = df[cat].map(dict(zip(top.index, range(6))))
+
+    grouped = df.groupby(cat)
+
+    colors = plt.rcParams['axes.color_cycle'][:5]
+
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    for key, group in grouped:
+        group.plot.scatter(cont1, cont2, label=key, color=colors[int(key)], ax=ax)
+
+    plt.legend(title=cat, loc=(1, 0.5))
+    plt.title('%s vs. %s' % (cont1, cont2))
+
+def plot_pca_components(df, cat, model=None, n=1000, ax=None):
+    df = df.copy()
+    s = StandardScaler()
+
+    if model is None:
+        model = PCA()
+
+    if n is not None:
+        df = df.sample(n)
+
+    X = df[df.columns.difference([cat])]
+
+    df['Component 1'] = model.fit_transform(s.fit_transform(X))[:, 0]
+    df['Component 2'] = model.fit_transform(s.fit_transform(X))[:, 1]
+
+    plot_grouped_scatter(df, cat, 'Component 1', 'Component 2', ax=ax)
