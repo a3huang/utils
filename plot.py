@@ -107,7 +107,7 @@ def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, **kwargs):
     plt.title('%s vs. %s' % (cat1, cat2))
 
 # col should be continuous or binary
-def plot_grouped_means(df, cat, col, **kwargs):
+def plot_grouped_means1(df, cat, col, **kwargs):
     df = df.copy()
 
     cat = _index_to_name(df, cat)
@@ -119,6 +119,22 @@ def plot_grouped_means(df, cat, col, **kwargs):
 
     plt.xlabel(cat)
     plt.title('%s vs. %s' % (cat, col))
+
+# col should be continuous or binary
+def plot_grouped_means2(df, cat1, cat2, col):
+    df = df.copy()
+
+    cat1 = _index_to_name(df, cat1)
+    cat2 = _index_to_name(df, cat2)
+    col = _index_to_name(df, col)
+
+    df[cat1] = _top_n_cat(df[cat1])
+    df[cat2] = _top_n_cat(df[cat2])
+
+    pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).plot()
+    plt.legend(title=cat2, loc=(1, 0.5))
+    plt.ylabel(col)
+    plt.title('%s vs. %s' % (cat1, cat2))
 
 # add winsorize option?
 def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
