@@ -5,10 +5,13 @@ import seaborn as sns
 
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.preprocessing import StandardScaler
 
 from sklearn import tree
 import pydotplus
+
+from model import _get_feature_importances
 
 def _index_to_name(df, col):
     if isinstance(col, int):
@@ -66,6 +69,8 @@ def plot_bar(df, col=None, prop=True, figsize=(6, 4), **kwargs):
     plt.xlabel(xlabel)
     plt.title(col)
 
+# how to pick specific class rates to show?
+# rename is_cat?
 def plot_grouped_bar1(df, cat, col, is_cat=True, figsize=(6, 4), **kwargs):
     df = df.copy()
 
@@ -86,7 +91,7 @@ def plot_grouped_bar1(df, cat, col, is_cat=True, figsize=(6, 4), **kwargs):
         a.plot.barh(ax=ax, **kwargs)
         plt.xlabel(col)
 
-    plt.title('%s vs. %s' % (cat, col))
+    plt.legend(title=col, loc=(1, 0.5))
 
 # col should be continuous or binary
 def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, figsize=(6, 4), **kwargs):
@@ -150,7 +155,10 @@ def plot_grouped_means2(df, cat1, cat2, col, figsize=(6, 4), **kwargs):
     plt.ylabel(col)
     plt.title('%s vs. %s' % (cat1, cat2))
 
-def plot_heatmap(df, cat1, cat2, col, figsize=(6, 4)):
+def plot_heatmap(df):
+    sns.heatmap(df)
+
+def plot_grouped_heatmap(df, cat1, cat2, col, figsize=(6, 4)):
     df = df.copy()
 
     cat1 = _index_to_name(df, cat1)
@@ -396,15 +404,34 @@ def plot_clusters(df, model=None, pca_model=None, n=1000, figsize=(6, 4), **kwar
     fig, ax = plt.subplots(figsize=figsize)
     plot_pca(df, 'cluster', pca_model, n=None, ax=ax, **kwargs)
 
-# add ability to pass in model object?
-def plot_coeff(columns, coeff, figsize=(6, 4), **kwargs):
-    a = pd.DataFrame(sorted(zip(columns, coeff), key=lambda x: abs(x[1]), reverse=True))
+# combine model and X into one object?
+def plot_feature_importances(model, X, figsize=(6, 4), **kwargs):
+    a = pd.DataFrame(sorted(zip(X.columns, _get_feature_importances(model)),
+            key=lambda x: abs(x[1]), reverse=True))
 
     fig, ax = plt.subplots(figsize=figsize)
     a.sort_index(ascending=False).set_index(0).plot.barh(ax=ax)
     plt.legend().remove()
-    plt.ylabel('Variable')
-    plt.title('Coefficients')
+    plt.ylabel('Feature')
+    plt.title('Feature Importance Measure')
+
+# integrate this better with barplot function above?
+def plot_top_word_frequencies(documents, prop=True, **kwargs):
+    c = CountVectorizer(**kwargs)
+    c.fit(documents)
+
+    counts = c.fit_transform(documents).sum(axis=0)
+    vocab = pd.DataFrame([(k, counts[0, c.vocabulary_[k]]) for k, v in c.vocabulary_.items()][:10])
+    total = vocab[1].sum()
+    vocab['freq'] = vocab[1] / total
+
+    if prop == True:
+        vocab[[0, 'freq']].set_index(0).sort_values(by='freq').plot.barh()
+    else:
+        vocab[[0, 1]].set_index(0).sort_values(by=1).plot.barh()
+
+    plt.ylabel('words')
+    plt.legend().remove()
 
 def draw_tree(X, y, filename, **kwargs):
     model = tree.DecisionTreeClassifier(**kwargs)
