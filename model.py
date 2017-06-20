@@ -1,5 +1,6 @@
 import pandas as pd
 
+from collections import OrderedDict
 from sklearn.model_selection import StratifiedKFold
 
 # how to handle classifiers with multiple classes?
@@ -19,6 +20,36 @@ def _get_top_n_features(model, X):
         a = sorted(zip(X.columns, get_feature_importances(model)), key=lambda x: abs(x[1]), reverse=True)[:10]
         col = [i[0] for i in a]
     return col
+
+def _get_model_name(model):
+    if 'pipeline' in repr(model.__class__).lower():
+        return model.steps[-1][0]
+    else:
+        return repr(model.__class__).split('.')[-1].split("'")[0].lower()
+
+# have separate folder for each experiment?
+def fit_models(models, X, y, folder=None):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+
+    d = OrderedDict()
+    for i, model in enumerate(models):
+        model_name = _get_model_name(model)
+
+        if model_name in d:
+            model_name = model_name + '_%s' % i
+        d[model_name] = model
+
+        model.fit(X, y)
+
+        if folder:
+            pickle.dump(model, open(folder + '%s_model.pkl' % model_name, 'wb'))
+
+    if folder:
+        df = pd.concat([X, y], axis=1)
+        pickle.dump(df, open(folder + 'data.pkl', 'wb'))
+
+    return d
 
 # factor out the sorted zip thing?
 def feature_selection_suite(X, y, models):
