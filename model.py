@@ -12,10 +12,15 @@ def _get_feature_importances(model):
         except:
             return model.scores_
 
+def _get_top_n_features(model, X):
+    if 'sequentialfeatureselector' in repr(model.__class__).lower():
+        col = X.columns[list(model.k_feature_idx_)]
+    else:
+        a = sorted(zip(X.columns, get_feature_importances(model)), key=lambda x: abs(x[1]), reverse=True)[:10]
+        col = [i[0] for i in a]
+    return col
+
 # factor out the sorted zip thing?
-# models = [LogisticRegression(), RandomForestClassifier(),
-#           SelectKBest(score_func=mutual_info_classif), LinearSVC()]
-# feature_selection_suite(X_train, y_train, models)
 def feature_selection_suite(X, y, models):
     l = []
     for model in models:
@@ -26,17 +31,15 @@ def feature_selection_suite(X, y, models):
     feat_props = feat.groupby('features').size() / (len(models) * 10.0)
     return feat_props.sort_values(ascending=False)
 
-# feat_select_stability(X_train, y_train, RandomForestClassifier(), LogisticRegression())
 def feature_selection_stability(X, y, feat_model, model):
     cols_selected = []
     cv_score = []
 
     cv = StratifiedKFold(n_splits=5, shuffle=True)
+
     for tr, te in cv.split(X, y):
         feat_model.fit(X.values[tr], y.values[tr])
-        a = sorted(zip(X.columns, _get_feature_importances(feat_model)), key=lambda x: abs(x[1]), reverse=True)[:10]
-
-        col = [i[0] for i in a]
+        col = get_top_n_features(feat_model, X)
         cols_selected.append(col)
 
         model.fit(X.loc[:, col].values[tr], y.values[tr])
