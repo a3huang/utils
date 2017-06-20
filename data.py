@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import pandas as pd
 
@@ -95,3 +96,14 @@ def crosstab(df, col1, col2, col3=None, **kwargs):
         return pd.crosstab(df[col1], df[col2], **kwargs)
     else:
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=np.mean, **kwargs)
+
+def dummies(df, col):
+    df = df.copy()
+    dummy_col = pd.get_dummies(df[col])
+    dummy_col.columns = [str(i) for i in dummy_col.columns]
+    df = pd.concat([df.drop(col, 1), dummy_col], axis=1)
+    return df
+
+# target.contains_any(strings)
+def contains_any(target, strings):
+    return any([x for x in strings if x in target])
