@@ -72,6 +72,7 @@ def interactions(df, cols=None):
 
     return df
 
+# add generic transformation function?
 def log_transform(df, cols):
     df = df.copy()
     df[cols] = df[cols].apply(lambda x: np.log(x + 1))
@@ -81,3 +82,16 @@ def bin_transform(df, cols):
     df = df.copy()
     df[cols] = df[cols].apply(lambda x: pd.cut(x, 4).cat.codes)
     return df
+
+def add_column(df, col, name):
+    col = pd.DataFrame(col)
+    col.columns = [name]
+    return pd.concat([df.reset_index(drop=True), col], axis=1)
+
+def crosstab(df, col1, col2, col3=None, **kwargs):
+    df = df.copy()
+
+    if col3 is None:
+        return pd.crosstab(df[col1], df[col2], **kwargs)
+    else:
+        return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=np.mean, **kwargs)
