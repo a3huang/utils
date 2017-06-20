@@ -105,5 +105,52 @@ def dummies(df, col):
     return df
 
 # target.contains_any(strings)
-def contains_any(target, strings):
-    return any([x for x in strings if x in target])
+def str_contains(target_str, list_of_str):
+    return any([x for x in list_of_str if x in target_str])
+
+# df.pipe(merge_all, [df1, df2, df3], **kwargs)
+def merge_all(df, df_list):
+    for i in df_list:
+        df = df.merge(i, **kwargs)
+    return df
+
+def stack_vert_all(df_list):
+    df = df.copy()
+    for i, df in enumerate(df_list):
+        df['group'] = i
+    return pd.concat(df_list)
+
+def remove(df, cols):
+    return df[df.columns.difference(cols)]
+
+# needs user_id and date
+def time_diff(df):
+    df = df.copy()
+    df = df.sort_values(by=['user_id', 'date'])
+    df['time_diff'] = df['date'].diff().dt.total_seconds()
+    df.loc[df['user_id'] != df['user_id'].shift(1), 'time_diff'] = np.nan
+    return df
+
+# have defaults: group='user_id', col='id'?
+def agg_total_count(df, group, col):
+    return df.groupby(group)[col].count().reset_index()
+
+def agg_total_value(df, group, col):
+    return df.groupby(group)[col].sum().reset_index()
+
+# needs date filter_start, filter_end, start, end column
+def agg_frequency(df, group, col):
+    df = df.copy()
+    df['date_string'] = df['date'].dt.date
+    df['total'] = df.groupby(group)['date_string'].transform('count')
+    df = df.groupby(group).head(1)
+
+    try:
+        df['weeks'] = (df['filter_end'] - df['filter_start']).dt.days / 7.0
+    except:
+        df['end'] = df['end'].fillna(datetime.now())
+        df['weeks'] = (df['end'] - df['start']).dt.days / 7.0
+
+    df['frequency'] = df['total'] / df['weeks']
+    df = df[[group, 'frequency']]
+    return df
