@@ -7,6 +7,9 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
+from sklearn import tree
+import pydotplus
+
 def _index_to_name(df, col):
     if isinstance(col, int):
         col = df.columns[col]
@@ -402,3 +405,11 @@ def plot_coeff(columns, coeff, figsize=(6, 4), **kwargs):
     plt.legend().remove()
     plt.ylabel('Variable')
     plt.title('Coefficients')
+
+def draw_tree(X, y, filename, **kwargs):
+    model = tree.DecisionTreeClassifier(**kwargs)
+    model.fit(X, y)
+    dot_data = tree.export_graphviz(model, out_file=None, feature_names=X.columns,
+                                filled=True, class_names=['0', '1'])
+    graph = pydotplus.graph_from_dot_data(dot_data)
+    graph.write_pdf(filename)
