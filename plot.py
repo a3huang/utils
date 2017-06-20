@@ -324,6 +324,24 @@ def plot_grouped_scatter(df, cat, cont1, cont2, figsize=(6, 4), **kwargs):
     plt.legend(title=cat, loc=(1, 0.5))
     plt.title('%s vs. %s' % (cont1, cont2))
 
+# how to refactor scatter_plot function?
+def plot_faceted_scatter(df, cat1, cat2, cont1, cont2, figsize=(6, 4), **kwargs):
+    def scatter_plot(x, y, color=None, **kwargs):
+        sns.regplot(x, y, scatter_kws={'color': color}, **kwargs)
+
+    df = df.copy()
+
+    cat1 = _index_to_name(df, cat1)
+    cat2= _index_to_name(df, cat2)
+    cont1 = _index_to_name(df, cont1)
+    cont2 = _index_to_name(df, cont2)
+
+    df[cat1] = _top_n_cat(df[cat1])
+    df[cat2] = _top_n_cat(df[cat2])
+
+    g = sns.FacetGrid(df, col=cat1, hue=cat2, col_wrap=4)
+    g.map(scatter_plot, cont1, cont2).add_legend()
+
 def plot_pca(df, cat, model=None, n=1000, figsize=(6, 4), **kwargs):
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -375,7 +393,7 @@ def plot_clusters(df, model=None, pca_model=None, n=1000, figsize=(6, 4), **kwar
     fig, ax = plt.subplots(figsize=figsize)
     plot_pca(df, 'cluster', pca_model, n=None, ax=ax, **kwargs)
 
-# pass in model instead?
+# add ability to pass in model object?
 def plot_coeff(columns, coeff, figsize=(6, 4), **kwargs):
     a = pd.DataFrame(sorted(zip(columns, coeff), key=lambda x: abs(x[1]), reverse=True))
 
