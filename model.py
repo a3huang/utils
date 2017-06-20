@@ -27,6 +27,13 @@ def _get_model_name(model):
     else:
         return repr(model.__class__).split('.')[-1].split("'")[0].lower()
 
+################################################################################
+
+def decile_recall(model, X, y):
+    scores = pd.concat([pd.DataFrame(model.predict_proba(X)[:, 1]),
+        pd.DataFrame(y).reset_index(drop=True)], axis=1)
+    return get_scoring_table(scores)['Target Metrics']['Cumulative'].loc[5]
+
 # have separate folder for each experiment?
 def fit_models(models, X, y, folder=None):
     if not os.path.exists(folder):
@@ -50,6 +57,25 @@ def fit_models(models, X, y, folder=None):
         pickle.dump(df, open(folder + 'data.pkl', 'wb'))
 
     return d
+
+# how to handle models without predict_proba method
+def evaluate_models_cv(model_dict, X, y):
+    cv = StratifiedKFold(n_splits=5, shuffle=True)
+    models = model_dict.values()
+
+    l = []
+    for model_name, model in model_dict.items():
+        auc = []
+        recall = []
+
+        auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+        recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
+
+        l.append((model_name, auc, recall))
+
+    df = pd.DataFrame(l)
+    df.columns = ['Model', 'AUC', '5th Decile Recall']
+    return df
 
 # factor out the sorted zip thing?
 def feature_selection_suite(X, y, models):
