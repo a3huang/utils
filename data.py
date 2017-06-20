@@ -60,3 +60,14 @@ def mark_nth_week(df):
     df['nth_week'] = (df['date'] - df['start']).dt.days / 7 + 1
     df['nth_week'] = df['nth_week'].astype(int)
     return df
+
+def interactions(df, subset=None):
+    df = df.copy()
+
+    if subset:
+        df = df[subset]
+
+    for i, j in list(itertools.combinations(df.columns, 2)):
+        df['%s*%s' % (i, j)] = df[i] * df[j]
+
+    return df
