@@ -61,13 +61,23 @@ def mark_nth_week(df):
     df['nth_week'] = df['nth_week'].astype(int)
     return df
 
-def interactions(df, subset=None):
+def interactions(df, cols=None):
     df = df.copy()
 
-    if subset:
-        df = df[subset]
+    if cols:
+        df = df[cols]
 
     for i, j in list(itertools.combinations(df.columns, 2)):
         df['%s*%s' % (i, j)] = df[i] * df[j]
 
+    return df
+
+def log_transform(df, cols):
+    df = df.copy()
+    df[cols] = df[cols].apply(lambda x: np.log(x + 1))
+    return df
+
+def bin_transform(df, cols):
+    df = df.copy()
+    df[cols] = df[cols].apply(lambda x: pd.cut(x, 4).cat.codes)
     return df
