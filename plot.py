@@ -33,21 +33,20 @@ def winsorize(df, col, p):
 
 ################################################################################
 
-def plot_missing(df, n=5, figsize=(6, 4), **kwargs):
+def plot_missing(df, n=5, **kwargs):
     a = df.isnull().mean(axis=0)
     a = a[a > 0]
 
     if len(a) == 0:
         return 'No Missing Values'
 
-    fig, ax = plt.subplots(figsize=figsize)
     b = a.sort_values(ascending=False)[:n]
     b[::-1].plot.barh(ax=ax, **kwargs)
 
     ax.set_xlabel('proportions')
 
 # col should be categorical
-def plot_bar(df, col=None, prop=True, figsize=(6, 4), **kwargs):
+def plot_bar(df, col=None, prop=True, **kwargs):
     if col:
         col = _index_to_name(df, col)
         a = df[col]
@@ -64,14 +63,12 @@ def plot_bar(df, col=None, prop=True, figsize=(6, 4), **kwargs):
     else:
         xlabel = 'counts'
 
-    fig, ax = plt.subplots(figsize=figsize)
-    a.sort_index(ascending=False).plot.barh(ax=ax, **kwargs)
+    a.sort_index(ascending=False).plot.barh(**kwargs)
     plt.xlabel(xlabel)
     plt.title(col)
 
 # how to pick specific class rates to show?
 # rename is_cat?
-# needed to remove ax for changing figsize
 def plot_grouped_bar1(df, cat, col, is_cat=False, **kwargs):
     df = df.copy()
 
@@ -93,7 +90,7 @@ def plot_grouped_bar1(df, cat, col, is_cat=False, **kwargs):
     plt.legend(title=col, loc=(1, 0.5))
 
 # col should be continuous or binary
-def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, figsize=(6, 4), **kwargs):
+def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, **kwargs):
     df = df.copy()
 
     cat1 = _index_to_name(df, cat1)
@@ -102,20 +99,18 @@ def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, figsize=(6, 4), **kwar
     df[cat1] = _top_n_cat(df[cat1])
     df[cat2] = _top_n_cat(df[cat2])
 
-    fig, ax = plt.subplots(figsize=figsize)
-
     if stacked:
         pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)\
             .sort_index(axis=0, ascending=False)\
             .plot.barh(stacked=True, color=reversed(plt.rcParams['axes.color_cycle'][:5]),
-                       ax=ax, **kwargs)
+                       **kwargs)
         ax.legend(title=cat2, loc=(1, 0.5))
 
     else:
         pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)\
             .sort_index(axis=0, ascending=False)\
             .sort_index(axis=1, ascending=False)\
-            .plot.barh(ax=ax, **kwargs)
+            .plot.barh(**kwargs)
 
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles[::-1], labels[::-1], title=cat2, loc=(1, 0.5))
@@ -124,7 +119,7 @@ def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, figsize=(6, 4), **kwar
     plt.title('%s vs. %s' % (cat1, cat2))
 
 # col should be continuous or binary
-def plot_grouped_means1(df, cat, col, figsize=(6, 4), **kwargs):
+def plot_grouped_means1(df, cat, col, **kwargs):
     df = df.copy()
 
     cat = _index_to_name(df, cat)
@@ -132,13 +127,12 @@ def plot_grouped_means1(df, cat, col, figsize=(6, 4), **kwargs):
 
     df[cat] = _top_n_cat(df[cat])
 
-    fig, ax = plt.subplots(figsize=figsize)
-    a = df.groupby(cat)[col].mean().plot(ax=ax, **kwargs)
+    a = df.groupby(cat)[col].mean().plot(**kwargs)
     plt.xlabel(cat)
     plt.title('%s vs. %s' % (cat, col))
 
 # col should be continuous or binary
-def plot_grouped_means2(df, cat1, cat2, col, figsize=(6, 4), **kwargs):
+def plot_grouped_means2(df, cat1, cat2, col, **kwargs):
     df = df.copy()
 
     cat1 = _index_to_name(df, cat1)
@@ -148,16 +142,16 @@ def plot_grouped_means2(df, cat1, cat2, col, figsize=(6, 4), **kwargs):
     df[cat1] = _top_n_cat(df[cat1])
     df[cat2] = _top_n_cat(df[cat2])
 
-    fig, ax = plt.subplots(figsize=figsize)
-    pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).plot(ax=ax, **kwargs)
+    pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).plot(**kwargs)
     plt.legend(title=cat2, loc=(1, 0.5))
     plt.ylabel(col)
     plt.title('%s vs. %s' % (cat1, cat2))
 
-def plot_heatmap(df):
-    sns.heatmap(df)
+# not to be passed into pipe
+def plot_heatmap(df, **kwargs):
+    sns.heatmap(df, **kwargs)
 
-def plot_grouped_heatmap(df, cat1, cat2, col, figsize=(6, 4)):
+def plot_grouped_heatmap(df, cat1, cat2, col, **kwargs):
     df = df.copy()
 
     cat1 = _index_to_name(df, cat1)
@@ -167,11 +161,11 @@ def plot_grouped_heatmap(df, cat1, cat2, col, figsize=(6, 4)):
     df[cat1] = _top_n_cat(df[cat1])
     df[cat2] = _top_n_cat(df[cat2])
 
-    fig, ax = plt.subplots(figsize=figsize)
-    ax = sns.heatmap(pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean), ax=ax)
+    fig, ax = plt.subplots()
+    ax = sns.heatmap(pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean))
     ax.collections[0].colorbar.set_label(col, rotation=-90, labelpad=15)
 
-def plot_contours(df, cat1, cat2, col, figsize=(6, 4)):
+def plot_contours(df, cat1, cat2, col):
     df = df.copy()
 
     cat1 = _index_to_name(df, cat1)
@@ -181,11 +175,10 @@ def plot_contours(df, cat1, cat2, col, figsize=(6, 4)):
     df[cat1] = _top_n_cat(df[cat1])
     df[cat2] = _top_n_cat(df[cat2])
 
-    fig, ax = plt.subplots(figsize=figsize)
-    sns.interactplot(cat1, cat2, col, data=df, ax=ax)
+    sns.interactplot(cat1, cat2, col, data=df)
 
 # add winsorize option?
-def plot_hist(df, col=None, prop=True, bins=10, figsize=(6, 4), **kwargs):
+def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
     if col:
         col = _index_to_name(df, col)
         a = df[col]
@@ -202,11 +195,10 @@ def plot_hist(df, col=None, prop=True, bins=10, figsize=(6, 4), **kwargs):
         weights = np.ones_like(a)
         ylabel = 'counts'
 
-    fig, ax = plt.subplots(figsize=figsize)
-    a.hist(weights=weights, bins=bins, ax=ax, **kwargs)
+    a.hist(weights=weights, bins=bins, **kwargs)
     plt.title(col)
 
-def plot_grouped_hist(df, cat, col, prop=True, figsize=(6, 4), **kwargs):
+def plot_grouped_hist(df, cat, col, prop=True, **kwargs):
     df = df.copy()
 
     cat = _index_to_name(df, cat)
@@ -216,7 +208,7 @@ def plot_grouped_hist(df, cat, col, prop=True, figsize=(6, 4), **kwargs):
 
     groups = df.groupby(cat)[col]
 
-    fig, ax = plt.subplots(figsize=figsize)
+    fig, ax = plt.subplots()
 
     for k, v in groups:
         if prop == True:
@@ -229,6 +221,7 @@ def plot_grouped_hist(df, cat, col, prop=True, figsize=(6, 4), **kwargs):
     ax.legend(title=cat, loc=(1, 0.5))
     ax.set_title(col)
 
+# how to give option of not rotating tick labels
 def plot_faceted_hist(df, cat, col, **kwargs):
     df = df.copy()
 
@@ -239,11 +232,11 @@ def plot_faceted_hist(df, cat, col, **kwargs):
 
     col_order = df[cat].value_counts().sort_index().index
 
-    g = sns.FacetGrid(df, col=cat, col_wrap=4, col_order=col_order)
-    g.map(plt.hist, col, **kwargs)
+    g = sns.FacetGrid(df, col=cat, col_order=col_order, **kwargs)
+    g.map(plt.hist, col)
     g.set_xticklabels(rotation=45)
 
-def plot_grouped_density(df, cat, col, prop=True, figsize=(6, 4), **kwargs):
+def plot_grouped_density(df, cat, col, prop=True, **kwargs):
     df = df.copy()
 
     cat = _index_to_name(df, cat)
@@ -253,7 +246,7 @@ def plot_grouped_density(df, cat, col, prop=True, figsize=(6, 4), **kwargs):
 
     groups = df.groupby(cat)[col]
 
-    fig, ax = plt.subplots(figsize=figsize)
+    fig, ax = plt.subplots()
 
     for k, v in groups:
         v.plot.density(label=str(k), ax=ax, **kwargs)
@@ -269,12 +262,12 @@ def plot_faceted_density(df, cat, col, **kwargs):
 
     df[cat] = _top_n_cat(df[cat])
 
-    g = sns.FacetGrid(df, col=cat, col_wrap=4)
-    g.map(sns.kdeplot, col, shade=True, **kwargs)
+    g = sns.FacetGrid(df, col=cat, **kwargs)
+    g.map(sns.kdeplot, col, shade=True)
     g.set_xticklabels(rotation=45)
 
 # seems to have errors with astype(ordered=True)
-def plot_grouped_box(df, col1, col2, figsize=(6, 4), **kwargs):
+def plot_grouped_box(df, col1, col2, **kwargs):
     df = df.copy()
 
     col1 = _index_to_name(df, col1)
@@ -286,8 +279,7 @@ def plot_grouped_box(df, col1, col2, figsize=(6, 4), **kwargs):
     a = df[col1].cat.categories
     df[col1] = df[col1].cat.reorder_categories(list(reversed(a)))
 
-    fig, ax = plt.subplots(figsize=figsize)
-    df.boxplot(by=col1, column=col2, vert=False, ax=ax, **kwargs)
+    df.boxplot(by=col1, column=col2, vert=False, **kwargs)
     plt.xlabel(col2)
     plt.ylabel(col1)
     plt.suptitle('')
@@ -303,14 +295,14 @@ def plot_faceted_box(df, cat1, cat2, col, **kwargs):
     df[cat1] = _top_n_cat(df[cat1])
     df[cat2] = _top_n_cat(df[cat2])
 
-    g = sns.FacetGrid(df, col=cat1, col_wrap=4)
-    g.map(sns.boxplot, cat2, col, **kwargs)
+    g = sns.FacetGrid(df, col=cat1, **kwargs)
+    g.map(sns.boxplot, cat2, col)
 
-def plot_scatter(df, cont1, cont2, figsize=(6, 4), **kwargs):
-    fig, ax = plt.subplots(figsize=figsize)
-    sns.lmplot(cont1, cont2, data=df, ax=ax)
+def plot_scatter(df, cont1, cont2, **kwargs):
+    sns.lmplot(cont1, cont2, data=df, **kwargs)
 
-def plot_grouped_scatter(df, cat, cont1, cont2, figsize=(6, 4), ax=None, **kwargs):
+# need both ax argument and kwargs here?
+def plot_grouped_scatter(df, cat, cont1, cont2, ax=None, **kwargs):
     df = df.copy()
 
     cat = _index_to_name(df, cat)
@@ -329,16 +321,17 @@ def plot_grouped_scatter(df, cat, cont1, cont2, figsize=(6, 4), ax=None, **kwarg
         fig, ax = plt.subplots()
 
     for key, group in grouped:
-        ax.scatter(group[cont1], group[cont2], label=key, color=colors[int(key)], **kwargs)
+        ax.scatter(group[cont1], group[cont2], label=key, color=colors[int(key)])
         ax.set_title('')
 
     plt.legend(title=cat, loc=(1, 0.5))
     plt.suptitle('%s vs. %s' % (cont1, cont2), y=1.01)
 
 # how to refactor scatter_plot function?
-def plot_faceted_scatter(df, cat1, cat2, cont1, cont2, figsize=(6, 4), **kwargs):
-    def scatter_plot(x, y, color=None, **kwargs):
-        sns.regplot(x, y, scatter_kws={'color': color}, **kwargs)
+def plot_faceted_scatter(df, cat1, cat2, cont1, cont2, **kwargs):
+
+    def scatter_plot(x, y, color=None):
+        sns.regplot(x, y, scatter_kws={'color': color})
 
     df = df.copy()
 
@@ -350,10 +343,10 @@ def plot_faceted_scatter(df, cat1, cat2, cont1, cont2, figsize=(6, 4), **kwargs)
     df[cat1] = _top_n_cat(df[cat1])
     df[cat2] = _top_n_cat(df[cat2])
 
-    g = sns.FacetGrid(df, col=cat1, hue=cat2, col_wrap=4)
+    g = sns.FacetGrid(df, col=cat1, hue=cat2, **kwargs)
     g.map(scatter_plot, cont1, cont2).add_legend()
 
-def plot_pca(df, cat, model=None, n=1000, figsize=(6, 4), ax=None, **kwargs):
+def plot_pca(df, cat, model=None, n=1000, **kwargs):
     df = df.copy()
     s = StandardScaler()
 
@@ -368,16 +361,16 @@ def plot_pca(df, cat, model=None, n=1000, figsize=(6, 4), ax=None, **kwargs):
     df['Component 1'] = model.fit_transform(s.fit_transform(X))[:, 0]
     df['Component 2'] = model.fit_transform(s.fit_transform(X))[:, 1]
 
-    plot_grouped_scatter(df, cat, 'Component 1', 'Component 2', ax=ax, **kwargs)
+    plot_grouped_scatter(df, cat, 'Component 1', 'Component 2', **kwargs)
 
-def plot_faceted_pca(df, cat, models, figsize=(6, 4), **kwargs):
+def plot_faceted_pca(df, cat, models, **kwargs):
     r = int(len(models) / 2.0)
 
-    fig, ax = plt.subplots(r, 2, figsize=figsize)
+    fig, ax = plt.subplots(r, 2, **kwargs)
     ax = ax.flatten()
 
     for i, j in zip(models, ax):
-        df.pipe(plot_pca, cat, model=i, ax=j, **kwargs)
+        df.pipe(plot_pca, cat, model=i, ax=j)
         j.set_title(repr(i.__class__).split('.')[-1].split("'")[0][:15])
 
         if j != ax[-1]:
@@ -385,7 +378,8 @@ def plot_faceted_pca(df, cat, models, figsize=(6, 4), **kwargs):
 
     plt.tight_layout()
 
-def plot_clusters(df, model=None, pca_model=None, n=1000, figsize=(6, 4), **kwargs):
+# need to allow plotting more than 5 cluster colors
+def plot_clusters(df, model=None, pca_model=None, n=1000, **kwargs):
     df = df.copy()
     s = StandardScaler()
 
@@ -400,14 +394,14 @@ def plot_clusters(df, model=None, pca_model=None, n=1000, figsize=(6, 4), **kwar
     df['cluster'] = model.labels_
 
     fig, ax = plt.subplots(figsize=figsize)
-    plot_pca(df, 'cluster', pca_model, n=None, ax=ax, **kwargs)
+    plot_pca(df, 'cluster', pca_model, n=None, **kwargs)
 
 # need to fix legend handling
-def plot_faceted_clusters(df, cat, cluster_col, figsize=(6, 4)):
+def plot_faceted_clusters(df, cat, cluster_col, **kwargs):
     clusters = df[cluster_col].unique()
     r = len(clusters) / 2
 
-    fig, ax = plt.subplots(r, 2, figsize=figsize)
+    fig, ax = plt.subplots(r, 2, **kwargs)
     ax = ax.flatten()
 
     for i, j in zip(clusters, ax):
@@ -416,12 +410,11 @@ def plot_faceted_clusters(df, cat, cluster_col, figsize=(6, 4)):
     plt.tight_layout()
 
 # combine model and X into one object?
-def plot_feature_importances(model, X, figsize=(6, 4), **kwargs):
+def plot_feature_importances(model, X, **kwargs):
     a = pd.DataFrame(sorted(zip(X.columns, _get_feature_importances(model)),
-            key=lambda x: abs(x[1]), reverse=True))
+                        key=lambda x: abs(x[1]), reverse=True))
 
-    fig, ax = plt.subplots(figsize=figsize)
-    a.sort_index(ascending=False).set_index(0).plot.barh(ax=ax)
+    a.sort_index(ascending=False).set_index(0).plot.barh(**kwargs)
     plt.legend().remove()
     plt.ylabel('Feature')
     plt.title('Feature Importance Measure')
@@ -437,9 +430,9 @@ def plot_top_word_frequencies(documents, prop=True, **kwargs):
     vocab['freq'] = vocab[1] / total
 
     if prop == True:
-        vocab[[0, 'freq']].set_index(0).sort_values(by='freq').plot.barh()
+        vocab[[0, 'freq']].set_index(0).sort_values(by='freq').plot.barh(**kwargs)
     else:
-        vocab[[0, 1]].set_index(0).sort_values(by=1).plot.barh()
+        vocab[[0, 1]].set_index(0).sort_values(by=1).plot.barh(**kwargs)
 
     plt.ylabel('words')
     plt.legend().remove()
@@ -447,7 +440,10 @@ def plot_top_word_frequencies(documents, prop=True, **kwargs):
 def draw_tree(X, y, filename, **kwargs):
     model = tree.DecisionTreeClassifier(**kwargs)
     model.fit(X, y)
-    dot_data = tree.export_graphviz(model, out_file=None, feature_names=X.columns,
-                                filled=True, class_names=['0', '1'])
+    dot_data = tree.export_graphviz(model,
+                                    out_file=None,
+                                    feature_names=X.columns,
+                                    filled=True,
+                                    class_names=['0', '1'])
     graph = pydotplus.graph_from_dot_data(dot_data)
     graph.write_pdf(filename)
