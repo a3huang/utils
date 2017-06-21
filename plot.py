@@ -12,6 +12,7 @@ from sklearn import tree
 import pydotplus
 
 from model import _get_feature_importances
+from data import crosstab
 
 def _index_to_name(df, col):
     if isinstance(col, int):
@@ -464,6 +465,20 @@ def plot_ts(df, col=None, freq='M'):
     else:
         grouper.size().plot()
 
+# can combine with plot_ts function?
+def plot_grouped_ts(df, cat, col=None, freq='M'):
+    df = df.copy()
+
+    if freq in ['month', 'dow', 'hour']:
+        df['date'] = getattr(df.set_index('date').index, freq)
+    else:
+        df = df.set_index('date').to_period(freq).reset_index()
+
+    if col:
+        df.pipe(crosstab, 'date', cat, col).plot()
+    else:
+        df.pipe(crosstab, 'date', cat).plot()
+
 # needs column named date
 # need to better format x axis labels
 def plot_ts_bar(df, col=None, freq='M'):
@@ -479,6 +494,19 @@ def plot_ts_bar(df, col=None, freq='M'):
         grouper[col].mean().plot.bar()
     else:
         grouper.size().plot.bar()
+
+def plot_grouped_ts_bar(df, cat, col=None, freq='M'):
+    df = df.copy()
+
+    if freq in ['month', 'dow', 'hour']:
+        df['date'] = getattr(df.set_index('date').index, freq)
+    else:
+        df = df.set_index('date').to_period(freq).reset_index()
+
+    if col:
+        df.pipe(crosstab, 'date', cat, col).plot.bar()
+    else:
+        df.pipe(crosstab, 'date', cat).plot.bar()
 
 # needs column named date
 # need to adjust ylim
