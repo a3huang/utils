@@ -89,13 +89,13 @@ def add_column(df, col, name):
     col.columns = [name]
     return pd.concat([df.reset_index(drop=True), col], axis=1)
 
-def crosstab(df, col1, col2, col3=None, **kwargs):
+def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     df = df.copy()
 
     if col3 is None:
         return pd.crosstab(df[col1], df[col2], **kwargs)
     else:
-        return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=np.mean, **kwargs)
+        return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
 
 def dummies(df, col):
     df = df.copy()
@@ -154,3 +154,9 @@ def agg_frequency(df, group, col):
     df['frequency'] = df['total'] / df['weeks']
     df = df[[group, 'frequency']]
     return df
+
+def col_in(df, col, values):
+    return df[df[col].isin(values)]
+
+def col_between(df, left, col, right):
+    return df[(df[col] > left) & (df[col] < right)]
