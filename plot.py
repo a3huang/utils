@@ -71,7 +71,8 @@ def plot_bar(df, col=None, prop=True, figsize=(6, 4), **kwargs):
 
 # how to pick specific class rates to show?
 # rename is_cat?
-def plot_grouped_bar1(df, cat, col, is_cat=True, figsize=(6, 4), **kwargs):
+# needed to remove ax for changing figsize
+def plot_grouped_bar1(df, cat, col, is_cat=False, **kwargs):
     df = df.copy()
 
     cat = _index_to_name(df, cat)
@@ -79,16 +80,14 @@ def plot_grouped_bar1(df, cat, col, is_cat=True, figsize=(6, 4), **kwargs):
 
     df[cat] = _top_n_cat(df[cat])
 
-    fig, ax = plt.subplots(figsize=figsize)
-
     if is_cat or df[col].dtype == 'O':
         df[col] = _top_n_cat(df[col])
         a = df.groupby(cat)[col].value_counts().unstack().sort_index(ascending=False)
-        a.plot.barh(ax=ax, **kwargs)
+        a.plot.barh(**kwargs)
         plt.xlabel('proportions')
     else:
         a = df.groupby(cat)[col].mean().sort_index(ascending=False)
-        a.plot.barh(ax=ax, **kwargs)
+        a.plot.barh(**kwargs)
         plt.xlabel(col)
 
     plt.legend(title=col, loc=(1, 0.5))
