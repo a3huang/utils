@@ -447,3 +447,33 @@ def draw_tree(X, y, filename, **kwargs):
                                     class_names=['0', '1'])
     graph = pydotplus.graph_from_dot_data(dot_data)
     graph.write_pdf(filename)
+
+# needs column named date
+# need to better format x axis labels
+def plot_ts(df, col=None, freq='M'):
+    df = df.copy()
+
+    if freq in ['month', 'dow', 'hour']:
+        df['date'] = getattr(df.set_index('date').index, freq)
+        grouper = df.groupby('date')
+    else:
+        grouper = df.set_index('date').resample(freq)
+
+    if col:
+        grouper[col].mean().plot()
+    else:
+        grouper.size().plot()
+
+# needs column named date
+# need to adjust ylim
+def plot_ts_box(df, col, freq='M'):
+    df = df.copy()
+
+    if freq in ['month', 'dow', 'hour']:
+        df['date'] = getattr(df.set_index('date').index, freq)
+    else:
+        df = df.set_index('date').to_period(freq)
+
+    df.boxplot(by='date', column=col)
+
+    plt.xticks(rotation=90)
