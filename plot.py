@@ -310,7 +310,7 @@ def plot_scatter(df, cont1, cont2, figsize=(6, 4), **kwargs):
     fig, ax = plt.subplots(figsize=figsize)
     sns.lmplot(cont1, cont2, data=df, ax=ax)
 
-def plot_grouped_scatter(df, cat, cont1, cont2, figsize=(6, 4), **kwargs):
+def plot_grouped_scatter(df, cat, cont1, cont2, figsize=(6, 4), ax=None, **kwargs):
     df = df.copy()
 
     cat = _index_to_name(df, cat)
@@ -319,20 +319,21 @@ def plot_grouped_scatter(df, cat, cont1, cont2, figsize=(6, 4), **kwargs):
 
     df[cat] = _top_n_cat(df[cat])
     top = df[cat].value_counts()
-    df[cat] = df[cat].map(dict(zip(top.index, range(6))))
+    df[cat] = df[cat].map(dict(zip(top.index, range(5))))
 
     grouped = df.groupby(cat)
 
     colors = plt.rcParams['axes.color_cycle'][:5]
 
     if ax is None:
-        fig, ax = plt.subplots(figsize=figsize)
+        fig, ax = plt.subplots()
 
     for key, group in grouped:
-        group.plot.scatter(cont1, cont2, label=key, color=colors[int(key)], ax=ax, **kwargs)
+        ax.scatter(group[cont1], group[cont2], label=key, color=colors[int(key)], **kwargs)
+        ax.set_title('')
 
     plt.legend(title=cat, loc=(1, 0.5))
-    plt.title('%s vs. %s' % (cont1, cont2))
+    plt.suptitle('%s vs. %s' % (cont1, cont2), y=1.01)
 
 # how to refactor scatter_plot function?
 def plot_faceted_scatter(df, cat1, cat2, cont1, cont2, figsize=(6, 4), **kwargs):
@@ -352,9 +353,7 @@ def plot_faceted_scatter(df, cat1, cat2, cont1, cont2, figsize=(6, 4), **kwargs)
     g = sns.FacetGrid(df, col=cat1, hue=cat2, col_wrap=4)
     g.map(scatter_plot, cont1, cont2).add_legend()
 
-def plot_pca(df, cat, model=None, n=1000, figsize=(6, 4), **kwargs):
-    fig, ax = plt.subplots(figsize=figsize)
-
+def plot_pca(df, cat, model=None, n=1000, figsize=(6, 4), ax=None, **kwargs):
     df = df.copy()
     s = StandardScaler()
 
@@ -378,7 +377,7 @@ def plot_faceted_pca(df, cat, models, figsize=(6, 4), **kwargs):
     ax = ax.flatten()
 
     for i, j in zip(models, ax):
-        df.pipe(plot_pca_components, cat, model=i, ax=j, **kwargs)
+        df.pipe(plot_pca, cat, model=i, ax=j, **kwargs)
         j.set_title(repr(i.__class__).split('.')[-1].split("'")[0][:15])
 
         if j != ax[-1]:
@@ -402,6 +401,19 @@ def plot_clusters(df, model=None, pca_model=None, n=1000, figsize=(6, 4), **kwar
 
     fig, ax = plt.subplots(figsize=figsize)
     plot_pca(df, 'cluster', pca_model, n=None, ax=ax, **kwargs)
+
+# need to fix legend handling
+def plot_faceted_clusters(df, cat, cluster_col, figsize=(6, 4)):
+    clusters = df[cluster_col].unique()
+    r = len(clusters) / 2
+
+    fig, ax = plt.subplots(r, 2, figsize=figsize)
+    ax = ax.flatten()
+
+    for i, j in zip(clusters, ax):
+        df[df[cluster_col] == i].pipe(plot_pca, cat, n=None, ax=j)
+
+    plt.tight_layout()
 
 # combine model and X into one object?
 def plot_feature_importances(model, X, figsize=(6, 4), **kwargs):
