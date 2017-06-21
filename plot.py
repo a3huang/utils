@@ -465,6 +465,22 @@ def plot_ts(df, col=None, freq='M'):
         grouper.size().plot()
 
 # needs column named date
+# need to better format x axis labels
+def plot_ts_bar(df, col=None, freq='M'):
+    df = df.copy()
+
+    if freq in ['month', 'dow', 'hour']:
+        df['date'] = getattr(df.set_index('date').index, freq)
+        grouper = df.groupby('date')
+    else:
+        grouper = df.set_index('date').resample(freq)
+
+    if col:
+        grouper[col].mean().plot.bar()
+    else:
+        grouper.size().plot.bar()
+
+# needs column named date
 # need to adjust ylim
 def plot_ts_box(df, col, freq='M'):
     df = df.copy()
