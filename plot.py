@@ -6,6 +6,8 @@ import seaborn as sns
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics import confusion_matrix, roc_curve
+from sklearn.model_selection import learning_curve
 from sklearn.preprocessing import StandardScaler
 
 from sklearn import tree
@@ -521,3 +523,36 @@ def plot_ts_box(df, col, freq='M'):
     df.boxplot(by='date', column=col)
 
     plt.xticks(rotation=90)
+
+def plot_correlation_matrix(X, **kwargs):
+    sns.heatmap(X.corr(), **kwargs)
+
+def plot_confusion_matrix(model, X, y, threshold=0.5, prop=False):
+    try:
+        c = confusion_matrix(y, model.predict_proba(X)[:, 1] > threshold)
+    except:
+        c = confusion_matrix(y, model.predict(X))
+
+    if prop:
+        c = c / float(sum(sum(c)))
+        sns.heatmap(c, annot=True, fmt='.2f')
+    else:
+        sns.heatmap(c, annot=True, fmt='d')
+
+def plot_learning_curves(model, X, y):
+    sizes, t_scores, v_scores = learning_curve(model, X, y, cv=10, scoring='roc_auc')
+    plt.plot(sizes, np.mean(t_scores, axis=1), label='train')
+    plt.plot(sizes, np.mean(v_scores, axis=1), label='test')
+    plt.legend(loc=(1, 0.5))
+
+# reduce number of arguments?
+def plot_roc_curves(model, X_train, y_train, X_test, y_test):
+
+    fpr1, tpr1, _ = roc_curve(y_train, model.predict_proba(X_train)[:, 1])
+    plt.plot(fpr1, tpr1, color='g', label='train')
+
+    fpr2, tpr2, _ = roc_curve(y_test model.predict_proba(X_test)[:, 1])
+    plt.plot(fpr2, tpr2, color='b', label='test')
+
+    plt.plot([0, 1], [0, 1], color='navy', linestyle='--')
+    plt.legend(loc=(1, 0.5))
