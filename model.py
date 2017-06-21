@@ -1,23 +1,26 @@
+import os
 import pandas as pd
+import numpy as np
 
 from collections import OrderedDict
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.metrics import roc_auc_score
 
-# how to handle classifiers with multiple classes?
 def _get_feature_importances(model):
-    try:
-        return model.coef_[0]
-    except:
-        try:
-            return model.feature_importances_
-        except:
-            return model.scores_
+    for i in ['coef_', 'feature_importances_', 'ranking_', 'scores_']:
+        if hasattr(model, i):
+            scores = getattr(model, i)
+
+            if len(scores.shape) > 1:
+                scores = scores[0]
+            return scores
 
 def _get_top_n_features(model, X):
     if 'sequentialfeatureselector' in repr(model.__class__).lower():
         col = X.columns[list(model.k_feature_idx_)]
     else:
-        a = sorted(zip(X.columns, get_feature_importances(model)), key=lambda x: abs(x[1]), reverse=True)[:10]
+        a = sorted(zip(X.columns, _get_feature_importances(model)),
+                key=lambda x: abs(x[1]), reverse=True)[:10]
         col = [i[0] for i in a]
     return col
 
@@ -65,7 +68,7 @@ def get_scoring_table(scores):
 
 # have separate folder for each experiment?
 def fit_models(models, X, y, folder=None):
-    if not os.path.exists(folder):
+    if folder and not os.path.exists(folder):
         os.makedirs(folder)
 
     d = OrderedDict()
@@ -153,7 +156,7 @@ def feature_selection_stability(X, y, feat_model, model):
 
     for tr, te in cv.split(X, y):
         feat_model.fit(X.values[tr], y.values[tr])
-        col = get_top_n_features(feat_model, X)
+        col = _get_top_n_features(feat_model, X)
         cols_selected.append(col)
 
         model.fit(X.loc[:, col].values[tr], y.values[tr])
@@ -173,4 +176,4 @@ def feature_selection_stability(X, y, feat_model, model):
         intersect = intersect.intersection(set(i))
         union = union.union(set(i))
 
-    return np.mean(cv_score), len(inter) / float(len(union))
+    return np.mean(cv_score), len(intersect) / float(len(union))
