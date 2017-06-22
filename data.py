@@ -114,8 +114,7 @@ def merge_all(df, df_list):
         df = df.merge(i, **kwargs)
     return df
 
-def stack_vert_all(df_list):
-    df = df.copy()
+def stack_all(df_list):
     for i, df in enumerate(df_list):
         df['group'] = i
     return pd.concat(df_list)
@@ -160,3 +159,31 @@ def col_in(df, col, values):
 
 def col_between(df, left, col, right):
     return df[(df[col] > left) & (df[col] < right)]
+
+# should refactor filtering part
+def get_grouped_rates(df, group, col):
+    l = []
+    group_val = df[group].unique()
+    for i in group_val:
+        l.append(df[(df[group] == i) & (~df[col].isnull())].shape[0] / float(df[df[group] == i].shape[0]))
+    return l
+
+def get_rate(df, col):
+    a = df[col].value_counts(dropna=False)
+    return a / float(sum(a))
+
+# add default "names" to all other functions as well
+def add_dow_offset(df, date_col, name='next_dow', weeks=1, dow=0):
+    df = df.copy()
+    df[name] = a['date'].dt.to_period('W').dt.start_time + DateOffset(weeks=weeks, days=dow)
+    return df
+
+def add_date_offset(df, date_col, name='next', **kwargs):
+    df = df.copy()
+    df[name] = df[date_col].dt.date + DateOffset(**kwargs)
+    return df
+
+def count_rows(df, group='user_id'):
+    a = df.groupby(group).size().reset_index()
+    a.columns = [group, 'events']
+    return a
