@@ -2,6 +2,8 @@ import itertools
 import numpy as np
 import pandas as pd
 
+# need to add tests
+
 def requires_col(cols):
     def decorator(f):
         def wrapper(df, *args, **kwargs):
@@ -137,6 +139,12 @@ def agg_total_count(df, group, col):
 def agg_total_value(df, group, col):
     return df.groupby(group)[col].sum().reset_index()
 
+# need id column?
+def agg_average_value(df, column='id'):
+    df = df.copy()
+    df = df.groupby('user_id')[column].mean().reset_index()
+    return df
+
 # needs date filter_start, filter_end, start, end column
 def agg_frequency(df, group, col):
     df = df.copy()
@@ -161,11 +169,14 @@ def col_between(df, left, col, right):
     return df[(df[col] > left) & (df[col] < right)]
 
 # should refactor filtering part
+# make id default col?
+# needs user id column
 def get_grouped_rates(df, group, col):
     l = []
     group_val = df[group].unique()
     for i in group_val:
-        l.append(df[(df[group] == i) & (~df[col].isnull())].shape[0] / float(df[df[group] == i].shape[0]))
+        a = df[df[group] == i].groupby('user_id')[col].count()
+        l.append(a[a > 0].shape[0] / float(a.shape[0]))
     return l
 
 def get_rate(df, col):
@@ -173,9 +184,9 @@ def get_rate(df, col):
     return a / float(sum(a))
 
 # add default "names" to all other functions as well
-def add_dow_offset(df, date_col, name='next_dow', weeks=1, dow=0):
+def add_dow_offset(df, date_col, name='next_dow', **kwargs):
     df = df.copy()
-    df[name] = a['date'].dt.to_period('W').dt.start_time + DateOffset(weeks=weeks, days=dow)
+    df[name] = df[date_col].dt.to_period('W').dt.start_time + DateOffset(**kwargs)
     return df
 
 def add_date_offset(df, date_col, name='next', **kwargs):
@@ -187,3 +198,41 @@ def count_rows(df, group='user_id'):
     a = df.groupby(group).size().reset_index()
     a.columns = [group, 'events']
     return a
+
+def transform_column(df, cols, f):
+    df = df.copy()
+    df[cols] = df[cols].apply(f)
+    return df
+
+# just have a generic transform function?
+def bin_counts_transform(df, cols):
+    a = df.value_counts()
+    return df.map(a)
+def binarize(df, cols):
+    return df[cols].apply(lambda x: 1 if x > 0 else 0)
+def quadratic_transform(df, cols):
+    return df[cols].apply(lambda x: x**2)
+
+# for multiple columns?
+def mark_missing(df, col):
+    df = df.copy()
+    df.loc[:, '%s_missing' % col] = df[col].apply(lambda x: 1 if pd.isnull(x) else 0)
+    return df
+
+def get_dups(df, col):
+    a = df.groupby(col).size()
+    dup = a[a > 1].index
+    return df[df[col].isin(dup)].sort_values(by=col)
+
+def add_agg_col(df, group, col, func):
+    df = df.copy()
+    df[func] = df.groupby(group)[col].transform(func)
+    return df.groupby(group).head(1)
+
+def consecutive_runs(df):
+    df = df.copy()
+    df = df.pipe(mark_nth_week)
+    df = df[~df['nth_week'].isnull()]
+    df = df.pipe(mark_consecutive_runs, 'nth_week')
+    df = df.groupby(['user_id', 'run']).size().reset_index().drop('run', axis=1)
+    return df
