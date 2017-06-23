@@ -6,6 +6,21 @@ from collections import OrderedDict
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import roc_auc_score
 
+class Transform(BaseEstimator, TransformerMixin):
+    def __init__(self, d):
+        self.d = d
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X = X.copy()
+        for col, f in self.d.items():
+            if isinstance(col, tuple):
+                col = list(col)
+            X = np.apply_along_axis(f, 0, X)
+        return X
+
 # test if pipeline part actually works
 def _get_feature_importances(model):
     if 'pipeline' in repr(model.__class__):
