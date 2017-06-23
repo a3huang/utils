@@ -6,7 +6,10 @@ from collections import OrderedDict
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import roc_auc_score
 
+# test if pipeline part actually works
 def _get_feature_importances(model):
+    if 'pipeline' in repr(model.__class__):
+        model = model.steps[-1][1]
     for i in ['coef_', 'feature_importances_', 'ranking_', 'scores_']:
         if hasattr(model, i):
             scores = getattr(model, i)
@@ -177,3 +180,10 @@ def feature_selection_stability(X, y, feat_model, model):
         union = union.union(set(i))
 
     return np.mean(cv_score), len(intersect) / float(len(union))
+
+# gets dataframe at nth step of a pipeline
+def get_step_n_pipe(pipeline, n, X):
+    a = pipeline.steps[0][1].transform(X.values)
+    for i in range(1, n):
+        a = pipeline.steps[i][1].transform(a)
+    return pd.DataFrame(a, columns=X.columns)
