@@ -11,11 +11,11 @@ def requires_col(cols):
             for i in cols:
                 if i not in df.columns:
                     raise ValueError('df needs column named %s' % i)
-            f(df, *args, **kwargs)
+            return f(df, *args, **kwargs)
         return wrapper
     return decorator
 
-@requires_col(['date', 'start'])
+#@requires_col(['date', 'start'])
 def filter_first_n_weeks(df, n):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -24,7 +24,7 @@ def filter_first_n_weeks(df, n):
     df = df.query('filter_start <= date < filter_end')
     return df
 
-@requires_col(['date', 'start'])
+#@requires_col(['date', 'start'])
 def filter_last_n_weeks(df, n):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -33,7 +33,7 @@ def filter_last_n_weeks(df, n):
     df = df.query('filter_start <= date < filter_end')
     return df
 
-@requires_col(['date', 'start'])
+#@requires_col(['date', 'start'])
 def filter_week_window(df, n1, n2):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -134,20 +134,20 @@ def time_diff(df):
     return df
 
 # have defaults: group='user_id', col='id'?
-def agg_total_count(df, group, col):
+def total_count(df, group='user_id', col='id'):
     return df.groupby(group)[col].count().reset_index()
 
-def agg_total_value(df, group, col):
+def total_value(df, group='user_id', col='id'):
     return df.groupby(group)[col].sum().reset_index()
 
 # need id column?
-def agg_average_value(df, column='id'):
+def average_value(df, col='id'):
     df = df.copy()
-    df = df.groupby('user_id')[column].mean().reset_index()
+    df = df.groupby('user_id')[col].mean().reset_index()
     return df
 
 # needs date filter_start, filter_end, start, end column
-def agg_frequency(df, group, col):
+def frequency(df, group, col):
     df = df.copy()
     df['date_string'] = df['date'].dt.date
     df['total'] = df.groupby(group)['date_string'].transform('count')
@@ -237,3 +237,43 @@ def consecutive_runs(df):
 # need error checking on preserve
 def my_query(df, query, on='user_id', preserve='group'):
     return df[[on, preserve]].merge(df.query(query).pipe(remove, [preserve]), on=on, how='left')
+
+def contains_any(a, strings):
+    return any([x for x in strings if x in i])
+
+def contains_none_of(a, strings):
+    return bool(1 - contains_any(a, strings))
+
+# remove include_target
+def get_columns_with(df, include=None, exclude=None, include_target=True):
+    df = df.copy()
+
+    if include:
+        include = set(include)
+    else:
+        include = set(df.columns)
+
+    if exclude:
+        exclude = set(exclude)
+    else:
+        exclude = set()
+
+    if include_target:
+        include.add('target')
+
+    c = [i for i in df.columns if contains_any(i, include) and contains_none_of(i, exclude)]
+
+    return df[c]
+
+def name(df, names):
+    df = df.copy()
+    if isinstance(names, (list, tuple)):
+        df.columns = ['user_id'] + list(names)
+    else:
+        df.columns = ['user_id', names]
+    return df
+
+def count_categorical(df, column):
+    df = df.copy()
+    df = df.pipe(dummies, column).groupby('user_id').sum().reset_index()
+    return df
