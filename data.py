@@ -1,6 +1,7 @@
 import itertools
 import numpy as np
 import pandas as pd
+from pandas.tseries.offsets import *
 
 # need to add tests
 
@@ -168,16 +169,12 @@ def col_in(df, col, values):
 def col_between(df, left, col, right):
     return df[(df[col] > left) & (df[col] < right)]
 
-# should refactor filtering part
 # make id default col?
 # needs user id column
 def get_grouped_rates(df, group, col):
-    l = []
-    group_val = df[group].unique()
-    for i in group_val:
-        a = df[df[group] == i].groupby('user_id')[col].count()
-        l.append(a[a > 0].shape[0] / float(a.shape[0]))
-    return l
+    # get counts aggregated by user id
+    a = df.pipe(add_agg_col, 'user_id', col, 'count')
+    return a[a[col] > 0].groupby(group)['count'].size() / a.groupby(group)['count'].size()
 
 def get_rate(df, col):
     a = df[col].value_counts(dropna=False)
@@ -236,3 +233,7 @@ def consecutive_runs(df):
     df = df.pipe(mark_consecutive_runs, 'nth_week')
     df = df.groupby(['user_id', 'run']).size().reset_index().drop('run', axis=1)
     return df
+
+# need error checking on preserve
+def my_query(df, query, on='user_id', preserve='group'):
+    return df[[on, preserve]].merge(df.query(query).pipe(remove, [preserve]), on=on, how='left')
