@@ -302,7 +302,7 @@ def plot_faceted_box(df, cat1, cat2, col, **kwargs):
     df[cat2] = _top_n_cat(df[cat2])
 
     g = sns.FacetGrid(df, col=cat1, **kwargs)
-    g.map(sns.boxplot, cat2, col)
+    g.map(sns.boxplot, cat2, col, vert=False).set_xlabels(col).set_ylabels(cat2)
 
 def plot_scatter(df, cont1, cont2, **kwargs):
     sns.lmplot(cont1, cont2, data=df, **kwargs)
