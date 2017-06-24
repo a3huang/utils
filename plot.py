@@ -82,7 +82,7 @@ def plot_grouped_bar1(df, cat, col, is_cat=False, **kwargs):
 
     if is_cat or df[col].dtype == 'O':
         df[col] = _top_n_cat(df[col])
-        a = df.groupby(cat)[col].value_counts().unstack().sort_index(ascending=False)
+        a = df.pipe(crosstab, cat, col, normalize='index').sort_index(ascending=False)
         a.plot.barh(**kwargs)
         plt.xlabel('proportions')
     else:
