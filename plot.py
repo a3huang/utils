@@ -93,7 +93,7 @@ def plot_grouped_bar1(df, cat, col, is_cat=False, **kwargs):
     plt.legend(title=col, loc=(1, 0.5))
 
 # col should be continuous or binary
-def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, **kwargs):
+def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, ax=None, **kwargs):
     df = df.copy()
 
     cat1 = _index_to_name(df, cat1)
@@ -102,24 +102,27 @@ def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, **kwargs):
     df[cat1] = _top_n_cat(df[cat1])
     df[cat2] = _top_n_cat(df[cat2])
 
+    if ax is None:
+        fig, ax = plt.subplots()
+
     if stacked:
         pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)\
             .sort_index(axis=0, ascending=False)\
             .plot.barh(stacked=True, color=reversed(plt.rcParams['axes.color_cycle'][:5]),
-                       **kwargs)
+                       ax=ax, **kwargs)
         ax.legend(title=cat2, loc=(1, 0.5))
 
     else:
         pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)\
             .sort_index(axis=0, ascending=False)\
             .sort_index(axis=1, ascending=False)\
-            .plot.barh(**kwargs)
+            .plot.barh(ax=ax, **kwargs)
 
         handles, labels = ax.get_legend_handles_labels()
         ax.legend(handles[::-1], labels[::-1], title=cat2, loc=(1, 0.5))
 
-    plt.xlabel(col)
-    plt.title('%s vs. %s' % (cat1, cat2))
+    ax.set_xlabel(col)
+    ax.set_title('%s vs. %s' % (cat1, cat2))
 
 # col should be continuous or binary
 def plot_grouped_means1(df, cat, col, **kwargs):
@@ -551,7 +554,7 @@ def plot_roc_curves(model, X_train, y_train, X_test, y_test):
     fpr1, tpr1, _ = roc_curve(y_train, model.predict_proba(X_train)[:, 1])
     plt.plot(fpr1, tpr1, color='g', label='train')
 
-    fpr2, tpr2, _ = roc_curve(y_test model.predict_proba(X_test)[:, 1])
+    fpr2, tpr2, _ = roc_curve(y_test, model.predict_proba(X_test)[:, 1])
     plt.plot(fpr2, tpr2, color='b', label='test')
 
     plt.plot([0, 1], [0, 1], color='navy', linestyle='--')
