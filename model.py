@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 
 from collections import OrderedDict
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import roc_auc_score
 
@@ -202,3 +203,18 @@ def get_step_n_pipe(pipeline, n, X):
     for i in range(1, n):
         a = pipeline.steps[i][1].transform(a)
     return pd.DataFrame(a, columns=X.columns)
+
+def evaluate_dfs(df_list):
+    result = []
+    for df in df_list:
+        df1 = df[df['start'] > '2016-07-18']
+
+        X = df1.pipe(remove, ['user_id', 'start', 'end', 'days', 'cancel'])
+        y = df1['cancel']
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.3, random_state=42)
+
+        model_dict = fit_models(models, X_train, y_train)
+        result.append(evaluate_models_cv(model_dict, X_train, y_train))
+
+    return pd.concat(result)

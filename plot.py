@@ -468,6 +468,8 @@ def plot_ts(df, col=None, freq='M'):
         grouper.size().plot()
 
 # can combine with plot_ts function?
+# is there any need to convert to dateindex first?
+# a['date'].dt.to_period('M')
 def plot_grouped_ts(df, cat, col=None, freq='M'):
     df = df.copy()
 
@@ -551,7 +553,7 @@ def plot_roc_curves(model, X_train, y_train, X_test, y_test):
     fpr1, tpr1, _ = roc_curve(y_train, model.predict_proba(X_train)[:, 1])
     plt.plot(fpr1, tpr1, color='g', label='train')
 
-    fpr2, tpr2, _ = roc_curve(y_test model.predict_proba(X_test)[:, 1])
+    fpr2, tpr2, _ = roc_curve(y_test, model.predict_proba(X_test)[:, 1])
     plt.plot(fpr2, tpr2, color='b', label='test')
 
     plt.plot([0, 1], [0, 1], color='navy', linestyle='--')

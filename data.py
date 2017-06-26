@@ -1,11 +1,13 @@
 import itertools
 import numpy as np
 import pandas as pd
+
+from datetime import datetime
 from pandas.tseries.offsets import *
 
 # need to add tests
 
-def requires_col(cols):
+def input_requires(cols):
     def decorator(f):
         def wrapper(df, *args, **kwargs):
             for i in cols:
@@ -15,7 +17,16 @@ def requires_col(cols):
         return wrapper
     return decorator
 
-#@requires_col(['date', 'start'])
+# needs bounary column
+def filter_before_boundary(df):
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
+    df['filter_start'] = df['start']
+    df['filter_end'] = df['boundary']
+    df = df.query('filter_start <= date < filter_end')
+    return df
+
+#@input_requires(['date', 'start'])
 def filter_first_n_weeks(df, n):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -58,7 +69,7 @@ def mark_consecutive_runs(df, col):
     df['run'] = (is_nonconsecutive_number | is_diff_user).cumsum()
     return df
 
-@requires_col(['date', 'start'])
+#@requires_col(['date', 'start'])
 def mark_nth_week(df):
     df = df.copy()
     df['nth_week'] = (df['date'] - df['start']).dt.days / 7 + 1
@@ -100,21 +111,23 @@ def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     else:
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
 
+# have functions return only relevant columns
 def dummies(df, col):
     df = df.copy()
     dummy_col = pd.get_dummies(df[col])
     dummy_col.columns = [str(i) for i in dummy_col.columns]
-    df = pd.concat([df.drop(col, 1), dummy_col], axis=1)
+    df = pd.concat([df[['user_id']], dummy_col], axis=1)
+    #df = pd.concat([df.drop(col, 1), dummy_col], axis=1)
     return df
 
 # target.contains_any(strings)
-def str_contains(target_str, list_of_str):
-    return any([x for x in list_of_str if x in target_str])
+# def str_contains(target_str, list_of_str):
+#     return any([x for x in list_of_str if x in target_str])
 
 # df.pipe(merge_all, [df1, df2, df3], **kwargs)
 def merge_all(df, df_list):
     for i in df_list:
-        df = df.merge(i, **kwargs)
+        df = df.merge(i, on='user_id', how='left')
     return df
 
 def stack_all(df_list):
@@ -273,7 +286,24 @@ def name(df, names):
         df.columns = ['user_id', names]
     return df
 
-def count_categorical(df, column):
+# have functions only return relevant columns
+def count_categorical(df, col):
     df = df.copy()
-    df = df.pipe(dummies, column).groupby('user_id').sum().reset_index()
+    df = df.pipe(dummies, col).groupby('user_id').sum().reset_index()
     return df
+
+def convert_to_date(df, column):
+    df = df.copy()
+    df[column] = pd.to_datetime(df[column].dt.strftime('%Y-%m-%d'))
+    return df
+
+def fill_in_time_diff(df):
+    df = df.copy()
+    a = (datetime.now() - df['date']).dt.days
+    df['time_diff'] = df['time_diff'].fillna(a)
+    return df
+
+def name_append(df, x, ignore=['user_id']):
+    df = df.copy()
+    col = df.columns.difference(ignore)
+    return df.rename(columns=dict(zip(col, [i + '_%s' % x for i in col])))
