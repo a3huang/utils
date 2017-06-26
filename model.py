@@ -6,6 +6,7 @@ from collections import OrderedDict
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import roc_auc_score
+from sklearn.base import BaseEstimator, TransformerMixin
 
 class Transform(BaseEstimator, TransformerMixin):
     def __init__(self, d):
