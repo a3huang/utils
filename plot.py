@@ -44,12 +44,13 @@ def plot_missing(df, top=None, **kwargs):
     if len(a) == 0:
         return 'No Missing Values'
 
-    b = a.sort_values(ascending=False)
+    a = a.sort_values(ascending=False)
     if top:
-        b = b[:top]
-    b[::-1].plot.barh(**kwargs)
+        a = a[:top]
+
+    a[::-1].plot.barh(**kwargs)
     plt.xlabel('proportions')
-    return b
+    return a
 
 def plot_bar(df, *args, **kwargs):
     if len(args) == 1:
