@@ -58,7 +58,7 @@ def plot_bar(df, *args, **kwargs):
     if len(args) == 1:
         return plot_bar_single_column(df, *args, **kwargs)
     elif len(args) == 2:
-        return plot_bar_grouped_by_1_cat(df, *args, **kwargs)
+        return plot_bar_grouped_by_cat(df, *args, **kwargs)
     elif len(args) == 3:
         return plot_bar_grouped_by_2_cat(df, *args, **kwargs)
     else:
@@ -78,7 +78,7 @@ def plot_bar_single_column(df, col, top=20, **kwargs):
     plt.title(col)
     return a.sort_index()
 
-def plot_bar_grouped_by_1_cat(df, cat, col, as_cat=False, top=20, **kwargs):
+def plot_bar_grouped_by_cat(df, cat, col, as_cat=False, top=20, **kwargs):
     df = df.copy()
 
     df[cat] = _top_n_cat(df[cat], top)
@@ -112,36 +112,30 @@ def plot_bar_grouped_by_2_cat(df, cat1, cat2, col, top=20, **kwargs):
     plt.legend(title=cat2, loc=(1, 0.5))
     return a.sort_index()
 
-
-
-# col should be continuous or binary
-def plot_grouped_means1(df, cat, col, **kwargs):
+def plot_line_grouped_by_cat(df, cat, col, top=20, **kwargs):
     df = df.copy()
 
-    cat = _index_to_name(df, cat)
-    col = _index_to_name(df, col)
-
-    df[cat] = _top_n_cat(df[cat])
+    df[cat] = _top_n_cat(df[cat], top)
 
     a = df.groupby(cat)[col].mean().plot(**kwargs)
     plt.xlabel(cat)
-    plt.title('%s vs. %s' % (cat, col))
+    plt.ylabel('Mean')
+    plt.title('%s grouped by %s' % (col, cat))
 
-# col should be continuous or binary
-def plot_grouped_means2(df, cat1, cat2, col, **kwargs):
+def plot_interaction(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
 
-    cat1 = _index_to_name(df, cat1)
-    cat2 = _index_to_name(df, cat2)
-    col = _index_to_name(df, col)
-
-    df[cat1] = _top_n_cat(df[cat1])
-    df[cat2] = _top_n_cat(df[cat2])
+    df[cat1] = _top_n_cat(df[cat1], top)
+    df[cat2] = _top_n_cat(df[cat2], top)
 
     pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).plot(**kwargs)
+    plt.xlabel(cat1)
+    plt.ylabel('Mean %s' % col)
+    plt.title('Interaction Effect of %s and %s on %s' % (cat1, cat2, col))
     plt.legend(title=cat2, loc=(1, 0.5))
-    plt.ylabel(col)
-    plt.title('%s vs. %s' % (cat1, cat2))
+
+
+
 
 # not to be passed into pipe
 def plot_heatmap(df, **kwargs):
