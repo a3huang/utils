@@ -1,12 +1,16 @@
+import itertools
 import os
 import pandas as pd
 import numpy as np
 
 from collections import OrderedDict
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
 from sklearn.metrics import roc_auc_score
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+from data import remove
 
 class Transform(BaseEstimator, TransformerMixin):
     def __init__(self, d):
@@ -22,6 +26,27 @@ class Transform(BaseEstimator, TransformerMixin):
                 col = list(col)
             X = np.apply_along_axis(f, 0, X)
         return X
+
+class Interact(BaseEstimator, TransformerMixin):
+    def __init__(self, col):
+        self.col = col
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        X = X.copy()
+        X = pd.DataFrame(X)
+        return interactions(X, self.col)
+
+def interactions(df, subsets=None):
+    df = df.copy()
+    if subsets is None:
+        subsets = [df.columns]
+    for cols in subsets:
+        for i, j in itertools.combinations(cols, 2):
+            df['%s*%s' % (i, j)] = df[i] * df[j]
+    return df
 
 # test if pipeline part actually works
 def _get_feature_importances(model):
@@ -162,7 +187,7 @@ def feature_selection_suite(X, y, models):
     l = []
     for model in models:
         model.fit(X, y)
-        l.extend(sorted(zip(X_train.columns, _get_feature_importances(model)), key=lambda x: abs(x[1]), reverse=True)[:10])
+        l.extend(sorted(zip(X.columns, _get_feature_importances(model)), key=lambda x: abs(x[1]), reverse=True)[:10])
 
     feat = pd.DataFrame(l, columns=['features', 'scores'])
     feat_props = feat.groupby('features').size() / (len(models) * 10.0)
@@ -205,7 +230,7 @@ def get_step_n_pipe(pipeline, n, X):
         a = pipeline.steps[i][1].transform(a)
     return pd.DataFrame(a, columns=X.columns)
 
-def evaluate_dfs(df_list):
+def evaluate_dfs(model_dict, df_list):
     result = []
     for df in df_list:
         df1 = df[df['start'] > '2016-07-18']
@@ -215,7 +240,35 @@ def evaluate_dfs(df_list):
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.3, random_state=42)
 
-        model_dict = fit_models(models, X_train, y_train)
         result.append(evaluate_models_cv(model_dict, X_train, y_train))
 
     return pd.concat(result)
+
+def evaluate_feat_selection(model_dict, feat_models, X, y):
+    l = []
+    cv = StratifiedKFold(n_splits=5, shuffle=True)
+    for model_name, model in model_dict.items():
+        for feat_model in feat_models:
+            feat_model_name = _get_model_name(feat_model)
+            if hasattr(feat_model, 'estimator'):
+                feat_model_name += ' + %s' % _get_model_name(feat_model.estimator)
+            feat_model.fit(X.values, y.values)
+
+            col = _get_top_n_features(feat_model, X)
+
+            auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+            recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
+
+            l.append((feat_model_name, model_name, auc, recall))
+    return pd.DataFrame(l)
+
+def evaluate_interactions(model_dict, X, y, interactions=None):
+    l = []
+    cv = StratifiedKFold(n_splits=5, shuffle=True)
+    for model_name, model in model_dict.items():
+        model = make_pipeline(StandardScaler(), Interact(interactions), model)
+        auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+        recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
+
+        l.append((model_name, auc, recall))
+    return pd.DataFrame(l)
