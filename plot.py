@@ -27,18 +27,18 @@ def _top_n_cat(a, n=5):
     top = counts.iloc[:n].index
     return a.apply(lambda x: x if x in top else 'other')
 
-def winsorize(df, col, p):
+# need to test
+# need to accept 1 arg as well
+def winsorize(x, p):
     n = int(1/p)
-    sorted_col = df[col].sort_values().reset_index(drop=True)
+    sorted_col = x.sort_values().reset_index(drop=True)
     quantiles = pd.qcut(sorted_col.reset_index()['index'], n).cat.codes
     a = pd.concat([sorted_col, quantiles], axis=1)
     quantiles_to_keep = a[0].unique()[1:-1]
-    return a[a[0].isin(quantiles_to_keep)][col]
+    return a[a[0].isin(quantiles_to_keep)].iloc[:, 0]
 
 ################################################################################
 
-# test: df with no missing hits return
-# test: make sure it returns a in decreasing order
 def plot_missing(df, top=None, **kwargs):
     a = df.isnull().mean(axis=0)
     a = a[a > 0]
@@ -66,12 +66,18 @@ def plot_bar(df, *args, **kwargs):
     else:
         raise ValueError, 'Too many arguments'
 
-def plot_bar_single_column(df, col, top=20, **kwargs):
-    df = df.copy()
+def plot_bar_single_column(arg1, arg2=None, top=20, **kwargs):
+    if arg2 is None:
+        assert len(arg1.shape) == 1, 'If only one argument, then must be single column'
+        a = arg1
+        col = a.name
+    else:
+        df = arg1
+        col = arg2
+        a = df[col]
 
-    df[col] = _top_n_cat(df[col], top)
-
-    a = df[col].value_counts(dropna=False).sort_index()
+    a = _top_n_cat(a, top)
+    a = a.value_counts(dropna=False).sort_index()
     a = a / float(sum(a))
     a.sort_index(ascending=False).plot.barh(**kwargs)
     plt.xlabel('Proportion')
@@ -113,6 +119,18 @@ def plot_bar_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
     plt.legend(title=cat2, loc=(1, 0.5))
     return a
 
+def plot_heatmap_groupby_2(df, cat1, cat2, col, top=20):
+    df = df.copy()
+
+    df[cat1] = _top_n_cat(df[cat1], top)
+    df[cat2] = _top_n_cat(df[cat2], top)
+
+    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
+    sns.heatmap(a)
+    plt.gca().invert_yaxis()
+    plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
+    return a
+
 def plot_line_groupby_1(df, cat, col, top=20, **kwargs):
     df = df.copy()
 
@@ -125,7 +143,6 @@ def plot_line_groupby_1(df, cat, col, top=20, **kwargs):
     plt.title('%s grouped by %s' % (col, cat))
     return a
 
-# need to check if return is correct order
 def plot_line_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
 
@@ -140,97 +157,56 @@ def plot_line_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
     plt.legend(title=cat2, loc=(1, 0.5))
     return a
 
+def plot_hist(df, *args, **kwargs):
+    if len(args) == 1:
+        return plot_hist_single_column(df, *args, **kwargs)
+    elif len(args) == 2:
+        return plot_hist_groupby_1(df, *args, **kwargs)
+    else:
+        raise ValueError, 'Too many arguments'
 
-
-
-# not to be passed into pipe
-def plot_heatmap(df, **kwargs):
-    sns.heatmap(df, **kwargs)
-
-def plot_grouped_heatmap(df, cat1, cat2, col, **kwargs):
-    df = df.copy()
-
-    cat1 = _index_to_name(df, cat1)
-    cat2 = _index_to_name(df, cat2)
-    col = _index_to_name(df, col)
-
-    df[cat1] = _top_n_cat(df[cat1])
-    df[cat2] = _top_n_cat(df[cat2])
-
-    fig, ax = plt.subplots()
-    ax = sns.heatmap(pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean))
-    ax.collections[0].colorbar.set_label(col, rotation=-90, labelpad=15)
-
-def plot_contours(df, cat1, cat2, col):
-    df = df.copy()
-
-    cat1 = _index_to_name(df, cat1)
-    cat2 = _index_to_name(df, cat2)
-    col = _index_to_name(df, col)
-
-    df[cat1] = _top_n_cat(df[cat1])
-    df[cat2] = _top_n_cat(df[cat2])
-
-    sns.interactplot(cat1, cat2, col, data=df)
-
-# add winsorize option?
-def plot_hist(df, col=None, prop=True, bins=10, **kwargs):
-    if col:
-        col = _index_to_name(df, col)
+def plot_hist_single_column(arg1, arg2=None, winsorize_column=False, **kwargs):
+    if arg2 is None:
+        assert len(arg1.shape) == 1, 'If only one argument, then must be single column'
+        a = arg1
+        col = a.name
+    else:
+        df = arg1
+        col = arg2
         a = df[col]
-    else:
-        col = df.name
-        a = df.copy()
 
-    a = a.dropna()
+    if winsorize_column:
+        a = winsorize(a, .05)
 
-    if prop == True:
-        weights = np.ones_like(a) / float(len(a))
-        ylabel = 'proportions'
-    else:
-        weights = np.ones_like(a)
-        ylabel = 'counts'
+    assert len(a.shape) == 1
 
-    a.hist(weights=weights, bins=bins, **kwargs)
+    weights = np.ones_like(a) / float(len(a))
+    a.plot.hist(weights=weights, **kwargs)
+    plt.ylabel('Proportion')
     plt.title(col)
 
-def plot_grouped_hist(df, cat, col, prop=True, **kwargs):
+def plot_hist_groupby_1(df, cat, col, bins=40, top=20, winsorize_column=False, facet=True,
+                        col_wrap=4, alpha=0.3, **kwargs):
     df = df.copy()
 
-    cat = _index_to_name(df, cat)
-    col = _index_to_name(df, col)
+    df[cat] = _top_n_cat(df[cat], top)
 
-    df[cat] = _top_n_cat(df[cat])
+    if facet == True:
+        g = sns.FacetGrid(df, col=cat, col_wrap=col_wrap, **kwargs)
+        g.map(plot_hist_single_column, col, winsorize_column=winsorize_column, bins=bins)
+        return g
 
+    bins = np.histogram(df[col], bins=bins)[1]
     groups = df.groupby(cat)[col]
-
-    fig, ax = plt.subplots()
-
     for k, v in groups:
-        if prop == True:
-            weights = np.ones_like(v) / float(len(v))
-        else:
-            weights = np.ones_like(v)
+        weights = np.ones_like(v) / float(len(v))
+        v.plot.hist(bins=bins, weights=weights, label=str(k), alpha=0.3, **kwargs)
 
-        v.hist(label=str(k), alpha=0.75, weights=weights, ax=ax, **kwargs)
+    plt.legend(title=cat, loc=(1, 0.5))
+    plt.title(col)
 
-    ax.legend(title=cat, loc=(1, 0.5))
-    ax.set_title(col)
 
-# how to give option of not rotating tick labels
-def plot_faceted_hist(df, cat, col, **kwargs):
-    df = df.copy()
 
-    cat = _index_to_name(df, cat)
-    col = _index_to_name(df, col)
-
-    df[cat] = _top_n_cat(df[cat])
-
-    col_order = df[cat].value_counts().sort_index().index
-
-    g = sns.FacetGrid(df, col=cat, col_order=col_order, **kwargs)
-    g.map(plt.hist, col)
-    g.set_xticklabels(rotation=45)
 
 def plot_grouped_density(df, cat, col, prop=True, **kwargs):
     df = df.copy()
