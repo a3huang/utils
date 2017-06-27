@@ -36,29 +36,37 @@ def winsorize(df, col, p):
 
 ################################################################################
 
-def plot_missing(df, n=5, **kwargs):
+# test: df with no missing hits return
+def plot_missing(df, top=None, **kwargs):
     a = df.isnull().mean(axis=0)
     a = a[a > 0]
 
     if len(a) == 0:
         return 'No Missing Values'
 
-    b = a.sort_values(ascending=False)[:n]
-    b[::-1].plot.barh(ax=ax, **kwargs)
+    b = a.sort_values(ascending=False)
+    if top:
+        b = b[:top]
+    b[::-1].plot.barh(**kwargs)
+    plt.xlabel('proportions')
+    return b
 
-    ax.set_xlabel('proportions')
-
-# col should be categorical
-def plot_bar(df, col=None, prop=True, **kwargs):
-    if col:
-        col = _index_to_name(df, col)
-        a = df[col]
+def plot_bar(df, *args, **kwargs):
+    if len(args) == 1:
+        return plot_bar_single_column(df, *args, **kwargs)
+    elif len(args) == 2:
+        return plot_bar_grouped_by_1_cat(df, *args, **kwargs)
+    elif len(args) == 3:
+        return plot_bar_grouped_by_2_cat(df, *args, **kwargs)
     else:
-        col = df.name
-        a = df.copy()
+        raise ValueError, 'Can only input up to 3 variables'
 
-    a = _top_n_cat(a)
-    a = a.value_counts(dropna=False)
+def plot_bar_single_column(df, col, prop=True, top=20, **kwargs):
+    df = df.copy()
+
+    df[col] = _top_n_cat(df[col], top)
+
+    a = df[col].value_counts(dropna=False)
 
     if prop == True:
         a = a / float(sum(a))
@@ -67,62 +75,44 @@ def plot_bar(df, col=None, prop=True, **kwargs):
         xlabel = 'counts'
 
     a.sort_index(ascending=False).plot.barh(**kwargs)
-    plt.xlabel(xlabel)
     plt.title(col)
+    plt.xlabel(xlabel)
+    return a.sort_index()
 
-# how to pick specific class rates to show?
-# rename is_cat?
-def plot_grouped_bar1(df, cat, col, is_cat=False, **kwargs):
+def plot_bar_grouped_by_1_cat(df, cat, col, as_cat=False, top=20, **kwargs):
     df = df.copy()
 
-    cat = _index_to_name(df, cat)
-    col = _index_to_name(df, col)
+    df[cat] = _top_n_cat(df[cat], top)
 
-    df[cat] = _top_n_cat(df[cat])
-
-    if is_cat or df[col].dtype == 'O':
-        df[col] = _top_n_cat(df[col])
-        a = df.pipe(crosstab, cat, col, normalize='index').sort_index(ascending=False)
+    if as_cat or df[col].dtype == 'O':
+        df[col] = _top_n_cat(df[col], top)
+        a = df.pipe(crosstab, cat, col, normalize='index')
         a.plot.barh(**kwargs)
+        plt.gca().invert_yaxis()
         plt.xlabel('proportions')
+        plt.legend(title=col, loc=(1, 0.5))
     else:
         a = df.groupby(cat)[col].mean().sort_index(ascending=False)
         a.plot.barh(**kwargs)
-        plt.xlabel(col)
+        plt.title(col)
+        plt.xlabel('means')
+    return a.sort_index()
 
-    plt.legend(title=col, loc=(1, 0.5))
-
-# col should be continuous or binary
-def plot_grouped_bar2(df, cat1, cat2, col, stacked=False, ax=None, **kwargs):
+def plot_bar_grouped_by_2_cat(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
 
-    cat1 = _index_to_name(df, cat1)
-    cat2 = _index_to_name(df, cat2)
+    df[cat1] = _top_n_cat(df[cat1], top)
+    df[cat2] = _top_n_cat(df[cat2], top)
 
-    df[cat1] = _top_n_cat(df[cat1])
-    df[cat2] = _top_n_cat(df[cat2])
+    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
+    a.plot.barh(**kwargs)
+    plt.gca().invert_yaxis()
+    plt.title(col)
+    plt.xlabel('means')
+    plt.legend(title=cat2, loc=(1, 0.5))
+    return a.sort_index()
 
-    if ax is None:
-        fig, ax = plt.subplots()
 
-    if stacked:
-        pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)\
-            .sort_index(axis=0, ascending=False)\
-            .plot.barh(stacked=True, color=reversed(plt.rcParams['axes.color_cycle'][:5]),
-                       ax=ax, **kwargs)
-        ax.legend(title=cat2, loc=(1, 0.5))
-
-    else:
-        pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)\
-            .sort_index(axis=0, ascending=False)\
-            .sort_index(axis=1, ascending=False)\
-            .plot.barh(ax=ax, **kwargs)
-
-        handles, labels = ax.get_legend_handles_labels()
-        ax.legend(handles[::-1], labels[::-1], title=cat2, loc=(1, 0.5))
-
-    ax.set_xlabel(col)
-    ax.set_title('%s vs. %s' % (cat1, cat2))
 
 # col should be continuous or binary
 def plot_grouped_means1(df, cat, col, **kwargs):
@@ -530,7 +520,7 @@ def plot_ts_box(df, col, freq='M'):
     plt.xticks(rotation=90)
 
 def plot_correlation_matrix(X, **kwargs):
-    sns.heatmap(X.corr(), **kwargs)
+    sns.heatmap(X.corr(), annot=True, fmt='.2f', **kwargs)
 
 def plot_confusion_matrix(model, X, y, threshold=0.5, prop=False):
     try:
