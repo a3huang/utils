@@ -29,7 +29,7 @@ def _top_n_cat(a, n=5):
 
 # need to test
 # need to accept 1 arg as well
-def winsorize(x, p):
+def winsorize(x, p=0.5):
     n = int(1/p)
     sorted_col = x.sort_values().reset_index(drop=True)
     quantiles = pd.qcut(sorted_col.reset_index()['index'], n).cat.codes
@@ -165,7 +165,7 @@ def plot_hist(df, *args, **kwargs):
     else:
         raise ValueError, 'Too many arguments'
 
-def plot_hist_single_column(arg1, arg2=None, winsorize_column=False, **kwargs):
+def plot_hist_single_column(arg1, arg2=None, winsorize_column=True, **kwargs):
     if arg2 is None:
         assert len(arg1.shape) == 1, 'If only one argument, then must be single column'
         a = arg1
@@ -176,16 +176,16 @@ def plot_hist_single_column(arg1, arg2=None, winsorize_column=False, **kwargs):
         a = df[col]
 
     if winsorize_column:
-        a = winsorize(a, .05)
+        a = winsorize(a)
 
-    assert len(a.shape) == 1
+    assert len(a.shape) == 1, 'Must be single column'
 
     weights = np.ones_like(a) / float(len(a))
     a.plot.hist(weights=weights, **kwargs)
     plt.ylabel('Proportion')
     plt.title(col)
 
-def plot_hist_groupby_1(df, cat, col, bins=40, top=20, winsorize_column=False, facet=True,
+def plot_hist_groupby_1(df, cat, col, bins=40, top=20, winsorize_column=True, facet=True,
                         col_wrap=4, alpha=0.3, **kwargs):
     df = df.copy()
 
@@ -196,35 +196,40 @@ def plot_hist_groupby_1(df, cat, col, bins=40, top=20, winsorize_column=False, f
         g.map(plot_hist_single_column, col, winsorize_column=winsorize_column, bins=bins)
         return g
 
+    if winsorize_column:
+        df[col] = winsorize(df[col])
+        df = df[~df[col].isnull()]
+
+    assert df[col].isnull().any() == False, 'Column contains null values'
+
     bins = np.histogram(df[col], bins=bins)[1]
     groups = df.groupby(cat)[col]
     for k, v in groups:
-        weights = np.ones_like(v) / float(len(v))
-        v.plot.hist(bins=bins, weights=weights, label=str(k), alpha=0.3, **kwargs)
+        plot_hist_single_column(v, bins=bins, label=str(k), alpha=0.3, **kwargs)
+
+    plt.legend(title=cat, loc=(1, 0.5))
+    plt.title(col)
+
+def plot_density_groupby_1(df, cat, col, winsorize_column=True, **kwargs):
+    df = df.copy()
+
+    df[cat] = _top_n_cat(df[cat])
+
+    if winsorize_column:
+        df[col] = winsorize(df[col])
+        df = df[~df[col].isnull()]
+
+    assert df[col].isnull().any() == False, 'Column contains null values'
+
+    groups = df.groupby(cat)[col]
+    for k, v in groups:
+        sns.kdeplot(v, shade=True, label=str(k), **kwargs)
 
     plt.legend(title=cat, loc=(1, 0.5))
     plt.title(col)
 
 
 
-
-def plot_grouped_density(df, cat, col, prop=True, **kwargs):
-    df = df.copy()
-
-    cat = _index_to_name(df, cat)
-    col = _index_to_name(df, col)
-
-    df[cat] = _top_n_cat(df[cat])
-
-    groups = df.groupby(cat)[col]
-
-    fig, ax = plt.subplots()
-
-    for k, v in groups:
-        v.plot.density(label=str(k), ax=ax, **kwargs)
-
-    ax.legend(title=cat, loc=(1, 0.5))
-    ax.set_title(col)
 
 def plot_faceted_density(df, cat, col, **kwargs):
     df = df.copy()
