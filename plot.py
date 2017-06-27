@@ -21,6 +21,7 @@ def _index_to_name(df, col):
         col = df.columns[col]
     return col
 
+# test this
 def _top_n_cat(a, n=5):
     counts = a.value_counts(dropna=False)
     top = counts.iloc[:n].index
@@ -37,6 +38,7 @@ def winsorize(df, col, p):
 ################################################################################
 
 # test: df with no missing hits return
+# test: make sure it returns a in decreasing order
 def plot_missing(df, top=None, **kwargs):
     a = df.isnull().mean(axis=0)
     a = a[a > 0]
@@ -45,10 +47,11 @@ def plot_missing(df, top=None, **kwargs):
         return 'No Missing Values'
 
     a = a.sort_values(ascending=False)
+
     if top:
         a = a[:top]
-    a = a[::-1]
 
+    a = a[::-1]
     a.plot.barh(**kwargs)
     plt.xlabel('Proportion')
     plt.title('Missing')
@@ -72,12 +75,12 @@ def plot_bar_single_column(df, col, top=20, **kwargs):
     a = df[col].value_counts(dropna=False)
     a = a / float(sum(a))
     a = a.sort_index(ascending=False)
-
     a.plot.barh(**kwargs)
     plt.xlabel('Proportion')
     plt.title(col)
     return a.sort_index()
 
+# plot_bar_groupby_2
 def plot_bar_grouped_by_cat(df, cat, col, as_cat=False, top=20, **kwargs):
     df = df.copy()
 
@@ -98,6 +101,7 @@ def plot_bar_grouped_by_cat(df, cat, col, as_cat=False, top=20, **kwargs):
         plt.title('%s grouped by %s' % (col, cat))
     return a.sort_index()
 
+# plot_bar_groupby_2
 def plot_bar_grouped_by_2_cat(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
 
@@ -112,27 +116,35 @@ def plot_bar_grouped_by_2_cat(df, cat1, cat2, col, top=20, **kwargs):
     plt.legend(title=cat2, loc=(1, 0.5))
     return a.sort_index()
 
+# plot_line_groupby_1
 def plot_line_grouped_by_cat(df, cat, col, top=20, **kwargs):
     df = df.copy()
 
     df[cat] = _top_n_cat(df[cat], top)
 
-    a = df.groupby(cat)[col].mean().plot(**kwargs)
+    a = df.groupby(cat)[col].mean()
+    a.plot(**kwargs)
     plt.xlabel(cat)
     plt.ylabel('Mean')
     plt.title('%s grouped by %s' % (col, cat))
+    return a
 
+# need to check if return is correct order
+# need to check if need reverse y axis or not
+# plot_line_groupby_2
 def plot_interaction(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
 
     df[cat1] = _top_n_cat(df[cat1], top)
     df[cat2] = _top_n_cat(df[cat2], top)
 
-    pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).plot(**kwargs)
+    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
+    a.plot(**kwargs)
     plt.xlabel(cat1)
     plt.ylabel('Mean %s' % col)
     plt.title('Interaction Effect of %s and %s on %s' % (cat1, cat2, col))
     plt.legend(title=cat2, loc=(1, 0.5))
+    return a
 
 
 
