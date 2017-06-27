@@ -47,9 +47,11 @@ def plot_missing(df, top=None, **kwargs):
     a = a.sort_values(ascending=False)
     if top:
         a = a[:top]
+    a = a[::-1]
 
-    a[::-1].plot.barh(**kwargs)
-    plt.xlabel('proportions')
+    a.plot.barh(**kwargs)
+    plt.xlabel('Proportion')
+    plt.title('Missing')
     return a
 
 def plot_bar(df, *args, **kwargs):
@@ -60,24 +62,20 @@ def plot_bar(df, *args, **kwargs):
     elif len(args) == 3:
         return plot_bar_grouped_by_2_cat(df, *args, **kwargs)
     else:
-        raise ValueError, 'Can only input up to 3 variables'
+        raise ValueError, 'Too many arguments'
 
-def plot_bar_single_column(df, col, prop=True, top=20, **kwargs):
+def plot_bar_single_column(df, col, top=20, **kwargs):
     df = df.copy()
 
     df[col] = _top_n_cat(df[col], top)
 
     a = df[col].value_counts(dropna=False)
+    a = a / float(sum(a))
+    a = a.sort_index(ascending=False)
 
-    if prop == True:
-        a = a / float(sum(a))
-        xlabel = 'proportions'
-    else:
-        xlabel = 'counts'
-
-    a.sort_index(ascending=False).plot.barh(**kwargs)
+    a.plot.barh(**kwargs)
+    plt.xlabel('Proportion')
     plt.title(col)
-    plt.xlabel(xlabel)
     return a.sort_index()
 
 def plot_bar_grouped_by_1_cat(df, cat, col, as_cat=False, top=20, **kwargs):
@@ -87,16 +85,17 @@ def plot_bar_grouped_by_1_cat(df, cat, col, as_cat=False, top=20, **kwargs):
 
     if as_cat or df[col].dtype == 'O':
         df[col] = _top_n_cat(df[col], top)
-        a = df.pipe(crosstab, cat, col, normalize='index')
+        a = pd.crosstab(df[cat], df[col], normalize='index')
         a.plot.barh(**kwargs)
         plt.gca().invert_yaxis()
-        plt.xlabel('proportions')
+        plt.xlabel('Proportion')
+        plt.title('%s grouped by %s' % (col, cat))
         plt.legend(title=col, loc=(1, 0.5))
     else:
         a = df.groupby(cat)[col].mean().sort_index(ascending=False)
         a.plot.barh(**kwargs)
-        plt.title(col)
-        plt.xlabel('means')
+        plt.xlabel('Mean')
+        plt.title('%s grouped by %s' % (col, cat))
     return a.sort_index()
 
 def plot_bar_grouped_by_2_cat(df, cat1, cat2, col, top=20, **kwargs):
@@ -108,8 +107,8 @@ def plot_bar_grouped_by_2_cat(df, cat1, cat2, col, top=20, **kwargs):
     a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
     a.plot.barh(**kwargs)
     plt.gca().invert_yaxis()
-    plt.title(col)
-    plt.xlabel('means')
+    plt.xlabel('Mean')
+    plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
     plt.legend(title=cat2, loc=(1, 0.5))
     return a.sort_index()
 
