@@ -51,8 +51,7 @@ def plot_missing(df, top=None, **kwargs):
     if top:
         a = a[:top]
 
-    a = a[::-1]
-    a.plot.barh(**kwargs)
+    a.sort_values().plot.barh(**kwargs)
     plt.xlabel('Proportion')
     plt.title('Missing')
     return a
@@ -61,9 +60,9 @@ def plot_bar(df, *args, **kwargs):
     if len(args) == 1:
         return plot_bar_single_column(df, *args, **kwargs)
     elif len(args) == 2:
-        return plot_bar_grouped_by_cat(df, *args, **kwargs)
+        return plot_bar_groupby_1(df, *args, **kwargs)
     elif len(args) == 3:
-        return plot_bar_grouped_by_2_cat(df, *args, **kwargs)
+        return plot_bar_groupby_2(df, *args, **kwargs)
     else:
         raise ValueError, 'Too many arguments'
 
@@ -72,16 +71,14 @@ def plot_bar_single_column(df, col, top=20, **kwargs):
 
     df[col] = _top_n_cat(df[col], top)
 
-    a = df[col].value_counts(dropna=False)
+    a = df[col].value_counts(dropna=False).sort_index()
     a = a / float(sum(a))
-    a = a.sort_index(ascending=False)
-    a.plot.barh(**kwargs)
+    a.sort_index(ascending=False).plot.barh(**kwargs)
     plt.xlabel('Proportion')
     plt.title(col)
-    return a.sort_index()
+    return a
 
-# plot_bar_groupby_2
-def plot_bar_grouped_by_cat(df, cat, col, as_cat=False, top=20, **kwargs):
+def plot_bar_groupby_1(df, cat, col, as_cat=False, top=20, **kwargs):
     df = df.copy()
 
     df[cat] = _top_n_cat(df[cat], top)
@@ -95,14 +92,14 @@ def plot_bar_grouped_by_cat(df, cat, col, as_cat=False, top=20, **kwargs):
         plt.title('%s grouped by %s' % (col, cat))
         plt.legend(title=col, loc=(1, 0.5))
     else:
-        a = df.groupby(cat)[col].mean().sort_index(ascending=False)
-        a.plot.barh(**kwargs)
+        a = df.groupby(cat)[col].mean()
+        a.sort_index(ascending=False).plot.barh(**kwargs)
         plt.xlabel('Mean')
         plt.title('%s grouped by %s' % (col, cat))
-    return a.sort_index()
 
-# plot_bar_groupby_2
-def plot_bar_grouped_by_2_cat(df, cat1, cat2, col, top=20, **kwargs):
+    return a
+
+def plot_bar_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
 
     df[cat1] = _top_n_cat(df[cat1], top)
@@ -114,10 +111,9 @@ def plot_bar_grouped_by_2_cat(df, cat1, cat2, col, top=20, **kwargs):
     plt.xlabel('Mean')
     plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
     plt.legend(title=cat2, loc=(1, 0.5))
-    return a.sort_index()
+    return a
 
-# plot_line_groupby_1
-def plot_line_grouped_by_cat(df, cat, col, top=20, **kwargs):
+def plot_line_groupby_1(df, cat, col, top=20, **kwargs):
     df = df.copy()
 
     df[cat] = _top_n_cat(df[cat], top)
@@ -130,9 +126,7 @@ def plot_line_grouped_by_cat(df, cat, col, top=20, **kwargs):
     return a
 
 # need to check if return is correct order
-# need to check if need reverse y axis or not
-# plot_line_groupby_2
-def plot_interaction(df, cat1, cat2, col, top=20, **kwargs):
+def plot_line_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
 
     df[cat1] = _top_n_cat(df[cat1], top)
