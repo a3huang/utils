@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler
 
 from sklearn import tree
 import pydotplus
+import subprocess
 
 from model import _get_feature_importances, _get_model_name
 from data import crosstab
@@ -127,7 +128,7 @@ def plot_heatmap_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
     df[cat2] = _top_n_cat(df[cat2], top)
 
     a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
-    sns.heatmap(a, **kwargs)
+    sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     plt.gca().invert_yaxis()
     plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
     return a
@@ -271,8 +272,24 @@ def plot_clusters(df, cluster_model=None, pca_model=None, sample_size=1000, **kw
     df['cluster'] = cluster_model.labels_
     plot_pca(df, 'cluster', pca_model, sample_size=None, **kwargs)
 
-# X.pipe(plot_feature_importances, model)
-def plot_feature_importances(model, X, top=None, **kwargs):
+def plot_decision_tree(df, target, filename, **kwargs):
+    X = df[df.columns.difference([target])]
+    y = df[target]
+
+    model = tree.DecisionTreeClassifier(**kwargs)
+    model.fit(X, y)
+    dot_data = tree.export_graphviz(model,
+                                    out_file=None,
+                                    feature_names=X.columns,
+                                    filled=True,
+                                    class_names=y.astype(str).unique())
+    graph = pydotplus.graph_from_dot_data(dot_data)
+    graph.write_pdf(filename)
+    subprocess.call(('open', filename))
+    return model
+
+def plot_feature_imps(df, model, target, top=None, **kwargs):
+    X = df[df.columns.difference([target])]
     a = _get_feature_importances(model, X)
     model_name = _get_model_name(model)
 
@@ -285,39 +302,36 @@ def plot_feature_importances(model, X, top=None, **kwargs):
     plt.legend().remove()
     return a
 
+def plot_word_freqs(docs, top=20, **kwargs):
+    c = CountVectorizer()
+    c.fit(docs)
 
+    counts = c.fit_transform(docs).sum(axis=0)
+    counts = np.array(counts).squeeze()
 
+    vocab = pd.DataFrame([(k, counts[v]) for k, v in c.vocabulary_.items()], columns=['Word', 'Count'])
+    total = vocab['Count'].sum()
+    vocab['Frequency'] = vocab['Count'] / total
+    vocab = vocab.sort_values(by='Count', ascending=False).set_index('Word')
 
+    if top:
+        vocab = vocab[:top]
+
+    vocab[['Frequency']].sort_values(by='Frequency').plot.barh(**kwargs)
+
+    plt.xlabel('Proportion')
+    plt.ylabel('Words')
+    plt.legend().remove()
+
+    return vocab
+
+# train, test = train_test_split(df, random_state=42)
+# test.pipe(plot_feature_importances, model, 'cancel')
+# model.fit(train.drop('Generation',1), train['Generation'])
 ##########
 
-def plot_decision_tree(X, y, filename, **kwargs):
-    model = tree.DecisionTreeClassifier(**kwargs)
-    model.fit(X, y)
-    dot_data = tree.export_graphviz(model,
-                                    out_file=None,
-                                    feature_names=X.columns,
-                                    filled=True,
-                                    class_names=y.unique())
-    graph = pydotplus.graph_from_dot_data(dot_data)
-    graph.write_pdf(filename)
 
-# integrate this better with barplot function above?
-def plot_top_word_frequencies(documents, prop=True, **kwargs):
-    c = CountVectorizer(**kwargs)
-    c.fit(documents)
 
-    counts = c.fit_transform(documents).sum(axis=0)
-    vocab = pd.DataFrame([(k, counts[0, c.vocabulary_[k]]) for k, v in c.vocabulary_.items()][:10])
-    total = vocab[1].sum()
-    vocab['freq'] = vocab[1] / total
-
-    if prop == True:
-        vocab[[0, 'freq']].set_index(0).sort_values(by='freq').plot.barh(**kwargs)
-    else:
-        vocab[[0, 1]].set_index(0).sort_values(by=1).plot.barh(**kwargs)
-
-    plt.ylabel('words')
-    plt.legend().remove()
 
 # needs column named date
 # need to better format x axis labels
