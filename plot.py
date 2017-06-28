@@ -17,11 +17,6 @@ import subprocess
 from model import _get_feature_importances, _get_model_name
 from data import crosstab
 
-def _index_to_name(df, col):
-    if isinstance(col, int):
-        col = df.columns[col]
-    return col
-
 # test this
 def _top_n_cat(a, n=5):
     counts = a.value_counts(dropna=False)
@@ -37,8 +32,7 @@ def winsorize(x, p=.05):
     a = pd.concat([sorted_col, quantiles], axis=1)
     quantiles_to_keep = a[0].unique()[1:-1]
     return a[a[0].isin(quantiles_to_keep)].iloc[:, 0]
-
-################################################################################
+######################################################
 
 def plot_missing(df, top=None, **kwargs):
     a = df.isnull().mean(axis=0)
@@ -288,7 +282,7 @@ def plot_decision_tree(df, target, filename, **kwargs):
     subprocess.call(('open', filename))
     return model
 
-def plot_feature_imps(df, model, target, top=None, **kwargs):
+def plot_feature_importances(df, model, target, top=None, **kwargs):
     X = df[df.columns.difference([target])]
     a = _get_feature_importances(model, X)
     model_name = _get_model_name(model)
@@ -302,7 +296,7 @@ def plot_feature_imps(df, model, target, top=None, **kwargs):
     plt.legend().remove()
     return a
 
-def plot_corr_matrix(df, **kwargs):
+def plot_correlation_matrix(df, **kwargs):
     a = df.corr()
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     return a
@@ -355,7 +349,7 @@ def plot_learning_curves(df, model, target):
     plt.title(model_name)
     plt.legend(loc=(1, 0.5))
 
-def plot_word_freqs(docs, top=20, **kwargs):
+def plot_word_frequencies(docs, top=20, **kwargs):
     c = CountVectorizer()
     c.fit(docs)
 
@@ -377,13 +371,7 @@ def plot_word_freqs(docs, top=20, **kwargs):
     plt.legend().remove()
 
     return vocab
-
-# train, test = train_test_split(df, random_state=42)
-# test.pipe(plot_feature_importances, model, 'cancel')
-# model.fit(train.drop('Generation',1), train['Generation'])
-# test.pipe(plot_confusion_matrix, lr, 'Legendary');
-# test.pipe(plot_roc_curve, lr, 'Legendary');
-##########
+#################
 
 
 

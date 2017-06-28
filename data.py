@@ -98,9 +98,10 @@ def bin_transform(df, cols):
     df[cols] = df[cols].apply(lambda x: pd.cut(x, 4).cat.codes)
     return df
 
-def add_column(df, col, name):
+def add_column(df, col, name=None):
     col = pd.DataFrame(col)
-    col.columns = [name]
+    if name:
+        col.columns = [name]
     return pd.concat([df.reset_index(drop=True), col], axis=1)
 
 def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
