@@ -240,6 +240,11 @@ def add_agg_col(df, group, col, func):
     df[func] = df.groupby(group)[col].transform(func)
     return df.groupby(group).head(1)
 
+def add_agg_count_col(df, group, func):
+    df = df.copy()
+    df['count'] = df.groupby(group).transform('count').iloc[:, -1]
+    return df.groupby(group).head(1)
+
 def consecutive_runs(df):
     df = df.copy()
     df = df.pipe(mark_nth_week)
@@ -286,6 +291,11 @@ def name(df, names):
     else:
         df.columns = ['user_id', names]
     return df
+
+def name_with_template(df, template):
+    df = df.copy()
+    col_names = df.columns.difference(['user_id'])
+    return df.pipe(name, ['%s_%s' % (template, i) for i in col_names])
 
 # have functions only return relevant columns
 def count_categorical(df, col):
