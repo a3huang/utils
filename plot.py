@@ -483,6 +483,13 @@ def plot_learning_curves(df, model, target):
     plt.title(model_name)
     plt.legend(loc=(1, 0.5))
 
+def plot_prob_estimates(df, model):
+    model_name = _get_model_name(model)
+
+    plt.hist(model.predict_proba(df)[:, 1])
+    plt.label('Probability')
+    plt.title(model_name)
+
 def plot_word_frequencies(docs, top=20, **kwargs):
     c = CountVectorizer()
     c.fit(docs)
