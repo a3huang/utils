@@ -302,6 +302,25 @@ def plot_feature_imps(df, model, target, top=None, **kwargs):
     plt.legend().remove()
     return a
 
+def plot_corr_matrix(df, **kwargs):
+    a = df.corr()
+    sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
+    return a
+
+def plot_confusion_matrix(df, model, target, threshold=0.5, **kwargs):
+    X = df.drop(target, 1)
+    y = df[target]
+
+    try:
+        prediction = model.predict_proba(X)[:, 1] > threshold
+    except:
+        prediction = model.predict(X)
+
+    a = confusion_matrix(y, prediction)
+    a = a / float(sum(sum(a)))
+    sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
+    return a
+
 def plot_word_freqs(docs, top=20, **kwargs):
     c = CountVectorizer()
     c.fit(docs)
@@ -328,6 +347,7 @@ def plot_word_freqs(docs, top=20, **kwargs):
 # train, test = train_test_split(df, random_state=42)
 # test.pipe(plot_feature_importances, model, 'cancel')
 # model.fit(train.drop('Generation',1), train['Generation'])
+# test.pipe(plot_confusion_matrix, lr, 'Legendary');
 ##########
 
 
@@ -407,21 +427,6 @@ def plot_ts_box(df, col, freq='M'):
     df.boxplot(by='date', column=col)
 
     plt.xticks(rotation=90)
-
-def plot_correlation_matrix(X, **kwargs):
-    sns.heatmap(X.corr(), annot=True, fmt='.2f', **kwargs)
-
-def plot_confusion_matrix(model, X, y, threshold=0.5, prop=False):
-    try:
-        c = confusion_matrix(y, model.predict_proba(X)[:, 1] > threshold)
-    except:
-        c = confusion_matrix(y, model.predict(X))
-
-    if prop:
-        c = c / float(sum(sum(c)))
-        sns.heatmap(c, annot=True, fmt='.2f')
-    else:
-        sns.heatmap(c, annot=True, fmt='d')
 
 def plot_learning_curves(model, X, y):
     sizes, t_scores, v_scores = learning_curve(model, X, y, cv=10, scoring='roc_auc')
