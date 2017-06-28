@@ -14,8 +14,8 @@ from sklearn import tree
 import pydotplus
 import subprocess
 
-from model import _get_feature_importances, _get_model_name
 from data import crosstab
+from model import _get_feature_importances, _get_model_name
 
 # test this
 def _top_n_cat(a, n=5):
@@ -25,6 +25,7 @@ def _top_n_cat(a, n=5):
 
 # need to test
 # need to accept 1 arg as well
+# a,b,c ... 1,2,3,4,5,6,7,8,9,10
 def winsorize(x, p=.05):
     n = int(1/p)
     sorted_col = x.sort_values().reset_index(drop=True)
@@ -116,7 +117,18 @@ def plot_bar_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
     plt.legend(title=cat2, loc=(1, 0.5))
     return a
 
-def plot_heatmap_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
+def plot_heatmap_1(df, cat1, cat2, normalize=None, top=20, **kwargs):
+    df = df.copy()
+    df[cat1] = _top_n_cat(df[cat1], top)
+    df[cat2] = _top_n_cat(df[cat2], top)
+
+    a = pd.crosstab(df[cat1], df[cat2], normalize=normalize)
+    sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
+    plt.gca().invert_yaxis()
+    plt.title('%s and %s' % (cat1, cat2))
+    return a
+
+def plot_heatmap_2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
     df[cat1] = _top_n_cat(df[cat1], top)
     df[cat2] = _top_n_cat(df[cat2], top)
@@ -266,6 +278,128 @@ def plot_clusters(df, cluster_model=None, pca_model=None, sample_size=1000, **kw
     df['cluster'] = cluster_model.labels_
     plot_pca(df, 'cluster', pca_model, sample_size=None, **kwargs)
 
+# df.set_index('received_at').resample('M')['count'].quantile([.25, .5, .75]).unstack().plot()
+def plot_line_trend(df, date_col='date', col=None, freq='M', **kwargs):
+    df = df.copy()
+
+    xticklabels = None
+
+    if freq in ['month', 'weekday', 'hour']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+        grouper = df.groupby(date_col)
+
+        if freq == 'weekday':
+            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                           'Saturday', 'Sunday']
+    else:
+        grouper = df.set_index(date_col).resample(freq)
+
+    if col:
+        grouper[col].mean().plot(**kwargs)
+    else:
+        grouper.size().plot(**kwargs)
+
+    if xticklabels:
+        plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
+
+# why does ylim always seem to be off?
+# kind='area'
+def plot_line_trend_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
+                              **kwargs):
+    df = df.copy()
+
+    xticklabels = None
+
+    df[cat] = _top_n_cat(df[cat], top)
+
+    if freq in ['month', 'weekday', 'hour']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+
+        if freq == 'weekday':
+            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                           'Saturday', 'Sunday']
+
+    else:
+        df = df.set_index(date_col).to_period(freq).reset_index()
+
+    if col:
+        df.pipe(crosstab, date_col, cat, col).plot(**kwargs)
+    else:
+        df.pipe(crosstab, date_col, cat).plot(kind='line', **kwargs)
+
+    if xticklabels:
+        plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
+
+def plot_bar_trend(df, date_col='date', col=None, freq='M', **kwargs):
+    df = df.copy()
+
+    xticklabels = None
+
+    if freq in ['month', 'weekday', 'hour']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+        grouper = df.groupby(date_col)
+
+        if freq == 'weekday':
+            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                           'Saturday', 'Sunday']
+    else:
+        grouper = df.set_index(date_col).resample(freq)
+
+    if col:
+        grouper[col].mean().plot.bar(**kwargs)
+    else:
+        grouper.size().plot.bar(**kwargs)
+
+    if xticklabels:
+        plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
+
+def plot_bar_trend_groupby_1(df, cat, date_col='date', col=None, freq='M',
+                             top=20, **kwargs):
+    df = df.copy()
+
+    df[cat] = _top_n_cat(df[cat], top)
+
+    xticklabels = None
+
+    if freq in ['month', 'weekday', 'hour']:
+        df['date'] = getattr(df.set_index('date').index, freq)
+
+        if freq == 'weekday':
+            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                           'Saturday', 'Sunday']
+
+    else:
+        df = df.set_index('date').to_period(freq).reset_index()
+
+    if col:
+        df.pipe(crosstab, 'date', cat, col).plot.bar(**kwargs)
+    else:
+        df.pipe(crosstab, 'date', cat).plot.bar(**kwargs)
+
+    if xticklabels:
+        plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
+
+def plot_ts_box(df, col, date_col='date', freq='M', **kwargs):
+    df = df.copy()
+
+    xticklabels = None
+
+    if freq in ['month', 'weekday', 'hour']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+
+        if freq == 'weekday':
+            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                           'Saturday', 'Sunday']
+    else:
+        df = df.set_index(date_col).to_period(freq)
+
+    df.boxplot(by=date_col, column=col, **kwargs)
+
+    plt.xticks(rotation=90)
+
+    if xticklabels:
+        plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
+
 def plot_decision_tree(df, target, filename, **kwargs):
     X = df[df.columns.difference([target])]
     y = df[target]
@@ -372,81 +506,3 @@ def plot_word_frequencies(docs, top=20, **kwargs):
 
     return vocab
 #################
-
-
-
-
-# needs column named date
-# need to better format x axis labels
-def plot_ts(df, col=None, freq='M'):
-    df = df.copy()
-
-    if freq in ['month', 'dow', 'hour']:
-        df['date'] = getattr(df.set_index('date').index, freq)
-        grouper = df.groupby('date')
-    else:
-        grouper = df.set_index('date').resample(freq)
-
-    if col:
-        grouper[col].mean().plot()
-    else:
-        grouper.size().plot()
-
-# can combine with plot_ts function?
-# is there any need to convert to dateindex first?
-# a['date'].dt.to_period('M')
-def plot_grouped_ts(df, cat, col=None, freq='M'):
-    df = df.copy()
-
-    if freq in ['month', 'dow', 'hour']:
-        df['date'] = getattr(df.set_index('date').index, freq)
-    else:
-        df = df.set_index('date').to_period(freq).reset_index()
-
-    if col:
-        df.pipe(crosstab, 'date', cat, col).plot()
-    else:
-        df.pipe(crosstab, 'date', cat).plot()
-
-# needs column named date
-# need to better format x axis labels
-def plot_ts_bar(df, col=None, freq='M'):
-    df = df.copy()
-
-    if freq in ['month', 'dow', 'hour']:
-        df['date'] = getattr(df.set_index('date').index, freq)
-        grouper = df.groupby('date')
-    else:
-        grouper = df.set_index('date').resample(freq)
-
-    if col:
-        grouper[col].mean().plot.bar()
-    else:
-        grouper.size().plot.bar()
-
-def plot_grouped_ts_bar(df, cat, col=None, freq='M'):
-    df = df.copy()
-
-    if freq in ['month', 'dow', 'hour']:
-        df['date'] = getattr(df.set_index('date').index, freq)
-    else:
-        df = df.set_index('date').to_period(freq).reset_index()
-
-    if col:
-        df.pipe(crosstab, 'date', cat, col).plot.bar()
-    else:
-        df.pipe(crosstab, 'date', cat).plot.bar()
-
-# needs column named date
-# need to adjust ylim
-def plot_ts_box(df, col, freq='M'):
-    df = df.copy()
-
-    if freq in ['month', 'dow', 'hour']:
-        df['date'] = getattr(df.set_index('date').index, freq)
-    else:
-        df = df.set_index('date').to_period(freq)
-
-    df.boxplot(by='date', column=col)
-
-    plt.xticks(rotation=90)
