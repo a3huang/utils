@@ -49,16 +49,20 @@ def interactions(df, subsets=None):
     return df
 
 # test if pipeline part actually works
-def _get_feature_importances(model):
+def _get_feature_importances(model, X):
     if 'pipeline' in repr(model.__class__):
         model = model.steps[-1][1]
+
     for i in ['coef_', 'feature_importances_', 'ranking_', 'scores_']:
         if hasattr(model, i):
             scores = getattr(model, i)
 
             if len(scores.shape) > 1:
                 scores = scores[0]
-            return scores
+
+            a = pd.DataFrame(sorted(zip(X.columns, scores),
+                key=lambda x: abs(x[1]), reverse=True))
+            return a
 
 def _get_top_n_features(model, X):
     if 'sequentialfeatureselector' in repr(model.__class__).lower():
