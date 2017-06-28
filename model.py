@@ -175,7 +175,7 @@ def evaluate_models_test(model_dict, X, y):
 
     l = []
     for model in models:
-        model_name = get_model_name(model)
+        model_name = _get_model_name(model)
 
         auc = roc_auc_score(y, model.predict_proba(X)[:, 1])
         recall = decile_recall(model, X, y)
@@ -245,6 +245,20 @@ def evaluate_dfs(model_dict, df_list):
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.3, random_state=42)
 
         result.append(evaluate_models_cv(model_dict, X_train, y_train))
+
+    return pd.concat(result)
+
+def evaluate_dfs_test(model_dict, df_list):
+    result = []
+    for df in df_list:
+        df1 = df[df['start'] > '2016-07-18']
+
+        X = df1.pipe(remove, ['user_id', 'start', 'end', 'days', 'cancel'])
+        y = df1['cancel']
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.3, random_state=42)
+
+        result.append(evaluate_models_test(model_dict, X_test, y_test))
 
     return pd.concat(result)
 

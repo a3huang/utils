@@ -17,15 +17,13 @@ import subprocess
 from data import crosstab
 from model import _get_feature_importances, _get_model_name
 
-# test this
+# Helper Functions
 def _top_n_cat(a, n=5):
-    counts = a.value_counts(dropna=False)
+    a = a.fillna('missing')
+    counts = a.value_counts()
     top = counts.iloc[:n].index
     return a.apply(lambda x: x if x in top else 'other')
 
-# need to test
-# need to accept 1 arg as well
-# a,b,c ... 1,2,3,4,5,6,7,8,9,10
 def winsorize(x, p=.05):
     n = int(1/p)
     sorted_col = x.sort_values().reset_index(drop=True)
@@ -33,8 +31,8 @@ def winsorize(x, p=.05):
     a = pd.concat([sorted_col, quantiles], axis=1)
     quantiles_to_keep = a[0].unique()[1:-1]
     return a[a[0].isin(quantiles_to_keep)].iloc[:, 0]
-######################################################
 
+# Main Functions
 def plot_missing(df, top=None, **kwargs):
     a = df.isnull().mean(axis=0)
     a = a[a > 0]
@@ -239,7 +237,7 @@ def plot_box_groupby_1(df, cat, col, top=20, **kwargs):
     plt.suptitle('')
     plt.title('%s grouped by %s' % (col, cat))
 
-def plot_scatter(df, col1, col2, **kwargs):
+def plot_scatter_1(df, col1, col2, **kwargs):
     sns.lmplot(col1, col2, data=df, **kwargs)
 
 def plot_scatter_groupby_1(df, cat, col1, col2, top=20, **kwargs):
@@ -302,10 +300,12 @@ def plot_line_trend(df, date_col='date', col=None, freq='M', **kwargs):
     if xticklabels:
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
 
+    plt.legend(loc=(1, 0.5))
+
 # why does ylim always seem to be off?
 # kind='area'
-def plot_line_trend_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
-                              **kwargs):
+def plot_ts_line_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
+                           **kwargs):
     df = df.copy()
 
     xticklabels = None
@@ -325,10 +325,40 @@ def plot_line_trend_groupby_1(df, cat, date_col='date', col=None, top=20, freq='
     if col:
         df.pipe(crosstab, date_col, cat, col).plot(**kwargs)
     else:
-        df.pipe(crosstab, date_col, cat).plot(kind='line', **kwargs)
+        df.pipe(crosstab, date_col, cat).plot(**kwargs)
 
     if xticklabels:
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
+
+    plt.legend(loc=(1, 0.5))
+
+def plot_ts_area_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
+                           **kwargs):
+    df = df.copy()
+
+    xticklabels = None
+
+    df[cat] = _top_n_cat(df[cat], top)
+
+    if freq in ['month', 'weekday', 'hour']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+
+        if freq == 'weekday':
+            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
+                           'Saturday', 'Sunday']
+
+    else:
+        df = df.set_index(date_col).to_period(freq).reset_index()
+
+    if col:
+        df.pipe(crosstab, date_col, cat, col).plot.area(**kwargs)
+    else:
+        df.pipe(crosstab, date_col, cat).plot.area(**kwargs)
+
+    if xticklabels:
+        plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
+
+    plt.legend(loc=(1, 0.5))
 
 def plot_bar_trend(df, date_col='date', col=None, freq='M', **kwargs):
     df = df.copy()
@@ -353,6 +383,8 @@ def plot_bar_trend(df, date_col='date', col=None, freq='M', **kwargs):
     if xticklabels:
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
 
+    plt.legend(loc=(1, 0.5))
+
 def plot_bar_trend_groupby_1(df, cat, date_col='date', col=None, freq='M',
                              top=20, **kwargs):
     df = df.copy()
@@ -362,22 +394,24 @@ def plot_bar_trend_groupby_1(df, cat, date_col='date', col=None, freq='M',
     xticklabels = None
 
     if freq in ['month', 'weekday', 'hour']:
-        df['date'] = getattr(df.set_index('date').index, freq)
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
 
         if freq == 'weekday':
             xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
                            'Saturday', 'Sunday']
 
     else:
-        df = df.set_index('date').to_period(freq).reset_index()
+        df = df.set_index(date_col).to_period(freq).reset_index()
 
     if col:
-        df.pipe(crosstab, 'date', cat, col).plot.bar(**kwargs)
+        df.pipe(crosstab, date_col, cat, col).plot.bar(**kwargs)
     else:
-        df.pipe(crosstab, 'date', cat).plot.bar(**kwargs)
+        df.pipe(crosstab, date_col, cat).plot.bar(**kwargs)
 
     if xticklabels:
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
+
+    plt.legend(loc=(1, 0.5))
 
 def plot_ts_box(df, col, date_col='date', freq='M', **kwargs):
     df = df.copy()
@@ -399,6 +433,8 @@ def plot_ts_box(df, col, date_col='date', freq='M', **kwargs):
 
     if xticklabels:
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
+
+    plt.legend(loc=(1, 0.5))
 
 def plot_decision_tree(df, target, filename, **kwargs):
     X = df[df.columns.difference([target])]
