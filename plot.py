@@ -7,7 +7,7 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics import confusion_matrix, roc_curve
-from sklearn.model_selection import learning_curve
+from sklearn.model_selection import learning_curve, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
 from sklearn import tree
@@ -321,6 +321,40 @@ def plot_confusion_matrix(df, model, target, threshold=0.5, **kwargs):
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     return a
 
+def plot_roc_curve(df, model, target):
+    X = df.drop(target, 1)
+    y = df[target]
+
+    model_name = _get_model_name(model)
+
+    try:
+        prediction = model.predict_proba(X)[:, 1]
+    except:
+        prediction = model.predict(X)
+
+    fpr, tpr, _ = roc_curve(y, prediction)
+    plt.plot(fpr, tpr)
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(model_name)
+
+def plot_learning_curves(df, model, target):
+    X = df.drop(target, 1)
+    y = df[target]
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True)
+
+    model_name = _get_model_name(model)
+
+    sizes, train, validation = learning_curve(model, X, y, cv=cv, scoring='roc_auc')
+    plt.plot(sizes, np.mean(train, axis=1), label='train')
+    plt.plot(sizes, np.mean(validation, axis=1), label='validation')
+    plt.xlabel('Sample Size')
+    plt.ylabel('Performance')
+    plt.title(model_name)
+    plt.legend(loc=(1, 0.5))
+
 def plot_word_freqs(docs, top=20, **kwargs):
     c = CountVectorizer()
     c.fit(docs)
@@ -348,6 +382,7 @@ def plot_word_freqs(docs, top=20, **kwargs):
 # test.pipe(plot_feature_importances, model, 'cancel')
 # model.fit(train.drop('Generation',1), train['Generation'])
 # test.pipe(plot_confusion_matrix, lr, 'Legendary');
+# test.pipe(plot_roc_curve, lr, 'Legendary');
 ##########
 
 
@@ -427,21 +462,3 @@ def plot_ts_box(df, col, freq='M'):
     df.boxplot(by='date', column=col)
 
     plt.xticks(rotation=90)
-
-def plot_learning_curves(model, X, y):
-    sizes, t_scores, v_scores = learning_curve(model, X, y, cv=10, scoring='roc_auc')
-    plt.plot(sizes, np.mean(t_scores, axis=1), label='train')
-    plt.plot(sizes, np.mean(v_scores, axis=1), label='test')
-    plt.legend(loc=(1, 0.5))
-
-# reduce number of arguments?
-def plot_roc_curves(model, X_train, y_train, X_test, y_test):
-
-    fpr1, tpr1, _ = roc_curve(y_train, model.predict_proba(X_train)[:, 1])
-    plt.plot(fpr1, tpr1, color='g', label='train')
-
-    fpr2, tpr2, _ = roc_curve(y_test, model.predict_proba(X_test)[:, 1])
-    plt.plot(fpr2, tpr2, color='b', label='test')
-
-    plt.plot([0, 1], [0, 1], color='navy', linestyle='--')
-    plt.legend(loc=(1, 0.5))
