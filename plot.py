@@ -334,18 +334,14 @@ def plot_clusters(df, cluster_model=None, pca_model=None, sample_size=1000, **kw
     df['cluster'] = cluster_model.labels_
     plot_pca(df, 'cluster', pca_model, sample_size=None, **kwargs)
 
+# plot_ts_line
+# plot_line(df, 'date', col)
 def plot_line_trend(df, date_col='date', col=None, freq='M', **kwargs):
     df = df.copy()
 
-    xticklabels = None
-
-    if freq in ['month', 'weekday', 'hour']:
+    if freq in ['hour', 'month', 'weekday']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
         grouper = df.groupby(date_col)
-
-        if freq == 'weekday':
-            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-                           'Saturday', 'Sunday']
     else:
         grouper = df.set_index(date_col).resample(freq)
 
@@ -354,55 +350,44 @@ def plot_line_trend(df, date_col='date', col=None, freq='M', **kwargs):
     else:
         grouper.size().plot(**kwargs)
 
-    if xticklabels:
+    if freq == 'weekday':
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
 
     plt.legend(loc=(1, 0.5))
 
 # why does ylim always seem to be off?
-def plot_ts_line_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
+def plot_ts_line_groupby_1(df, cat, date_col='date', col=None, freq='M', top=20,
                            **kwargs):
     df = df.copy()
 
-    xticklabels = None
-
     df[cat] = top_n_cat(df[cat], top)
 
-    if freq in ['month', 'weekday', 'hour']:
+    if freq in ['hour', 'month', 'weekday']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
-
-        if freq == 'weekday':
-            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-                           'Saturday', 'Sunday']
-
     else:
-        df = df.set_index(date_col).to_period(freq).reset_index()
+        df = df.set_index(date_col).to_period(freq).reset_index() # this part is slow?
+        # use pivot instead?
+        # df = df.set_index(date_col).to_period(freq)
 
     if col:
+        # df.pivot(column=cat, value=col, aggfunc=np.mean)
         df.pipe(crosstab, date_col, cat, col).plot(**kwargs)
     else:
         df.pipe(crosstab, date_col, cat).plot(**kwargs)
 
-    if xticklabels:
+    if freq == 'weekday':
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
 
     plt.legend(loc=(1, 0.5))
 
-def plot_ts_area_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
+def plot_ts_area_groupby_1(df, cat, date_col='date', col=None, freq='M', top=20,
                            **kwargs):
     df = df.copy()
 
-    xticklabels = None
-
     df[cat] = top_n_cat(df[cat], top)
 
-    if freq in ['month', 'weekday', 'hour']:
+    if freq in ['hour', 'month', 'weekday']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
-
-        if freq == 'weekday':
-            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-                           'Saturday', 'Sunday']
-
     else:
         df = df.set_index(date_col).to_period(freq).reset_index()
 
@@ -411,7 +396,7 @@ def plot_ts_area_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
     else:
         df.pipe(crosstab, date_col, cat).plot.area(**kwargs)
 
-    if xticklabels:
+    if freq == 'weekday':
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
 
     plt.legend(loc=(1, 0.5))
@@ -419,15 +404,9 @@ def plot_ts_area_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
 def plot_bar_trend(df, date_col='date', col=None, freq='M', **kwargs):
     df = df.copy()
 
-    xticklabels = None
-
     if freq in ['month', 'weekday', 'hour']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
         grouper = df.groupby(date_col)
-
-        if freq == 'weekday':
-            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-                           'Saturday', 'Sunday']
     else:
         grouper = df.set_index(date_col).resample(freq)
 
@@ -436,7 +415,7 @@ def plot_bar_trend(df, date_col='date', col=None, freq='M', **kwargs):
     else:
         grouper.size().plot.bar(**kwargs)
 
-    if xticklabels:
+    if freq == 'weekday':
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
 
     plt.legend(loc=(1, 0.5))
@@ -447,14 +426,8 @@ def plot_bar_trend_groupby_1(df, cat, date_col='date', col=None, freq='M',
 
     df[cat] = top_n_cat(df[cat], top)
 
-    xticklabels = None
-
     if freq in ['month', 'weekday', 'hour']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
-
-        if freq == 'weekday':
-            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-                           'Saturday', 'Sunday']
 
     else:
         df = df.set_index(date_col).to_period(freq).reset_index()
@@ -464,7 +437,7 @@ def plot_bar_trend_groupby_1(df, cat, date_col='date', col=None, freq='M',
     else:
         df.pipe(crosstab, date_col, cat).plot.bar(**kwargs)
 
-    if xticklabels:
+    if freq == 'weekday':
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
 
     plt.legend(loc=(1, 0.5))
@@ -472,22 +445,15 @@ def plot_bar_trend_groupby_1(df, cat, date_col='date', col=None, freq='M',
 def plot_ts_box(df, col, date_col='date', freq='M', **kwargs):
     df = df.copy()
 
-    xticklabels = None
-
     if freq in ['month', 'weekday', 'hour']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
-
-        if freq == 'weekday':
-            xticklabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-                           'Saturday', 'Sunday']
     else:
         df = df.set_index(date_col).to_period(freq)
 
     df.boxplot(by=date_col, column=col, **kwargs)
-
     plt.xticks(rotation=90)
 
-    if xticklabels:
+    if freq == 'weekday':
         plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
 
     plt.legend(loc=(1, 0.5))
