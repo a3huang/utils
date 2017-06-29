@@ -110,8 +110,8 @@ def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, **kwargs):
 
     return a
 
-def _plot_bar_col_multi_groupby_cat(df, col, cat, as_cat=False, top=20, **kwargs):
-    a = df.melt([cat], col)
+def _plot_bar_col_multi_groupby_cat(df, cols, cat, as_cat=False, top=20, **kwargs):
+    a = df.melt([cat], cols)
     return _plot_bar_col_groupby_cat2(a, 'variable', cat, 'value', **kwargs)
 
 def _plot_bar_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
@@ -126,6 +126,35 @@ def _plot_bar_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
     plt.legend(title=cat2, loc=(1, 0.5))
     return a
+
+
+def plot_box(df, *args, **kwargs):
+    if len(args) == 2:
+        if isinstance(args[0], list):
+            return _plot_box_col_multi_groupby_cat(df, *args, **kwargs)
+        else:
+            return _plot_box_col_groupby_cat(df, *args, **kwargs)
+
+    else:
+        raise ValueError, 'Not a valid number of arguments'
+
+def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, **kwargs):
+    df = df.copy()
+    df[cat] = top_n_cat(df[cat], top)
+
+    sns.boxplot(y=cat, x=col, data=df, showfliers=showfliers, **kwargs)
+    plt.xlabel(col)
+    plt.ylabel(cat)
+    plt.title('%s grouped by %s' % (col, cat))
+
+def _plot_box_col_multi_groupby_cat(df, cols, cat, showfliers=False, top=20, **kwargs):
+    df = df.copy()
+    df[cat] = top_n_cat(df[cat], top)
+
+    a = df.melt([cat], cols)
+    sns.boxplot(y='variable', x='value', hue=cat, data=a, showfliers=showfliers,
+                **kwargs)
+    plt.legend(loc=(1, .5))
 
 
 def plot_heatmap(df, *args, **kwargs):
@@ -254,29 +283,26 @@ def _plot_line_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
 #####
 
 
+def plot_scatter(df, *args, **kwargs):
+    if len(args) == 2:
+        return _plot_scatter_col2(df, *args, **kwargs)
 
+    elif len(args) == 3:
+        return _plot_scatter_col2_groupby_cat(df, *args, **kwargs)
 
+    else:
+        raise ValueError, 'Not a valid number of arguments'
 
-def plot_box_groupby_1(df, cat, col, top=20, **kwargs):
-    df = df.copy()
-    df[cat] = top_n_cat(df[cat], top)
-
-    df.boxplot(by=cat, column=col, vert=False, **kwargs)
-    plt.gca().invert_yaxis()
-    plt.xlabel(col)
-    plt.ylabel(cat)
-    plt.suptitle('')
-    plt.title('%s grouped by %s' % (col, cat))
-
-def plot_scatter_1(df, col1, col2, **kwargs):
+def _plot_scatter_col2(df, col1, col2, **kwargs):
     sns.lmplot(col1, col2, data=df, **kwargs)
 
-def plot_scatter_groupby_1(df, cat, col1, col2, top=20, **kwargs):
+def _plot_scatter_col2_groupby_cat(df, cat, col1, col2, top=20, **kwargs):
     df = df.copy()
     df[cat] = top_n_cat(df[cat], top)
 
     sns.lmplot(col1, col2, hue=cat, data=df, fit_reg=False, **kwargs)
-    plt.title('%s vs. %s' % (col1, col2))
+
+
 
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
     df = df.copy()
