@@ -131,6 +131,28 @@ def test_ts_line():
     plot_ts_line(df, col='col')
     plot_ts_line(df, 'cat', 'col')
 
+def test_ts_area():
+    df = pd.DataFrame({'date': ['2017-01-01']*3 + ['2017-02-01']*2 + ['2017-03-01']*5,
+                  'col': range(10, 110, 10), 'cat': ['a']*5 + ['b']*3 + ['c']*2,
+                  'col2': np.random.normal(5,4,10)})
+    df['date'] = pd.to_datetime(df['date'])
+
+    plot_ts_area(df)
+    plot_ts_area(df, cat='cat')
+    plot_ts_area(df, col='col')
+    plot_ts_area(df, 'cat', 'col')
+
+def test_ts_bar():
+    df = pd.DataFrame({'date': ['2017-01-01']*3 + ['2017-02-01']*2 + ['2017-03-01']*5,
+                  'col': range(10, 110, 10), 'cat': ['a']*5 + ['b']*3 + ['c']*2,
+                  'col2': np.random.normal(5,4,10)})
+    df['date'] = pd.to_datetime(df['date'])
+
+    plot_ts_bar(df)
+    plot_ts_bar(df, cat='cat')
+    plot_ts_bar(df, col='col')
+    plot_ts_bar(df, 'cat', 'col')
+
 def test_ts_box():
     df = pd.DataFrame({'date': ['2017-01-01']*3 + ['2017-02-01']*2 + ['2017-03-01']*5,
                   'col': range(10, 110, 10), 'cat': ['a']*5 + ['b']*3 + ['c']*2,
