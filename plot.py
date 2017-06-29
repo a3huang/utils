@@ -142,7 +142,7 @@ def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, **kwargs):
     df = df.copy()
     df[cat] = top_n_cat(df[cat], top)
 
-    sns.boxplot(y=cat, x=col, data=df, showfliers=showfliers, **kwargs)
+    sns.boxplot(x=cat, y=col, data=df, showfliers=showfliers, vert=False, **kwargs)
     plt.xlabel(col)
     plt.ylabel(cat)
     plt.title('%s grouped by %s' % (col, cat))
