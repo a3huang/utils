@@ -280,7 +280,6 @@ def _plot_line_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     plt.title('Interaction Effect of %s and %s on %s' % (cat1, cat2, col))
     plt.legend(title=cat2, loc=(1, 0.5))
     return a
-#####
 
 
 def plot_scatter(df, *args, **kwargs):
@@ -301,6 +300,87 @@ def _plot_scatter_col2_groupby_cat(df, cat, col1, col2, top=20, **kwargs):
     df[cat] = top_n_cat(df[cat], top)
 
     sns.lmplot(col1, col2, hue=cat, data=df, fit_reg=False, **kwargs)
+
+
+def plot_ts_line(df, cat=None, col=None, **kwargs):
+    if cat is None and col is None:
+        return _plot_ts_line_counts(df, **kwargs)
+
+    elif cat is None:
+        return _plot_ts_line_col(df, col, **kwargs)
+
+    elif col is None:
+        return _plot_ts_line_counts_groupby_cat(df, cat, **kwargs)
+
+    else:
+        return _plot_ts_line_col_groupby_cat(df, cat, col, **kwargs)
+
+def _plot_ts_line_counts(df, date_col='date', freq='M', **kwargs):
+    df = df.copy()
+
+    if freq in ['hour', 'month', 'weekday']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+        grouper = df.groupby(date_col)
+    else:
+        grouper = df.set_index(date_col).resample(freq)
+
+    grouper.size().plot(**kwargs)
+
+def _plot_ts_line_col(df, col, date_col='date', freq='M', **kwargs):
+    df = df.copy()
+
+    if freq in ['hour', 'month', 'weekday']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+        grouper = df.groupby(date_col)
+    else:
+        grouper = df.set_index(date_col).resample(freq)
+
+    grouper[col].mean().plot(**kwargs)
+    plt.legend(loc=(1, 0.5))
+
+def _plot_ts_line_counts_groupby_cat(df, cat, date_col='date', freq='M', area=False,
+                                    top=20, **kwargs):
+    df = df.copy()
+
+    df[cat] = top_n_cat(df[cat], top)
+
+    if freq in ['hour', 'month', 'weekday']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+    else:
+        df = df.set_index(date_col).to_period(freq)
+
+    if area == True:
+        kind = 'area'
+    else:
+        kind = 'line'
+
+    a = df.pivot_table(index=date_col, columns=cat, aggfunc=len, fill_value=0)
+    a.plot(**kwargs)
+    plt.legend(loc=(1, 0.5))
+
+    return a
+
+def _plot_ts_line_col_groupby_cat(df, cat, col, date_col='date', freq='M',
+                                 area=False, top=20, **kwargs):
+    df = df.copy()
+
+    df[cat] = top_n_cat(df[cat], top)
+
+    if freq in ['hour', 'month', 'weekday']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+    else:
+        df = df.set_index(date_col).to_period(freq)
+
+    if area == True:
+        kind = 'area'
+    else:
+        kind = 'line'
+
+    a = df.pivot_table(index=date_col, columns=cat, values=col, aggfunc=len, fill_value=0)
+    a.plot(kind=kind, **kwargs)
+    plt.legend(loc=(1, 0.5))
+
+    return a
 #####
 
 
@@ -333,73 +413,6 @@ def plot_clusters(df, cluster_model=None, pca_model=None, sample_size=1000, **kw
     cluster_model.fit(s.fit_transform(df))
     df['cluster'] = cluster_model.labels_
     plot_pca(df, 'cluster', pca_model, sample_size=None, **kwargs)
-
-# plot_ts_line
-# plot_line(df, 'date', col)
-def plot_line_trend(df, date_col='date', col=None, freq='M', **kwargs):
-    df = df.copy()
-
-    if freq in ['hour', 'month', 'weekday']:
-        df[date_col] = getattr(df.set_index(date_col).index, freq)
-        grouper = df.groupby(date_col)
-    else:
-        grouper = df.set_index(date_col).resample(freq)
-
-    if col:
-        grouper[col].mean().plot(**kwargs)
-    else:
-        grouper.size().plot(**kwargs)
-
-    if freq == 'weekday':
-        plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
-
-    plt.legend(loc=(1, 0.5))
-
-# why does ylim always seem to be off?
-def plot_ts_line_groupby_1(df, cat, date_col='date', col=None, freq='M', top=20,
-                           **kwargs):
-    df = df.copy()
-
-    df[cat] = top_n_cat(df[cat], top)
-
-    if freq in ['hour', 'month', 'weekday']:
-        df[date_col] = getattr(df.set_index(date_col).index, freq)
-    else:
-        df = df.set_index(date_col).to_period(freq).reset_index() # this part is slow?
-        # use pivot instead?
-        # df = df.set_index(date_col).to_period(freq)
-
-    if col:
-        # df.pivot(column=cat, value=col, aggfunc=np.mean)
-        df.pipe(crosstab, date_col, cat, col).plot(**kwargs)
-    else:
-        df.pipe(crosstab, date_col, cat).plot(**kwargs)
-
-    if freq == 'weekday':
-        plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
-
-    plt.legend(loc=(1, 0.5))
-
-def plot_ts_area_groupby_1(df, cat, date_col='date', col=None, freq='M', top=20,
-                           **kwargs):
-    df = df.copy()
-
-    df[cat] = top_n_cat(df[cat], top)
-
-    if freq in ['hour', 'month', 'weekday']:
-        df[date_col] = getattr(df.set_index(date_col).index, freq)
-    else:
-        df = df.set_index(date_col).to_period(freq).reset_index()
-
-    if col:
-        df.pipe(crosstab, date_col, cat, col).plot.area(**kwargs)
-    else:
-        df.pipe(crosstab, date_col, cat).plot.area(**kwargs)
-
-    if freq == 'weekday':
-        plt.xticks(range(7), ['M', 'T', 'W', 'Th', 'F', 'Sa', 'Su'], rotation=0)
-
-    plt.legend(loc=(1, 0.5))
 
 def plot_bar_trend(df, date_col='date', col=None, freq='M', **kwargs):
     df = df.copy()
