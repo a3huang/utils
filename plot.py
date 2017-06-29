@@ -18,7 +18,7 @@ from data import crosstab
 from model import _get_feature_importances, _get_model_name
 
 # Helper Functions
-def _top_n_cat(a, n=5):
+def top_n_cat(a, n=5):
     a = a.fillna('missing')
     counts = a.value_counts()
     top = counts.iloc[:n].index
@@ -50,44 +50,52 @@ def plot_missing(df, top=None, **kwargs):
     plt.title('Missing')
     return a
 
+
 def plot_bar(df, *args, **kwargs):
     if len(args) == 1:
-        return plot_bar_single_column(df, *args, **kwargs)
-    elif len(args) == 2:
-        if isinstance(args[1], list):
-            a = df.melt([args[0]], args[1])
-            return plot_bar_groupby_2(a, 'variable', args[0], 'value', **kwargs)
+        if isinstance(args[0], list):
+            return _plot_bar_col_multi(df, *args, **kwargs)
         else:
-            return plot_bar_groupby_1(df, *args, **kwargs)
+            return _plot_bar_col(df, *args, **kwargs)
+
+    elif len(args) == 2:
+        if isinstance(args[0], list):
+            return _plot_bar_col_multi_groupby_cat(df, *args, **kwargs)
+        else:
+            return _plot_bar_col_groupby_cat(df, *args, **kwargs)
+
     elif len(args) == 3:
-        return plot_bar_groupby_2(df, *args, **kwargs)
-    else:
-        raise ValueError, 'Too many arguments'
+        return _plot_bar_col_groupby_cat2(df, *args, **kwargs)
 
-def plot_bar_single_column(arg1, arg2=None, top=20, **kwargs):
-    if arg2 is None:
-        assert len(arg1.shape) == 1, 'If only one argument, then must be single column'
-        a = arg1
-        col = a.name
     else:
-        df = arg1
-        col = arg2
-        a = df[col]
+        raise ValueError, 'Not a valid number of arguments'
 
-    a = _top_n_cat(a, top)
-    a = a.value_counts(dropna=False).sort_index()
+def _plot_bar_col(df, col, top=20, **kwargs):
+    a = top_n_cat(df[col], top)
+
+    a = a.value_counts(dropna=False)
     a = a / float(sum(a))
-    a.sort_index(ascending=False).plot.barh(**kwargs)
+
+    a.sort_values().plot.barh(**kwargs)
     plt.xlabel('Proportion')
     plt.title(col)
     return a
 
-def plot_bar_groupby_1(df, cat, col, as_cat=False, top=20, **kwargs):
+def _plot_bar_col_multi(df, col, top=20, **kwargs):
+    # only supports column indices
+    a = df.iloc[:, col].sum().sort_values(ascending=False)
+    a = a / float(sum(a))
+
+    a.sort_values().plot.barh(**kwargs)
+    plt.xlabel('Proportion')
+    return a
+
+def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, **kwargs):
     df = df.copy()
-    df[cat] = _top_n_cat(df[cat], top)
+    df[cat] = top_n_cat(df[cat], top)
 
     if as_cat or df[col].dtype == 'O':
-        df[col] = _top_n_cat(df[col], top)
+        df[col] = top_n_cat(df[col], top)
         a = pd.crosstab(df[cat], df[col], normalize='index')
         a.plot.barh(**kwargs)
         plt.gca().invert_yaxis()
@@ -102,10 +110,14 @@ def plot_bar_groupby_1(df, cat, col, as_cat=False, top=20, **kwargs):
 
     return a
 
-def plot_bar_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
+def _plot_bar_col_multi_groupby_cat(df, col, cat, as_cat=False, top=20, **kwargs):
+    a = df.melt([cat], col)
+    return _plot_bar_col_groupby_cat2(a, 'variable', cat, 'value', **kwargs)
+
+def _plot_bar_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
-    df[cat1] = _top_n_cat(df[cat1], top)
-    df[cat2] = _top_n_cat(df[cat2], top)
+    df[cat1] = top_n_cat(df[cat1], top)
+    df[cat2] = top_n_cat(df[cat2], top)
 
     a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
     a.plot.barh(**kwargs)
@@ -115,10 +127,21 @@ def plot_bar_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
     plt.legend(title=cat2, loc=(1, 0.5))
     return a
 
-def plot_heatmap_1(df, cat1, cat2, normalize=None, top=20, **kwargs):
+
+def plot_heatmap(df, *args, **kwargs):
+    if len(args) == 2:
+        return _plot_heatmap_groupby_cat2(df, *args, **kwargs)
+
+    elif len(args) == 3:
+        return _plot_heatmap_col_groupby_cat2(df, *args, **kwargs)
+
+    else:
+        raise ValueError, 'Not a valid number of arguments'
+
+def _plot_heatmap_groupby_cat2(df, cat1, cat2, normalize='index', top=20, **kwargs):
     df = df.copy()
-    df[cat1] = _top_n_cat(df[cat1], top)
-    df[cat2] = _top_n_cat(df[cat2], top)
+    df[cat1] = top_n_cat(df[cat1], top)
+    df[cat2] = top_n_cat(df[cat2], top)
 
     a = pd.crosstab(df[cat1], df[cat2], normalize=normalize)
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
@@ -126,10 +149,10 @@ def plot_heatmap_1(df, cat1, cat2, normalize=None, top=20, **kwargs):
     plt.title('%s and %s' % (cat1, cat2))
     return a
 
-def plot_heatmap_2(df, cat1, cat2, col, top=20, **kwargs):
+def _plot_heatmap_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
-    df[cat1] = _top_n_cat(df[cat1], top)
-    df[cat2] = _top_n_cat(df[cat2], top)
+    df[cat1] = top_n_cat(df[cat1], top)
+    df[cat2] = top_n_cat(df[cat2], top)
 
     a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
@@ -137,9 +160,77 @@ def plot_heatmap_2(df, cat1, cat2, col, top=20, **kwargs):
     plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
     return a
 
-def plot_line_groupby_1(df, cat, col, top=20, **kwargs):
+
+def plot_hist(df, *args, **kwargs):
+    if len(args) == 1:
+        return _plot_hist_col(df, *args, **kwargs)
+
+    elif len(args) == 2:
+        return _plot_hist_col_groupby_cat(df, *args, **kwargs)
+
+    else:
+        raise ValueError, 'Not a valid number of arguments'
+
+def _plot_hist_col(df, col, density=False, winsorize_col=True, **kwargs):
+    a = df[col]
+
+    if winsorize_col:
+        a = winsorize(a)
+
+    assert len(a.shape) == 1, 'Must be single column'
+    assert len(a) > 0, 'Must have at least 1 element'
+
+    if density:
+        kde = True
+        hist = False
+    else:
+        kde = False
+        hist = True
+
+    weights = np.ones_like(a) / float(len(a))
+    sns.distplot(a, hist=hist, kde=kde, **kwargs)
+    plt.ylabel('Proportion')
+    plt.title(col)
+
+def _plot_hist_col_groupby_cat(df, cat, col, density=False, winsorize_col=True, top=20, **kwargs):
     df = df.copy()
-    df[cat] = _top_n_cat(df[cat], top)
+    df[cat] = top_n_cat(df[cat], top)
+
+    if winsorize_col:
+        df[col] = winsorize(df[col])
+        df = df[~df[col].isnull()]
+
+    assert df[col].isnull().any() == False, 'Column contains null values'
+
+    if density:
+        kde = True
+        hist = False
+    else:
+        kde = False
+        hist = True
+
+    bins = np.histogram(df[col])[1]
+    groups = df.groupby(cat)[col]
+    for k, v in groups:
+        sns.distplot(v, hist=hist, kde=kde, bins=bins, label=str(k), **kwargs)
+
+    plt.legend(title=cat, loc=(1, 0.5))
+    plt.title(col)
+
+
+def plot_line(df, *args, **kwargs):
+    if len(args) == 2:
+        return _plot_line_col_groupby_cat(df, *args, **kwargs)
+
+    elif len(args) == 3:
+        return _plot_line_col_groupby_cat2(df, *args, **kwargs)
+
+    else:
+        raise ValueError, 'Not a valid number of arguments'
+
+def _plot_line_col_groupby_cat(df, cat, col, top=20, **kwargs):
+    df = df.copy()
+    df[cat] = top_n_cat(df[cat], top)
 
     a = df.groupby(cat)[col].mean()
     a.plot(**kwargs)
@@ -148,87 +239,27 @@ def plot_line_groupby_1(df, cat, col, top=20, **kwargs):
     plt.title('%s grouped by %s' % (col, cat))
     return a
 
-def plot_line_groupby_2(df, cat1, cat2, col, top=20, **kwargs):
+def _plot_line_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
-    df[cat1] = _top_n_cat(df[cat1], top)
-    df[cat2] = _top_n_cat(df[cat2], top)
+    df[cat1] = top_n_cat(df[cat1], top)
+    df[cat2] = top_n_cat(df[cat2], top)
 
     a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
     a.plot(**kwargs)
     plt.xlabel(cat1)
-    plt.ylabel('Mean %s' % col)
+    plt.ylabel('Mean of %s' % col)
     plt.title('Interaction Effect of %s and %s on %s' % (cat1, cat2, col))
     plt.legend(title=cat2, loc=(1, 0.5))
     return a
+#####
 
-def plot_hist(df, *args, **kwargs):
-    if len(args) == 1:
-        return plot_hist_single_column(df, *args, **kwargs)
-    elif len(args) == 2:
-        return plot_hist_groupby_1(df, *args, **kwargs)
-    else:
-        raise ValueError, 'Too many arguments'
 
-def plot_hist_single_column(arg1, arg2=None, winsorize_col=True, **kwargs):
-    if arg2 is None:
-        assert len(arg1.shape) == 1, 'If only one argument, then must be single column'
-        a = arg1
-        col = a.name
-    else:
-        df = arg1
-        col = arg2
-        a = df[col]
 
-    if winsorize_col:
-        a = winsorize(a)
 
-    assert len(a.shape) == 1, 'Must be single column'
-    assert len(a) > 0, 'Must have at least 1 element'
-
-    weights = np.ones_like(a) / float(len(a))
-    a.plot.hist(weights=weights, **kwargs)
-    plt.ylabel('Proportion')
-    plt.title(col)
-
-def plot_hist_groupby_1(df, cat, col, winsorize_col=True, top=20, **kwargs):
-    df = df.copy()
-    df[cat] = _top_n_cat(df[cat], top)
-
-    if winsorize_col:
-        df[col] = winsorize(df[col])
-        df = df[~df[col].isnull()]
-
-    assert df[col].isnull().any() == False, 'Column contains null values'
-
-    bins = np.histogram(df[col])[1]
-    groups = df.groupby(cat)[col]
-    for k, v in groups:
-        plot_hist_single_column(v, bins=bins, winsorize_col=False, label=str(k),
-                                alpha=0.3, **kwargs)
-
-    plt.legend(title=cat, loc=(1, 0.5))
-    plt.title(col)
-
-def plot_density_groupby_1(df, cat, col, winsorize_col=True, top=20, **kwargs):
-    df = df.copy()
-    df[cat] = _top_n_cat(df[cat], top)
-
-    if winsorize_col:
-        df[col] = winsorize(df[col])
-        df = df[~df[col].isnull()]
-
-    assert df[col].isnull().any() == False, 'Column contains null values'
-
-    groups = df.groupby(cat)[col]
-    for k, v in groups:
-        sns.kdeplot(v, shade=True, label=str(k), **kwargs)
-
-    plt.legend(title=cat, loc=(1, 0.5))
-    plt.title(col)
 
 def plot_box_groupby_1(df, cat, col, top=20, **kwargs):
     df = df.copy()
-    df[cat] = _top_n_cat(df[cat], top)
+    df[cat] = top_n_cat(df[cat], top)
 
     df.boxplot(by=cat, column=col, vert=False, **kwargs)
     plt.gca().invert_yaxis()
@@ -242,7 +273,7 @@ def plot_scatter_1(df, col1, col2, **kwargs):
 
 def plot_scatter_groupby_1(df, cat, col1, col2, top=20, **kwargs):
     df = df.copy()
-    df[cat] = _top_n_cat(df[cat], top)
+    df[cat] = top_n_cat(df[cat], top)
 
     sns.lmplot(col1, col2, hue=cat, data=df, fit_reg=False, **kwargs)
     plt.title('%s vs. %s' % (col1, col2))
@@ -276,7 +307,6 @@ def plot_clusters(df, cluster_model=None, pca_model=None, sample_size=1000, **kw
     df['cluster'] = cluster_model.labels_
     plot_pca(df, 'cluster', pca_model, sample_size=None, **kwargs)
 
-# df.set_index('received_at').resample('M')['count'].quantile([.25, .5, .75]).unstack().plot()
 def plot_line_trend(df, date_col='date', col=None, freq='M', **kwargs):
     df = df.copy()
 
@@ -303,14 +333,13 @@ def plot_line_trend(df, date_col='date', col=None, freq='M', **kwargs):
     plt.legend(loc=(1, 0.5))
 
 # why does ylim always seem to be off?
-# kind='area'
 def plot_ts_line_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
                            **kwargs):
     df = df.copy()
 
     xticklabels = None
 
-    df[cat] = _top_n_cat(df[cat], top)
+    df[cat] = top_n_cat(df[cat], top)
 
     if freq in ['month', 'weekday', 'hour']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
@@ -338,7 +367,7 @@ def plot_ts_area_groupby_1(df, cat, date_col='date', col=None, top=20, freq='M',
 
     xticklabels = None
 
-    df[cat] = _top_n_cat(df[cat], top)
+    df[cat] = top_n_cat(df[cat], top)
 
     if freq in ['month', 'weekday', 'hour']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
@@ -389,7 +418,7 @@ def plot_bar_trend_groupby_1(df, cat, date_col='date', col=None, freq='M',
                              top=20, **kwargs):
     df = df.copy()
 
-    df[cat] = _top_n_cat(df[cat], top)
+    df[cat] = top_n_cat(df[cat], top)
 
     xticklabels = None
 
@@ -548,4 +577,3 @@ def plot_word_frequencies(docs, top=20, **kwargs):
     plt.legend().remove()
 
     return vocab
-#################
