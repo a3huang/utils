@@ -5,7 +5,12 @@ import pandas as pd
 from datetime import datetime
 from pandas.tseries.offsets import *
 
-# need to add tests
+# def _top_n_cat(a, n=5):
+#     a = a.fillna('missing')
+#     counts = a.value_counts()
+#     top = counts.iloc[:n].index
+#     return a.apply(lambda x: x if x in top else 'other')
+
 
 def input_requires(cols):
     def decorator(f):
@@ -53,14 +58,16 @@ def filter_week_window(df, n1, n2):
     df = df.query('filter_start <= date < filter_end')
     return df
 
+#
 # df should have user_id column
+# df.groupby('user_id').contiguous()
 def mark_adjacent_groups(df, col):
     df = df.copy()
     is_diff_number = df[col] != df[col].shift()
     is_diff_user = df['user_id'] != df['user_id'].shift()
     df['group'] = (is_diff_number | is_diff_user).cumsum()
     return df
-
+#
 # df should have user_id column
 def mark_consecutive_runs(df, col):
     df = df.copy()
@@ -68,8 +75,8 @@ def mark_consecutive_runs(df, col):
     is_diff_user = df['user_id'] != df['user_id'].shift()
     df['run'] = (is_nonconsecutive_number | is_diff_user).cumsum()
     return df
-
-#@requires_col(['date', 'start'])
+#
+# df should have start and date
 def mark_nth_week(df):
     df = df.copy()
     df['nth_week'] = (df['date'] - df['start']).dt.days / 7 + 1
@@ -113,17 +120,16 @@ def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
 
 # have functions return only relevant columns
-def dummies(df, col):
+def dummies(df, col, top=5):
     df = df.copy()
+    df[col] = _top_n_cat(df[col], top)
+
     dummy_col = pd.get_dummies(df[col])
     dummy_col.columns = [str(i) for i in dummy_col.columns]
-    df = pd.concat([df[['user_id']], dummy_col], axis=1)
-    #df = pd.concat([df.drop(col, 1), dummy_col], axis=1)
+
+    df = pd.concat([df.drop(col, 1), dummy_col], axis=1)
     return df
 
-# target.contains_any(strings)
-# def str_contains(target_str, list_of_str):
-#     return any([x for x in list_of_str if x in target_str])
 
 # df.pipe(merge_all, [df1, df2, df3], **kwargs)
 def merge_all(df, df_list):
