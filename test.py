@@ -105,3 +105,17 @@ def test_plot_hist():
     df = pd.DataFrame({'col': np.random.normal(0, 1, 1000), 'cat': ['a']*500 + ['b']*500})
     plot_hist(df, 'col')
     plot_hist(df, 'cat', 'col')
+
+def test_plot_box():
+    df = pd.DataFrame({'col1': np.random.normal(0, 1, 1000),
+                       'col2' : np.random.normal(5, 10, 1000),
+                       'cat': ['a']*500 + ['b']*500})
+    plot_box(df, 'cat', 'col1')
+    plot_box(df, ['col1', 'col2'], 'cat')
+
+def test_plot_scatter():
+    df = pd.DataFrame({'col1': np.random.normal(0, 1, 1000),
+                       'col2' : np.random.normal(5, 10, 1000),
+                       'cat': ['a']*500 + ['b']*500})
+    plot_scatter(df, 'col1', 'col2')
+    plot_scatter(df, 'cat', 'col1', 'col2')
