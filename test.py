@@ -73,7 +73,7 @@ def test_plot_bar_single_col():
 def test_plot_bar_multi_col():
     df = pd.DataFrame({'cat': ['a','a','b','a','c','d'], 'col1': [1,2,3,4,5,6],
                        'col2': [7,8,9,10,11,12]})
-    a = plot_bar(df, ['col1','col2'], 'cat')
+    a = plot_bar(df, 'cat', ['col1','col2'])
 
     b = pd.DataFrame({'a':[ 7/3., 25/3.], 'b': [3., 9.], 'c': [5., 11.],
                       'd': [6., 12.]}, index=['col1', 'col2'])
@@ -111,7 +111,7 @@ def test_plot_box():
                        'col2' : np.random.normal(5, 10, 1000),
                        'cat': ['a']*500 + ['b']*500})
     plot_box(df, 'cat', 'col1')
-    plot_box(df, ['col1', 'col2'], 'cat')
+    plot_box(df, 'cat', ['col1', 'col2'])
 
 def test_plot_scatter():
     df = pd.DataFrame({'col1': np.random.normal(0, 1, 1000),

@@ -50,7 +50,7 @@ def plot_missing(df, top=None, **kwargs):
     plt.title('Missing')
     return a
 
-
+# matplotlib
 def plot_bar(df, *args, **kwargs):
     if len(args) == 1:
         if isinstance(args[0], list):
@@ -59,7 +59,7 @@ def plot_bar(df, *args, **kwargs):
             return _plot_bar_col(df, *args, **kwargs)
 
     elif len(args) == 2:
-        if isinstance(args[0], list):
+        if isinstance(args[1], list):
             return _plot_bar_col_multi_groupby_cat(df, *args, **kwargs)
         else:
             return _plot_bar_col_groupby_cat(df, *args, **kwargs)
@@ -110,8 +110,8 @@ def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, **kwargs):
 
     return a
 
-def _plot_bar_col_multi_groupby_cat(df, cols, cat, as_cat=False, top=20, **kwargs):
-    a = df.melt([cat], cols)
+def _plot_bar_col_multi_groupby_cat(df, cat, col_list, as_cat=False, top=20, **kwargs):
+    a = df.melt([cat], col_list)
     return _plot_bar_col_groupby_cat2(a, 'variable', cat, 'value', **kwargs)
 
 def _plot_bar_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
@@ -130,7 +130,7 @@ def _plot_bar_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
 
 def plot_box(df, *args, **kwargs):
     if len(args) == 2:
-        if isinstance(args[0], list):
+        if isinstance(args[1], list):
             return _plot_box_col_multi_groupby_cat(df, *args, **kwargs)
         else:
             return _plot_box_col_groupby_cat(df, *args, **kwargs)
@@ -147,11 +147,11 @@ def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, **kwargs):
     plt.ylabel(cat)
     plt.title('%s grouped by %s' % (col, cat))
 
-def _plot_box_col_multi_groupby_cat(df, cols, cat, showfliers=False, top=20, **kwargs):
+def _plot_box_col_multi_groupby_cat(df, cat, col_list, showfliers=False, top=20, **kwargs):
     df = df.copy()
     df[cat] = top_n_cat(df[cat], top)
 
-    a = df.melt([cat], cols)
+    a = df.melt([cat], col_list)
     sns.boxplot(y='variable', x='value', hue=cat, data=a, showfliers=showfliers,
                 **kwargs)
     plt.legend(loc=(1, .5))
@@ -246,7 +246,7 @@ def _plot_hist_col_groupby_cat(df, cat, col, density=False, winsorize_col=True, 
     plt.legend(title=cat, loc=(1, 0.5))
     plt.title(col)
 
-
+# matplotlib
 def plot_line(df, *args, **kwargs):
     if len(args) == 2:
         return _plot_line_col_groupby_cat(df, *args, **kwargs)
@@ -301,6 +301,7 @@ def _plot_scatter_col2_groupby_cat(df, cat, col1, col2, top=20, **kwargs):
     df[cat] = top_n_cat(df[cat], top)
 
     sns.lmplot(col1, col2, hue=cat, data=df, fit_reg=False, **kwargs)
+#####
 
 
 
