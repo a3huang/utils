@@ -24,6 +24,17 @@ def top_n_cat(a, n=5):
     top = counts.iloc[:n].index
     return a.apply(lambda x: x if x in top else 'other')
 
+def bin_cont(a, n=5):
+    if a.value_counts().shape[0] <= n:
+        return a
+    return pd.cut(a, bins=n)
+
+def treat(a, n=5):
+    if a.dtype == 'O':
+        return top_n_cat(a, n)
+    elif a.dtype in ['int64', 'float64']:
+        return bin_cont(a, n)
+
 def winsorize(x, p=.05):
     n = int(1/p)
     sorted_col = x.sort_values().reset_index(drop=True)
@@ -71,6 +82,11 @@ def plot_bar(df, *args, **kwargs):
         raise ValueError, 'Not a valid number of arguments'
 
 def _plot_bar_col(df, col, top=20, **kwargs):
+    # if col.dtype == 'O':
+    #   top_n_cat(col)
+    # if col.dtype in ['int64', 'float64']:
+    #   bin(col)
+
     a = top_n_cat(df[col], top)
 
     a = a.value_counts(dropna=False)
@@ -111,6 +127,7 @@ def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, **kwargs):
     return a
 
 def _plot_bar_col_multi_groupby_cat(df, cat, col_list, as_cat=False, top=20, **kwargs):
+    # refactor using df.groupby('cat')[col_list] ?
     a = df.melt([cat], col_list)
     return _plot_bar_col_groupby_cat2(a, 'variable', cat, 'value', **kwargs)
 
