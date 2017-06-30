@@ -27,7 +27,9 @@ def top_n_cat(a, n=5):
 def bin_cont(a, n=5):
     if a.value_counts().shape[0] <= n:
         return a
-    return pd.cut(a, bins=n)
+    num_bins = int(np.ceil((a.max() - a.min())/n))
+    bin_edges = [a.min() + n*i for i in range(num_bins+1)]
+    return pd.cut(a, bins=bin_edges, include_lowest=True)
 
 def treat(a, n=5):
     if a.dtype == 'O':
