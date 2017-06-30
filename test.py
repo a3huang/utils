@@ -20,6 +20,11 @@ def test_top_n_cat():
     b = pd.Series(['a','a','a','b','b','other','other','other','other','other'], name=0)
     pdt.assert_series_equal(a, b)
 
+def test_bin_cont():
+    df = pd.DataFrame({'col': range(10)})
+    a = bin_cont(df['col'], 5)
+    assert a.unique().shape[0] == 2
+
 def test_treat():
     df = pd.DataFrame([1,2,3,4,5])
     a = treat(df[0], 5).values
