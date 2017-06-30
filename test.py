@@ -20,6 +20,12 @@ def test_top_n_cat():
     b = pd.Series(['a','a','a','b','b','other','other','other','other','other'], name=0)
     pdt.assert_series_equal(a, b)
 
+def test_treat():
+    df = pd.DataFrame([1,2,3,4,5])
+    a = treat(df[0], 5).values
+    b = pd.Series([1,2,3,4,5]).values
+    npt.assert_array_equal(a, b)
+
 def test_mark_nth_week():
     df = pd.DataFrame({'start': ['2017-06-26']*6,
                        'date': ['2017-06-26','2017-07-03','2017-07-10','2017-07-17',
