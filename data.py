@@ -5,12 +5,11 @@ import pandas as pd
 from datetime import datetime
 from pandas.tseries.offsets import *
 
-# def _top_n_cat(a, n=5):
-#     a = a.fillna('missing')
-#     counts = a.value_counts()
-#     top = counts.iloc[:n].index
-#     return a.apply(lambda x: x if x in top else 'other')
-
+def _top_n_cat(a, n=5):
+    a = a.fillna('missing')
+    counts = a.value_counts()
+    top = counts.iloc[:n].index
+    return a.apply(lambda x: x if x in top else 'other')
 
 def input_requires(cols):
     def decorator(f):
@@ -120,21 +119,24 @@ def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
 
 # have functions return only relevant columns
-def dummies(df, col, top=5):
+# have keep column?
+def dummies(df, col, top=None):
     df = df.copy()
-    df[col] = _top_n_cat(df[col], top)
+
+    if top:
+        df[col] = _top_n_cat(df[col], top)
 
     dummy_col = pd.get_dummies(df[col])
     dummy_col.columns = [str(i) for i in dummy_col.columns]
 
-    df = pd.concat([df.drop(col, 1), dummy_col], axis=1)
+    df = pd.concat([df[['user_id']], dummy_col], axis=1)
     return df
 
 
 # df.pipe(merge_all, [df1, df2, df3], **kwargs)
-def merge_all(df, df_list):
+def merge_all(df, df_list, on='user_id'):
     for i in df_list:
-        df = df.merge(i, on='user_id', how='left')
+        df = df.merge(i, on=on, how='left')
     return df
 
 def stack_all(df_list):
