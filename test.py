@@ -128,14 +128,17 @@ def test_plot_scatter():
     df = pd.DataFrame({'col1': np.random.normal(0, 1, 1000),
                        'col2' : np.random.normal(5, 10, 1000),
                        'cat': ['a']*500 + ['b']*500})
+
     plot_scatter(df, 'col1', 'col2')
     plot_scatter(df, 'cat', 'col1', 'col2')
-
+    # very strange bug occurs when above line is commented out
+    
 def test_ts_line():
     df = pd.DataFrame({'date': ['2017-01-01']*3 + ['2017-02-01']*2 + ['2017-03-01']*5,
                   'col': range(10, 110, 10), 'cat': ['a']*5 + ['b']*3 + ['c']*2,
                   'col2': np.random.normal(5,4,10)})
     df['date'] = pd.to_datetime(df['date'])
+    print df.info()
 
     plot_ts_line(df)
     plot_ts_line(df, cat='cat')
