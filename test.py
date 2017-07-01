@@ -25,6 +25,10 @@ def test_bin_cont():
     a = bin_cont(df['col'], 5)
     assert a.unique().shape[0] == 2
 
+    df = pd.DataFrame([1,3]*5 + [5,9]*10 + [12,17,11]*5 + [21,19,23]*5)
+    a = bin_cont(df[0], 5)
+    assert a.unique().shape[0] == 5
+
 def test_treat():
     df = pd.DataFrame([1,2,3,4,5])
     a = treat(df[0], 5).values
@@ -132,7 +136,7 @@ def test_plot_scatter():
     plot_scatter(df, 'col1', 'col2')
     plot_scatter(df, 'cat', 'col1', 'col2')
     # very strange bug occurs when above line is commented out
-    
+
 def test_ts_line():
     df = pd.DataFrame({'date': ['2017-01-01']*3 + ['2017-02-01']*2 + ['2017-03-01']*5,
                   'col': range(10, 110, 10), 'cat': ['a']*5 + ['b']*3 + ['c']*2,
