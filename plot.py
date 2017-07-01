@@ -312,7 +312,7 @@ def plot_scatter(df, *args, **kwargs):
         raise ValueError, 'Not a valid number of arguments'
 
 def _plot_scatter_col2(df, col1, col2, **kwargs):
-    sns.lmplot(col1, col2, data=df, **kwargs)
+    sns.lmplot(col1, col2, data=df, ci=False, **kwargs)
 
 def _plot_scatter_col2_groupby_cat(df, cat, col1, col2, top=20, **kwargs):
     df = df.copy()
@@ -384,7 +384,7 @@ def _plot_ts_col(df, col, kind, date_col='date', freq='M', **kwargs):
     plt.legend(loc=(1, 0.5))
 
 def _plot_ts_counts_groupby_cat(df, cat, kind, date_col='date', freq='M',
-                                     top=20, **kwargs):
+                                top=20, **kwargs):
     df = df.copy()
     df[cat] = top_n_cat(df[cat], top)
 
@@ -400,7 +400,7 @@ def _plot_ts_counts_groupby_cat(df, cat, kind, date_col='date', freq='M',
     return a
 
 def _plot_ts_col_groupby_cat(df, cat, col, kind, date_col='date', freq='M',
-                                  top=20, **kwargs):
+                             top=20, **kwargs):
     df = df.copy()
     df[cat] = top_n_cat(df[cat], top)
 
@@ -426,7 +426,6 @@ def plot_ts_box(df, col, date_col='date', freq='M', **kwargs):
 
     df.boxplot(by=date_col, column=col, **kwargs)
     plt.xticks(rotation=90)
-    plt.legend(loc=(1, 0.5))
 #####
 
 
