@@ -48,6 +48,8 @@ def nonconstant_col(f):
 def filter_before_boundary(df):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
+    df['start'] = pd.to_datetime(df['start'])
+    df['boundary'] = pd.to_datetime(df['boundary'])
     df['filter_start'] = df['start']
     df['filter_end'] = df['boundary']
     df = df.query('filter_start <= date < filter_end')
@@ -57,6 +59,7 @@ def filter_before_boundary(df):
 def filter_first_n_weeks(df, n):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
+    df['start'] = pd.to_datetime(df['start'])
     df['filter_start'] = df['start']
     df['filter_end'] = df['start'] + DateOffset(weeks=n)
     df = df.query('filter_start <= date < filter_end')
@@ -66,6 +69,7 @@ def filter_first_n_weeks(df, n):
 def filter_last_n_weeks(df, n):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
+    df['start'] = pd.to_datetime(df['start'])
     df['filter_start'] = datetime.now() - DateOffset(months=n)
     df['filter_end'] = datetime.now()
     df = df.query('filter_start <= date < filter_end')
@@ -75,33 +79,43 @@ def filter_last_n_weeks(df, n):
 def filter_week_window(df, n1, n2):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
+    df['start'] = pd.to_datetime(df['start'])
     df['filter_start'] = df['start'] + DateOffset(weeks=n1)
     df['filter_end'] = df['start'] + DateOffset(weeks=n2)
     df = df.query('filter_start <= date < filter_end')
     return df
 
 #
-@input_requires(['user_id'])
-def mark_adjacent_groups(df, col):
+def mark_adjacent_groups(df, col, reset_count_on='user_id'):
     df = df.copy()
     is_diff_number = df[col] != df[col].shift()
-    is_diff_user = df['user_id'] != df['user_id'].shift()
-    df['group'] = (is_diff_number | is_diff_user).cumsum()
+
+    if reset_count_on:
+        is_diff_user = df['user_id'] != df['user_id'].shift()
+        df['group'] = (is_diff_number | is_diff_user).cumsum()
+    else:
+        df['group'] = (is_diff_number).cumsum()
+
     return df
 
 #
-@input_requires(['user_id'])
-def mark_consecutive_runs(df, col):
+def mark_consecutive_runs(df, col, reset_count_on='user_id'):
     df = df.copy()
     is_nonconsecutive_number = df[col] != df[col].shift() + 1
-    is_diff_user = df['user_id'] != df['user_id'].shift()
-    df['run'] = (is_nonconsecutive_number | is_diff_user).cumsum()
+
+    if reset_count_on:
+        is_diff_user = df['user_id'] != df['user_id'].shift()
+        df['run'] = (is_nonconsecutive_number | is_diff_user).cumsum()
+    else:
+        df['run'] = (is_nonconsecutive_number).cumsum()
     return df
 
 #
 @input_requires(['date', 'start'])
 def mark_nth_week(df):
     df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
+    df['start'] = pd.to_datetime(df['start'])
     df['nth_week'] = (df['date'] - df['start']).dt.days / 7 + 1
     df['nth_week'] = df['nth_week'].astype(int)
     return df
@@ -177,6 +191,7 @@ def stack_all(df_list):
 # needs user_id and date
 def time_diff(df):
     df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values(by=['user_id', 'date'])
     df['time_diff'] = df['date'].diff().dt.total_seconds()
     df.loc[df['user_id'] != df['user_id'].shift(1), 'time_diff'] = np.nan
@@ -198,6 +213,7 @@ def average_value(df, col='id'):
 # needs date filter_start, filter_end, start, end column
 def frequency(df, group, col):
     df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
     df['date_string'] = df['date'].dt.date
     df['total'] = df.groupby(group)['date_string'].transform('count')
     df = df.groupby(group).head(1)
@@ -232,11 +248,13 @@ def get_rate(df, col):
 # add default "names" to all other functions as well
 def add_dow_offset(df, date_col, name='next_dow', **kwargs):
     df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
     df[name] = df[date_col].dt.to_period('W').dt.start_time + DateOffset(**kwargs)
     return df
 
 def add_date_offset(df, date_col, name='next', **kwargs):
     df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
     df[name] = df[date_col].dt.date + DateOffset(**kwargs)
     return df
 
@@ -323,13 +341,9 @@ def count_categorical(df, col):
     df = df.pipe(dummies, col).groupby('user_id').sum().reset_index()
     return df
 
-def convert_to_date(df, column):
-    df = df.copy()
-    df[column] = pd.to_datetime(df[column].dt.strftime('%Y-%m-%d'))
-    return df
-
 def fill_in_time_diff(df):
     df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
     a = (datetime.now() - df['date']).dt.days
     df['time_diff'] = df['time_diff'].fillna(a)
     return df
