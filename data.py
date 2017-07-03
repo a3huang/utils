@@ -125,6 +125,22 @@ def mark_nth_week(df):
     df['nth_week'] = df['nth_week'].astype(int)
     return df
 
+#
+@input_requires(['date'])
+def time_diff(df, group='user_id'):
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
+
+    if group is None:
+        df = df.sort_values(by='date')
+        df['time_diff'] = df['date'].diff().dt.total_seconds()
+    else:
+        df = df.sort_values(by=[group, 'date'])
+        df['time_diff'] = df['date'].diff().dt.total_seconds()
+        df.loc[df[group] != df[group].shift(1), 'time_diff'] = np.nan
+
+    return df
+
 def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     df = df.copy()
 
@@ -133,6 +149,7 @@ def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     else:
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
 
+#
 @input_requires(['user_id'])
 def dummies(df, col, top=None):
     df = df.copy()
@@ -201,46 +218,23 @@ def get_columns_with(df, include=None, exclude=None):
 
     return c
 
-# have functions only return relevant columns
-def count_categorical(df, col):
-    df = df.copy()
-    df = df.pipe(dummies, col).groupby('user_id').sum().reset_index()
-    return df
-
-######
-def interactions(df, cols=None):
-    df = df.copy()
-
-    if cols:
-        df = df[cols]
-
-    for i, j in list(itertools.combinations(df.columns, 2)):
-        df['%s*%s' % (i, j)] = df[i] * df[j]
-
-    return df
-# add generic transformation function?
-def log_transform(df, cols):
-    df = df.copy()
-    df[cols] = df[cols].apply(lambda x: np.log(x + 1))
-    return df
-def bin_transform(df, cols):
-    df = df.copy()
-    df[cols] = df[cols].apply(lambda x: pd.cut(x, 4).cat.codes)
-    return df
 def add_column(df, col, name=None):
-    col = pd.DataFrame(col)
+    col = pd.DataFrame(col).reset_index(drop=True)
     if name:
         col.columns = [name]
     return pd.concat([df.reset_index(drop=True), col], axis=1)
 
-# needs user_id and date
-def time_diff(df):
+def add_agg_col(df, group, func, col=None):
     df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df = df.sort_values(by=['user_id', 'date'])
-    df['time_diff'] = df['date'].diff().dt.total_seconds()
-    df.loc[df['user_id'] != df['user_id'].shift(1), 'time_diff'] = np.nan
-    return df
+
+    if col:
+        df[func] = df.groupby(group)[col].transform(func)
+    else:
+        df['count'] = df.groupby(group).transform('count').iloc[:, -1]
+
+    return df.groupby(group).head(1)
+
+######
 
 # needs date filter_start, filter_end, start, end column
 def frequency(df, group, col):
@@ -283,26 +277,6 @@ def add_date_offset(df, date_col, name='next', **kwargs):
     df[name] = df[date_col].dt.date + DateOffset(**kwargs)
     return df
 
-def count_rows(df, group='user_id'):
-    a = df.groupby(group).size().reset_index()
-    a.columns = [group, 'events']
-    return a
-
-def transform_column(df, cols, f):
-    df = df.copy()
-    df[cols] = df[cols].apply(f)
-    return df
-
-def add_agg_col(df, group, col, func):
-    df = df.copy()
-    df[func] = df.groupby(group)[col].transform(func)
-    return df.groupby(group).head(1)
-
-def add_agg_count_col(df, group, func):
-    df = df.copy()
-    df['count'] = df.groupby(group).transform('count').iloc[:, -1]
-    return df.groupby(group).head(1)
-
 def consecutive_runs(df):
     df = df.copy()
     df = df.pipe(mark_nth_week)
@@ -310,28 +284,6 @@ def consecutive_runs(df):
     df = df.pipe(mark_consecutive_runs, 'nth_week')
     df = df.groupby(['user_id', 'run']).size().reset_index().drop('run', axis=1)
     return df
-
-# need error checking on preserve
-def my_query(df, query, on='user_id', preserve='group'):
-    return df[[on, preserve]].merge(df.query(query).pipe(remove, [preserve]), on=on, how='left')
-
-def name(df, names):
-    df = df.copy()
-    if isinstance(names, (list, tuple)):
-        df.columns = ['user_id'] + list(names)
-    else:
-        df.columns = ['user_id', names]
-    return df
-
-def name_with_template(df, template):
-    df = df.copy()
-    col_names = df.columns.difference(['user_id'])
-    return df.pipe(name, ['%s_%s' % (template, i) for i in col_names])
-
-def name_append(df, x, ignore=['user_id']):
-    df = df.copy()
-    col = df.columns.difference(ignore)
-    return df.rename(columns=dict(zip(col, [i + '_%s' % x for i in col])))
 
 def get_weekly_ts(df, window, name):
     a, b = window
@@ -341,3 +293,7 @@ def get_weekly_ts(df, window, name):
               .pipe(dummies, 'nth_week')\
               .groupby('user_id').sum().reset_index()\
               .pipe(name_with_template, name)
+
+# need error checking on preserve
+def my_query(df, query, on='user_id', preserve='group'):
+    return df[[on, preserve]].merge(df.query(query).pipe(remove, [preserve]), on=on, how='left')
