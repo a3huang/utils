@@ -110,6 +110,20 @@ def test_count_categorical():
     b = b[['user_id', 'a', 'b', 'c']]
     pdt.assert_frame_equal(a, b)
 
+def test_total_count():
+    df = pd.DataFrame({'user_id': [1,1,2,2,2], 'col': range(10,60,10)})
+    a = df.groupby('user_id')['col'].count().reset_index()
+    b = pd.DataFrame({'user_id': [1, 2], 'col': [2, 3]})
+    b = b[['user_id', 'col']]
+    pdt.assert_frame_equal(a, b)
+
+def test_total_value():
+    df = pd.DataFrame({'user_id': [1,1,2,2,2], 'col': range(10,60,10)})
+    a = df.groupby('user_id')['col'].sum().reset_index()
+    b = pd.DataFrame({'user_id': [1, 2], 'col': [30, 120]})
+    b = b[['user_id', 'col']]
+    pdt.assert_frame_equal(a, b)
+
 def test_plot_bar_single_col():
     df = pd.DataFrame({0: ['a', 'a', 'b', 'b', 'b', 'b', 'c', 'd', 'e', 'a']})
     a = plot_bar(df, 0).values
