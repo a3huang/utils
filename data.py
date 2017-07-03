@@ -167,6 +167,46 @@ def missing_indicator(df, col):
 def load(filename, date_cols, folder='/Users/alexhuang/Documents/data/gobble_data/'):
     return pd.read_csv(folder + filename, parse_dates=date_cols)
 
+def col_in(df, col, values):
+    return df[df[col].isin(values)]
+
+def col_between(df, left, col, right):
+    return df[(df[col] > left) & (df[col] < right)]
+
+def get_dups(df, col):
+    a = df.groupby(col).size()
+    dup = a[a > 1].index
+    return df[df[col].isin(dup)].sort_values(by=col)
+
+def contains_any(a, strings):
+    return any([x for x in strings if x in a])
+
+def contains_none_of(a, strings):
+    return bool(1 - contains_any(a, strings))
+
+def get_columns_with(df, include=None, exclude=None):
+    df = df.copy()
+
+    if include:
+        include = set(include)
+    else:
+        include = set(df.columns)
+
+    if exclude:
+        exclude = set(exclude)
+    else:
+        exclude = set()
+
+    c = [i for i in df.columns if contains_any(i, include) and contains_none_of(i, exclude)]
+
+    return c
+
+# have functions only return relevant columns
+def count_categorical(df, col):
+    df = df.copy()
+    df = df.pipe(dummies, col).groupby('user_id').sum().reset_index()
+    return df
+
 ######
 def interactions(df, cols=None):
     df = df.copy()
@@ -202,19 +242,6 @@ def time_diff(df):
     df.loc[df['user_id'] != df['user_id'].shift(1), 'time_diff'] = np.nan
     return df
 
-# have defaults: group='user_id', col='id'?
-def total_count(df, group='user_id', col='id'):
-    return df.groupby(group)[col].count().reset_index()
-
-def total_value(df, group='user_id', col='id'):
-    return df.groupby(group)[col].sum().reset_index()
-
-# need id column?
-def average_value(df, col='id'):
-    df = df.copy()
-    df = df.groupby('user_id')[col].mean().reset_index()
-    return df
-
 # needs date filter_start, filter_end, start, end column
 def frequency(df, group, col):
     df = df.copy()
@@ -233,19 +260,12 @@ def frequency(df, group, col):
     df = df[[group, 'frequency']]
     return df
 
-def col_in(df, col, values):
-    return df[df[col].isin(values)]
-
-def col_between(df, left, col, right):
-    return df[(df[col] > left) & (df[col] < right)]
-
 # make id default col?
 # needs user id column
 def get_grouped_rates(df, group, col):
     # get counts aggregated by user id
     a = df.pipe(add_agg_col, 'user_id', col, 'count')
     return a[a[col] > 0].groupby(group)['count'].size() / a.groupby(group)['count'].size()
-
 def get_rate(df, col):
     a = df[col].value_counts(dropna=False)
     return a / float(sum(a))
@@ -273,11 +293,6 @@ def transform_column(df, cols, f):
     df[cols] = df[cols].apply(f)
     return df
 
-def get_dups(df, col):
-    a = df.groupby(col).size()
-    dup = a[a > 1].index
-    return df[df[col].isin(dup)].sort_values(by=col)
-
 def add_agg_col(df, group, col, func):
     df = df.copy()
     df[func] = df.groupby(group)[col].transform(func)
@@ -300,33 +315,6 @@ def consecutive_runs(df):
 def my_query(df, query, on='user_id', preserve='group'):
     return df[[on, preserve]].merge(df.query(query).pipe(remove, [preserve]), on=on, how='left')
 
-def contains_any(a, strings):
-    return any([x for x in strings if x in i])
-
-def contains_none_of(a, strings):
-    return bool(1 - contains_any(a, strings))
-
-# remove include_target
-def get_columns_with(df, include=None, exclude=None, include_target=True):
-    df = df.copy()
-
-    if include:
-        include = set(include)
-    else:
-        include = set(df.columns)
-
-    if exclude:
-        exclude = set(exclude)
-    else:
-        exclude = set()
-
-    if include_target:
-        include.add('target')
-
-    c = [i for i in df.columns if contains_any(i, include) and contains_none_of(i, exclude)]
-
-    return df[c]
-
 def name(df, names):
     df = df.copy()
     if isinstance(names, (list, tuple)):
@@ -340,20 +328,16 @@ def name_with_template(df, template):
     col_names = df.columns.difference(['user_id'])
     return df.pipe(name, ['%s_%s' % (template, i) for i in col_names])
 
-# have functions only return relevant columns
-def count_categorical(df, col):
-    df = df.copy()
-    df = df.pipe(dummies, col).groupby('user_id').sum().reset_index()
-    return df
-
-def fill_in_time_diff(df):
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    a = (datetime.now() - df['date']).dt.days
-    df['time_diff'] = df['time_diff'].fillna(a)
-    return df
-
 def name_append(df, x, ignore=['user_id']):
     df = df.copy()
     col = df.columns.difference(ignore)
     return df.rename(columns=dict(zip(col, [i + '_%s' % x for i in col])))
+
+def get_weekly_ts(df, window, name):
+    a, b = window
+    return df.pipe(filter_week_window, a, b)\
+              .pipe(mark_nth_week)\
+              .query('nth_week >= 0')\
+              .pipe(dummies, 'nth_week')\
+              .groupby('user_id').sum().reset_index()\
+              .pipe(name_with_template, name)
