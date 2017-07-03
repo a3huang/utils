@@ -21,6 +21,29 @@ def input_requires(cols):
         return wrapper
     return decorator
 
+def check_output_schema(df, num_cols):
+    if len(df.columns) != num_cols:
+        raise ValueError, 'Incorrect number of columns'
+    return df
+
+def output_schema(num_cols):
+    def decorator(f):
+        def wrapper(df, *args, **kwargs):
+            output = f(df, *args, **kwargs)
+            if len(output.columns) != num_cols:
+                raise ValueError, 'Incorrect number of columns'
+            return output
+        return wrapper
+    return decorator
+
+def nonconstant_col(f):
+    def wrapper(df, *args, **kwargs):
+        output = f(df, *args, **kwargs)
+        if len(output.iloc[:, -1].value_counts()) == 0:
+            raise ValueError, 'Contains constant column'
+        return output
+    return wrapper
+
 @input_requires(['date', 'start', 'boundary'])
 def filter_before_boundary(df):
     df = df.copy()
@@ -39,7 +62,7 @@ def filter_first_n_weeks(df, n):
     df = df.query('filter_start <= date < filter_end')
     return df
 
-@requires_col(['date', 'start'])
+@input_requires(['date', 'start'])
 def filter_last_n_weeks(df, n):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -48,7 +71,7 @@ def filter_last_n_weeks(df, n):
     df = df.query('filter_start <= date < filter_end')
     return df
 
-@requires_col(['date', 'start'])
+@input_requires(['date', 'start'])
 def filter_week_window(df, n1, n2):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -76,7 +99,7 @@ def mark_consecutive_runs(df, col):
     return df
 
 #
-@input_requires(['user_id', 'date', 'start'])
+@input_requires(['date', 'start'])
 def mark_nth_week(df):
     df = df.copy()
     df['nth_week'] = (df['date'] - df['start']).dt.days / 7 + 1
@@ -117,6 +140,8 @@ def missing_indicator(df, col):
     df.loc[:, '%s_missing' % col] = df[col].apply(lambda x: 1 if pd.isnull(x) else 0)
     return df
 
+def load(filename, date_cols, folder='/Users/alexhuang/Documents/data/gobble_data/'):
+    return pd.read_csv(folder + filename, parse_dates=date_cols)
 
 ######
 def interactions(df, cols=None):
