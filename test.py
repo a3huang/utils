@@ -54,6 +54,27 @@ def test_mark_nth_week():
 
     pdt.assert_frame_equal(a, b)
 
+def test_time_diff():
+    df = pd.DataFrame({'date': ['2017-06-26','2017-07-03','2017-07-10','2017-07-17',
+                                '2017-07-24','2017-07-31']})
+    df['date'] = pd.to_datetime(df['date'])
+    a = time_diff(df, None)
+    b = pd.DataFrame({'date': ['2017-06-26','2017-07-03','2017-07-10','2017-07-17',
+                      '2017-07-24','2017-07-31'], 'time_diff': [np.NaN] + [604800.0]*5})
+    b['date'] = pd.to_datetime(b['date'])
+    pdt.assert_frame_equal(a, b)
+
+def test_time_diff_users():
+    df = pd.DataFrame({'user_id': [1,2,1,2,1,2], 'date': ['2017-06-26','2017-07-03',
+                       '2017-07-10','2017-07-17', '2017-07-24','2017-07-31']})
+    a = time_diff(df).reset_index(drop=True)
+    b = pd.DataFrame({'user_id': [1,1,1,2,2,2], 'date': ['2017-06-26','2017-07-10',
+                      '2017-07-24','2017-07-03', '2017-07-17','2017-07-31'],
+                      'time_diff': [np.NaN, 1209600.0, 1209600.0]*2})
+    b['date'] = pd.to_datetime(b['date'])
+    b = b[['date', 'user_id', 'time_diff']]
+    pdt.assert_frame_equal(a, b)
+
 def test_mark_consec_run_same_user():
     df = pd.DataFrame({'user_id': [1,1,1,1,1], 'b': [1,2,3,1,2]})
     a = mark_consecutive_runs(df, 'b')
@@ -122,6 +143,13 @@ def test_total_value():
     a = df.groupby('user_id')['col'].sum().reset_index()
     b = pd.DataFrame({'user_id': [1, 2], 'col': [30, 120]})
     b = b[['user_id', 'col']]
+    pdt.assert_frame_equal(a, b)
+
+def test_count_categorical():
+    df = pd.DataFrame({'user_id': [1,1,2,2,2], 'col': ['a', 'b', 'c', 'a', 'b']})
+    a = df.pipe(dummies, 'col').groupby('user_id').sum().reset_index().astype(int)
+    b = pd.DataFrame({'user_id': [1, 2], 'a': [1,1], 'b': [1,1], 'c': [0,1]})
+    b = b[['user_id', 'a', 'b', 'c']]
     pdt.assert_frame_equal(a, b)
 
 def test_plot_bar_single_col():
