@@ -44,6 +44,11 @@ def nonconstant_col(f):
         return output
     return wrapper
 
+def check_unique_id(df, id_col):
+    if len(df.groupby(id_col).size().value_counts()) > 1:
+        raise ValueError, 'Contains duplicate %s' % id_col
+    return df
+
 @input_requires(['date', 'start', 'boundary'])
 def filter_before_boundary(df):
     df = df.copy()
@@ -144,10 +149,15 @@ def dummies(df, col, top=None):
 def remove(df, cols):
     return df[df.columns.difference(cols)]
 
-def merge_all(df, df_list, on='user_id'):
+def merge(df, df_list, on='user_id'):
     for i in df_list:
         df = df.merge(i, on=on, how='left')
     return df
+
+def stack(df_list):
+    for i, df in enumerate(df_list):
+        df['group'] = i
+    return pd.concat(df_list)
 
 def missing_indicator(df, col):
     df = df.copy()
@@ -182,11 +192,6 @@ def add_column(df, col, name=None):
     if name:
         col.columns = [name]
     return pd.concat([df.reset_index(drop=True), col], axis=1)
-
-def stack_all(df_list):
-    for i, df in enumerate(df_list):
-        df['group'] = i
-    return pd.concat(df_list)
 
 # needs user_id and date
 def time_diff(df):
