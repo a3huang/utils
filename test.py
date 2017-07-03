@@ -66,8 +66,16 @@ def test_mark_consec_run_diff_user():
     df = pd.DataFrame({'user_id': [1,1,1,1,2,2,2], 'b': [1,2,10,3,4,2,1]})
     a = mark_consecutive_runs(df, 'b')
 
-    b= pd.DataFrame({'user_id': [1,1,1,1,2,2,2], 'b': [1,2,10,3,4,2,1], 'run': [1,1,2,3,4,5,6]})
+    b = pd.DataFrame({'user_id': [1,1,1,1,2,2,2], 'b': [1,2,10,3,4,2,1], 'run': [1,1,2,3,4,5,6]})
     b = b[['b', 'user_id', 'run']]
+    pdt.assert_frame_equal(a, b)
+
+def test_mark_consec_run_no_user():
+    df = pd.DataFrame({'a': [1,1,1,1,1], 'b': [1,2,3,1,2]})
+    a = mark_consecutive_runs(df, 'b', None)
+
+    b = pd.DataFrame({'a': [1,1,1,1,1], 'b': [1,2,3,1,2], 'run': [1,1,1,2,2]})
+    b = b[['a', 'b', 'run']]
     pdt.assert_frame_equal(a, b)
 
 def test_mark_adjacent():
@@ -77,6 +85,15 @@ def test_mark_adjacent():
     b = pd.DataFrame({'user_id': [1,1,1,1,2,2,2,3], 'b': [1,1,1,2,2,2,4,5],
                       'group': [1,1,1,2,3,3,4,5]})
     b = b[['b', 'user_id', 'group']]
+    pdt.assert_frame_equal(a, b)
+
+def test_mark_adjacent_no_user():
+    df = pd.DataFrame({'a': [1,1,1,1,2,2,2,3], 'b': [1,1,1,2,2,2,4,5]})
+    a = mark_adjacent_groups(df, 'b', None)
+
+    b = pd.DataFrame({'a': [1,1,1,1,2,2,2,3], 'b': [1,1,1,2,2,2,4,5],
+                      'group': [1,1,1,2,2,2,3,4]})
+    b = b[['a', 'b', 'group']]
     pdt.assert_frame_equal(a, b)
 
 def test_dummies():
