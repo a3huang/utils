@@ -290,3 +290,12 @@ def evaluate_interactions(model_dict, X, y, interactions=None):
 
         l.append((model_name, auc, recall))
     return pd.DataFrame(l)
+
+# needs pred column
+def get_error_dfs(df, target):
+    df = df.copy()
+    df.loc[(df[target] == False) & (df['pred'] == True), 'fp']  = 1
+    df.loc[df[target] == df['pred'], 'correct'] = 1
+    df.loc[(df[target] == True) & (df['pred'] == False), 'fn'] = 1
+    df = df.fillna(0)
+    return df
