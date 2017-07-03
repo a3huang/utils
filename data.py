@@ -21,7 +21,7 @@ def input_requires(cols):
         return wrapper
     return decorator
 
-# needs bounary column
+@input_requires(['date', 'start', 'boundary'])
 def filter_before_boundary(df):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -30,7 +30,7 @@ def filter_before_boundary(df):
     df = df.query('filter_start <= date < filter_end')
     return df
 
-#@input_requires(['date', 'start'])
+@input_requires(['date', 'start'])
 def filter_first_n_weeks(df, n):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -39,7 +39,7 @@ def filter_first_n_weeks(df, n):
     df = df.query('filter_start <= date < filter_end')
     return df
 
-#@requires_col(['date', 'start'])
+@requires_col(['date', 'start'])
 def filter_last_n_weeks(df, n):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -48,7 +48,7 @@ def filter_last_n_weeks(df, n):
     df = df.query('filter_start <= date < filter_end')
     return df
 
-#@requires_col(['date', 'start'])
+@requires_col(['date', 'start'])
 def filter_week_window(df, n1, n2):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -58,57 +58,30 @@ def filter_week_window(df, n1, n2):
     return df
 
 #
-# df should have user_id column
-# df.groupby('user_id').contiguous()
+@input_requires(['user_id'])
 def mark_adjacent_groups(df, col):
     df = df.copy()
     is_diff_number = df[col] != df[col].shift()
     is_diff_user = df['user_id'] != df['user_id'].shift()
     df['group'] = (is_diff_number | is_diff_user).cumsum()
     return df
+
 #
-# df should have user_id column
+@input_requires(['user_id'])
 def mark_consecutive_runs(df, col):
     df = df.copy()
     is_nonconsecutive_number = df[col] != df[col].shift() + 1
     is_diff_user = df['user_id'] != df['user_id'].shift()
     df['run'] = (is_nonconsecutive_number | is_diff_user).cumsum()
     return df
+
 #
-# df should have start and date
+@input_requires(['user_id', 'date', 'start'])
 def mark_nth_week(df):
     df = df.copy()
     df['nth_week'] = (df['date'] - df['start']).dt.days / 7 + 1
     df['nth_week'] = df['nth_week'].astype(int)
     return df
-
-def interactions(df, cols=None):
-    df = df.copy()
-
-    if cols:
-        df = df[cols]
-
-    for i, j in list(itertools.combinations(df.columns, 2)):
-        df['%s*%s' % (i, j)] = df[i] * df[j]
-
-    return df
-
-# add generic transformation function?
-def log_transform(df, cols):
-    df = df.copy()
-    df[cols] = df[cols].apply(lambda x: np.log(x + 1))
-    return df
-
-def bin_transform(df, cols):
-    df = df.copy()
-    df[cols] = df[cols].apply(lambda x: pd.cut(x, 4).cat.codes)
-    return df
-
-def add_column(df, col, name=None):
-    col = pd.DataFrame(col)
-    if name:
-        col.columns = [name]
-    return pd.concat([df.reset_index(drop=True), col], axis=1)
 
 def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     df = df.copy()
@@ -118,8 +91,7 @@ def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     else:
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
 
-# have functions return only relevant columns
-# have keep column?
+@input_requires(['user_id'])
 def dummies(df, col, top=None):
     df = df.copy()
 
@@ -132,20 +104,50 @@ def dummies(df, col, top=None):
     df = pd.concat([df[['user_id']], dummy_col], axis=1)
     return df
 
+def remove(df, cols):
+    return df[df.columns.difference(cols)]
 
-# df.pipe(merge_all, [df1, df2, df3], **kwargs)
 def merge_all(df, df_list, on='user_id'):
     for i in df_list:
         df = df.merge(i, on=on, how='left')
     return df
 
+def missing_indicator(df, col):
+    df = df.copy()
+    df.loc[:, '%s_missing' % col] = df[col].apply(lambda x: 1 if pd.isnull(x) else 0)
+    return df
+
+
+######
+def interactions(df, cols=None):
+    df = df.copy()
+
+    if cols:
+        df = df[cols]
+
+    for i, j in list(itertools.combinations(df.columns, 2)):
+        df['%s*%s' % (i, j)] = df[i] * df[j]
+
+    return df
+# add generic transformation function?
+def log_transform(df, cols):
+    df = df.copy()
+    df[cols] = df[cols].apply(lambda x: np.log(x + 1))
+    return df
+def bin_transform(df, cols):
+    df = df.copy()
+    df[cols] = df[cols].apply(lambda x: pd.cut(x, 4).cat.codes)
+    return df
+def add_column(df, col, name=None):
+    col = pd.DataFrame(col)
+    if name:
+        col.columns = [name]
+    return pd.concat([df.reset_index(drop=True), col], axis=1)
+
 def stack_all(df_list):
     for i, df in enumerate(df_list):
         df['group'] = i
     return pd.concat(df_list)
-
-def remove(df, cols):
-    return df[df.columns.difference(cols)]
 
 # needs user_id and date
 def time_diff(df):
@@ -221,21 +223,6 @@ def count_rows(df, group='user_id'):
 def transform_column(df, cols, f):
     df = df.copy()
     df[cols] = df[cols].apply(f)
-    return df
-
-# just have a generic transform function?
-def bin_counts_transform(df, cols):
-    a = df.value_counts()
-    return df.map(a)
-def binarize(df, cols):
-    return df[cols].apply(lambda x: 1 if x > 0 else 0)
-def quadratic_transform(df, cols):
-    return df[cols].apply(lambda x: x**2)
-
-# for multiple columns?
-def mark_missing(df, col):
-    df = df.copy()
-    df.loc[:, '%s_missing' % col] = df[col].apply(lambda x: 1 if pd.isnull(x) else 0)
     return df
 
 def get_dups(df, col):

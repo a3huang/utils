@@ -65,7 +65,6 @@ def plot_missing(df, top=None, **kwargs):
     plt.title('Missing')
     return a
 
-# matplotlib
 def plot_bar(df, *args, **kwargs):
     if len(args) == 1:
         if isinstance(args[0], list):
@@ -131,7 +130,15 @@ def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, **kwargs):
     return a
 
 def _plot_bar_col_multi_groupby_cat(df, cat, col_list, as_cat=False, top=20, **kwargs):
-    # refactor using df.groupby('cat')[col_list] ?
+    # df = df.copy()
+    # df[cat] = top_n_cat(df[cat], top)
+    #
+    # a = df.groupby('cat')[col_list]
+    # a.plot.barh(**kwargs)
+    # plt.gca().invert_yaxis()
+    # plt.xlabel('Mean')
+    # plt.legend(title=cat, loc=(1, 0.5))
+
     a = df.melt([cat], col_list)
     return _plot_bar_col_groupby_cat2(a, 'variable', cat, 'value', **kwargs)
 
@@ -267,7 +274,6 @@ def _plot_hist_col_groupby_cat(df, cat, col, density=False, winsorize_col=True, 
     plt.legend(title=cat, loc=(1, 0.5))
     plt.title(col)
 
-# matplotlib
 def plot_line(df, *args, **kwargs):
     if len(args) == 2:
         return _plot_line_col_groupby_cat(df, *args, **kwargs)
@@ -428,8 +434,7 @@ def plot_ts_box(df, col, date_col='date', freq='M', **kwargs):
 
     df.boxplot(by=date_col, column=col, **kwargs)
     plt.xticks(rotation=90)
-#####
-
+########
 
 
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
