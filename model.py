@@ -302,6 +302,20 @@ def evaluate_transforms(model_dict, X, y, transforms):
         l.append((model_name, auc, recall))
     return pd.DataFrame(l)
 
+def evaluate_feature_sets(model, dfs):
+    l = []
+    for df in dfs:
+        X = df.drop(['user_id', 'start', 'end', 'days', 'cancel'], 1)
+        y = df['cancel']
+
+        cv = StratifiedKFold(n_splits=5, shuffle=True)
+
+        auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+        recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
+
+        l.append((auc, recall))
+    return pd.DataFrame(l)
+
 # needs pred column
 def get_error_dfs(df, target):
     df = df.copy()
