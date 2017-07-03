@@ -280,11 +280,22 @@ def evaluate_feat_selection(model_dict, feat_models, X, y):
             l.append((feat_model_name, model_name, auc, recall))
     return pd.DataFrame(l)
 
-def evaluate_interactions(model_dict, X, y, interactions=None):
+def evaluate_interactions(model_dict, X, y, interactions):
     l = []
     cv = StratifiedKFold(n_splits=5, shuffle=True)
     for model_name, model in model_dict.items():
         model = make_pipeline(StandardScaler(), Interact(interactions), model)
+        auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+        recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
+
+        l.append((model_name, auc, recall))
+    return pd.DataFrame(l)
+
+def evaluate_transforms(model_dict, X, y, transforms):
+    l = []
+    cv = StratifiedKFold(n_splits=5, shuffle=True)
+    for model_name, model in model_dict.items():
+        model = make_pipeline(StandardScaler(), Transform(transforms), model)
         auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
         recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
 
