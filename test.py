@@ -79,6 +79,20 @@ def test_mark_adjacent():
     b = b[['b', 'user_id', 'group']]
     pdt.assert_frame_equal(a, b)
 
+def test_dummies():
+    df = pd.DataFrame({'user_id': range(9), 'cat': ['a', 'b', 'c']*3})
+    a = dummies(df, 'cat').astype(int)
+    b = pd.DataFrame({'user_id': range(9), 'a': [1,0,0]*3, 'b': [0,1,0]*3, 'c': [0,0,1]*3})
+    b = b[['user_id', 'a', 'b', 'c']]
+    pdt.assert_frame_equal(a, b)
+
+def test_count_categorical():
+    df = pd.DataFrame({'user_id': [0, 1, 2]*3, 'cat': ['a', 'b', 'c']*3})
+    a = count_categorical(df, 'cat').astype(int)
+    b = pd.DataFrame({'user_id': [0,1,2], 'a': [3,0,0], 'b': [0,3,0], 'c': [0,0,3]})
+    b = b[['user_id', 'a', 'b', 'c']]
+    pdt.assert_frame_equal(a, b)
+
 def test_plot_bar_single_col():
     df = pd.DataFrame({0: ['a', 'a', 'b', 'b', 'b', 'b', 'c', 'd', 'e', 'a']})
     a = plot_bar(df, 0).values
@@ -135,7 +149,7 @@ def test_plot_scatter():
 
     plot_scatter(df, 'col1', 'col2')
     plot_scatter(df, 'cat', 'col1', 'col2')
-    # very strange bug occurs when above line is commented out
+    # very strange bug occurs when the above line is commented out
 
 def test_ts_line():
     df = pd.DataFrame({'date': ['2017-01-01']*3 + ['2017-02-01']*2 + ['2017-03-01']*5,
