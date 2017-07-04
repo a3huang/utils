@@ -163,9 +163,6 @@ def dummies(df, col, top=None):
     df = pd.concat([df[['user_id']], dummy_col], axis=1)
     return df
 
-def remove(df, cols):
-    return df[df.columns.difference(cols)]
-
 def merge(df, df_list, on='user_id'):
     for i in df_list:
         df = df.merge(i, on=on, how='left')
@@ -235,6 +232,11 @@ def add_agg_col(df, group, func, col=None):
     return df.groupby(group).head(1)
 
 ######
+
+def transform(df, cols, func, name):
+    df = df.copy()
+    df[name] = df[cols].apply(func, axis=1)
+    return df
 
 # needs date filter_start, filter_end, start, end column
 def frequency(df, group, col):
