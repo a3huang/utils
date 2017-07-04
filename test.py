@@ -33,6 +33,8 @@ def test_check_unique_id():
     a = pd.DataFrame({'a': [1,1,2]})
     with pytest.raises(ValueError):
         check_unique_id(a, 'a')
+    b = pd.DataFrame({'b': [1,2,3]})
+    check_unique_id(b, 'b')
 
 def test_filter_week_window():
     df = pd.DataFrame({'start': ['2017-06-26']*6,
