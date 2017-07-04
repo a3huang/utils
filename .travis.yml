@@ -1,5 +1,7 @@
 language: python
 install:
+    - pip install pandas
+    - pip install numpy
     - pip install coveralls
 script:
     - py.test test.py
