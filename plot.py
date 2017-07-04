@@ -10,8 +10,9 @@ from sklearn.metrics import confusion_matrix, roc_curve
 from sklearn.model_selection import learning_curve, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
-from rpy2.robjects import pandas2ri
+from rpy2.robjects import pandas2ri, r
 from sklearn import tree
+import itertools
 import pydotplus
 import subprocess
 
@@ -580,7 +581,7 @@ def plot_word_frequencies(docs, top=20, **kwargs):
 
     return vocab
 
-def plot_loess(df, col1, col2):
+def loess(df, col1, col2):
     pandas2ri.activate()
     dfr = pandas2ri.py2ri(df)
 
@@ -591,5 +592,58 @@ def plot_loess(df, col1, col2):
 
     x_sorted = x.sort_values(by=0).index
 
-    plt.scatter(df[col1], df[col2])
-    plt.plot(x.loc[x_sorted], y.loc[x_sorted])
+    return x.loc[x_sorted], y.loc[x_sorted]
+
+def facet_cats(df, col1, col2, func, *args, **kwargs):
+    df = df.copy()
+    df[col1] = top_n_cat(df[col1], 5)
+    df[col2] = top_n_cat(df[col2], 5)
+
+    num_rows = len(df[col1].value_counts())
+    num_col = len(df[col2].value_counts())
+
+    fig, ax = plt.subplots(num_rows, num_col, figsize=(10,10))
+
+    coords = [i for i in itertools.product(range(num_rows), range(num_col))]
+
+    val1= df[col1].unique()
+    val2 = df[col2].unique()
+
+    for i, j in coords:
+        a = df[(df[col1] == val1[i]) & (df[col2] == val2[j])]
+        a.pipe(func, *args, ax=ax[i, j], **kwargs)
+
+        if i == 0:
+            ax[i, j].set_title('%s = %s' % (col2, val2[j]))
+        if j != 1:
+            ax[i, j].set_ylabel('%s = %s' % (col1, val1[i]))
+
+    plt.tight_layout()
+
+def facet_var(df, cat, func, cols, *args, **kwargs):
+    df = df.copy()
+    df[cat] = top_n_cat(df[cat], 5)
+
+    num_rows = len(df[cat].value_counts())
+    num_col = len(cols)
+
+    fig, ax = plt.subplots(num_rows, num_col, figsize=(10,10))
+
+    val = df[cat].unique()
+
+    for i in range(num_rows):
+        a = df[df[cat] == val[i]]
+
+        for j in range(num_col):
+            a.pipe(func, cols[j], ax=ax[i, j], **kwargs)
+            ax[i, j].set_title('')
+            ax[i, j].set_xlabel('')
+            ax[i, j].set_ylabel('')
+
+            if i == 0:
+                ax[i, j].set_title('%s' % cols[j])
+
+            if j != 1:
+                ax[i, 0].set_ylabel('%s = %s' % (cat, val[i]))
+
+    plt.tight_layout()
