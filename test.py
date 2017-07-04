@@ -34,6 +34,20 @@ def test_check_unique_id():
     with pytest.raises(ValueError):
         check_unique_id(a, 'a')
 
+def test_filter_week_window():
+    df = pd.DataFrame({'start': ['2017-06-26']*6,
+                       'date': ['2017-06-26','2017-07-03','2017-07-10','2017-07-17',
+                                '2017-07-24','2017-07-31']})
+    a = filter_week_window(df, 1, 3).astype(str).reset_index(drop=True)
+    b = pd.DataFrame({'start': ['2017-06-26']*2, 'date': ['2017-07-03','2017-07-10'],
+                      'filter_start': ['2017-07-03']*2, 'filter_end': ['2017-07-17']*2})
+    b = b[['date', 'start', 'filter_start', 'filter_end']]
+    pdt.assert_frame_equal(a, b)
+
+def test_crosstab():
+    df = pd.DataFrame({0: ['a','b','c','d','e']*2, 1: ['aa', 'bb']*5})
+    crosstab(df, 0, 1)
+
 def test_winsorize():
     df = pd.DataFrame({0: ['a','b','c','d','e']*2, 1: range(1, 11)})
     a = winsorize(df[1], .05).values
