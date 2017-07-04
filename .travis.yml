@@ -1,4 +1,6 @@
 language: python
+notifications:
+  email: false
 install:
   - sudo apt-get update
   - wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
@@ -9,10 +11,9 @@ install:
   - conda update -q conda
   - conda info -a
 
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pandas numpy matplotlib
+  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy matplotlib dateutil pandas
   - source activate test-environment
-  - python setup.py install
-
+  - pip install coveralls
 script:
     - py.test test.py
 after_success:
