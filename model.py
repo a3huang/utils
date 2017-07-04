@@ -10,8 +10,6 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from data import remove
-
 class Transform(BaseEstimator, TransformerMixin):
     def __init__(self, d):
         self.d = d
@@ -239,7 +237,7 @@ def evaluate_dfs(model_dict, df_list):
     for df in df_list:
         df1 = df[df['start'] > '2016-07-18']
 
-        X = df1.pipe(remove, ['user_id', 'start', 'end', 'days', 'cancel'])
+        X = df1.drop(['user_id', 'start', 'end', 'days', 'cancel'], 1)
         y = df1['cancel']
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.3, random_state=42)
@@ -253,7 +251,7 @@ def evaluate_dfs_test(model_dict, df_list):
     for df in df_list:
         df1 = df[df['start'] > '2016-07-18']
 
-        X = df1.pipe(remove, ['user_id', 'start', 'end', 'days', 'cancel'])
+        X = df1.drop(['user_id', 'start', 'end', 'days', 'cancel'], 1)
         y = df1['cancel']
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=.3, random_state=42)
@@ -302,6 +300,7 @@ def evaluate_transforms(model_dict, X, y, transforms):
         l.append((model_name, auc, recall))
     return pd.DataFrame(l)
 
+# input list of lists of features to drop?
 def evaluate_feature_sets(model, dfs):
     l = []
     for df in dfs:
