@@ -1,12 +1,38 @@
 import pandas as pd
 import numpy as np
-import unittest
+import pytest
 
 from pandas.util import testing as pdt
 from numpy import testing as npt
 
 from data import *
 from plot import *
+
+def test_input_required_decorator():
+    @input_requires(['user_id'])
+    def f(df):
+        return df
+    a = pd.DataFrame({'a': [1,2,3]})
+    with pytest.raises(ValueError):
+        f(a)
+
+def test_check_output_schema():
+    a = pd.DataFrame({'a': [1,2,3]})
+    with pytest.raises(ValueError):
+        check_output_schema(a, 2)
+
+def test_check_nonconstant_col():
+    @nonconstant_col
+    def f(df):
+        return df
+    a = pd.DataFrame({'a': [1,1,1]})
+    with pytest.raises(ValueError):
+        f(a)
+
+def test_check_unique_id():
+    a = pd.DataFrame({'a': [1,1,2]})
+    with pytest.raises(ValueError):
+        check_unique_id(a, 'a')
 
 def test_winsorize():
     df = pd.DataFrame({0: ['a','b','c','d','e']*2, 1: range(1, 11)})
