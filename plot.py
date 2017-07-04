@@ -67,6 +67,10 @@ def plot_missing(df, top=None, **kwargs):
     plt.title('Missing')
     return a
 
+def get_missing_grouped(df, group):
+    non_missing = df.groupby(group).count().apply(lambda x: x / df1.groupby(group).size())
+    return (1 - non_missing)
+
 def plot_bar(df, *args, **kwargs):
     if len(args) == 1:
         if isinstance(args[0], list):
