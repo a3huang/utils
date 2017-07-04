@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime
 from pandas.tseries.offsets import *
 
-def _top_n_cat(a, n=5):
+def top_n_cat(a, n=5):
     a = a.fillna('missing')
     counts = a.value_counts()
     top = counts.iloc[:n].index
@@ -39,7 +39,7 @@ def output_schema(num_cols):
 def nonconstant_col(f):
     def wrapper(df, *args, **kwargs):
         output = f(df, *args, **kwargs)
-        if len(output.iloc[:, -1].value_counts()) == 0:
+        if len(output.iloc[:, -1].value_counts()) == 1:
             raise ValueError, 'Contains constant column'
         return output
     return wrapper
@@ -47,37 +47,6 @@ def nonconstant_col(f):
 def check_unique_id(df, id_col):
     if len(df.groupby(id_col).size().value_counts()) > 1:
         raise ValueError, 'Contains duplicate %s' % id_col
-    return df
-
-@input_requires(['date', 'start', 'boundary'])
-def filter_before_boundary(df):
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['start'] = pd.to_datetime(df['start'])
-    df['boundary'] = pd.to_datetime(df['boundary'])
-    df['filter_start'] = df['start']
-    df['filter_end'] = df['boundary']
-    df = df.query('filter_start <= date < filter_end')
-    return df
-
-@input_requires(['date', 'start'])
-def filter_first_n_weeks(df, n):
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['start'] = pd.to_datetime(df['start'])
-    df['filter_start'] = df['start']
-    df['filter_end'] = df['start'] + DateOffset(weeks=n)
-    df = df.query('filter_start <= date < filter_end')
-    return df
-
-@input_requires(['date', 'start'])
-def filter_last_n_weeks(df, n):
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['start'] = pd.to_datetime(df['start'])
-    df['filter_start'] = datetime.now() - DateOffset(months=n)
-    df['filter_end'] = datetime.now()
-    df = df.query('filter_start <= date < filter_end')
     return df
 
 @input_requires(['date', 'start'])
@@ -90,7 +59,6 @@ def filter_week_window(df, n1, n2):
     df = df.query('filter_start <= date < filter_end')
     return df
 
-#
 def mark_adjacent_groups(df, col, reset_count_on='user_id'):
     df = df.copy()
     is_diff_number = df[col] != df[col].shift()
@@ -103,7 +71,6 @@ def mark_adjacent_groups(df, col, reset_count_on='user_id'):
 
     return df
 
-#
 def mark_consecutive_runs(df, col, reset_count_on='user_id'):
     df = df.copy()
     is_nonconsecutive_number = df[col] != df[col].shift() + 1
@@ -115,7 +82,6 @@ def mark_consecutive_runs(df, col, reset_count_on='user_id'):
         df['run'] = (is_nonconsecutive_number).cumsum()
     return df
 
-#
 @input_requires(['date', 'start'])
 def mark_nth_week(df):
     df = df.copy()
@@ -125,7 +91,6 @@ def mark_nth_week(df):
     df['nth_week'] = df['nth_week'].astype(int)
     return df
 
-#
 @input_requires(['date'])
 def time_diff(df, group='user_id'):
     df = df.copy()
@@ -141,6 +106,19 @@ def time_diff(df, group='user_id'):
 
     return df
 
+@input_requires(['user_id'])
+def dummies(df, col, top=None):
+    df = df.copy()
+
+    if top:
+        df[col] = top_n_cat(df[col], top)
+
+    dummy_col = pd.get_dummies(df[col])
+    dummy_col.columns = [str(i) for i in dummy_col.columns]
+
+    df = pd.concat([df[['user_id']], dummy_col], axis=1)
+    return df
+
 def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     df = df.copy()
 
@@ -148,20 +126,7 @@ def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
         return pd.crosstab(df[col1], df[col2], **kwargs)
     else:
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
-
-#
-@input_requires(['user_id'])
-def dummies(df, col, top=None):
-    df = df.copy()
-
-    if top:
-        df[col] = _top_n_cat(df[col], top)
-
-    dummy_col = pd.get_dummies(df[col])
-    dummy_col.columns = [str(i) for i in dummy_col.columns]
-
-    df = pd.concat([df[['user_id']], dummy_col], axis=1)
-    return df
+#######
 
 def merge(df, df_list, on='user_id'):
     for i in df_list:

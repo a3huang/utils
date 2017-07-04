@@ -16,16 +16,10 @@ import itertools
 import pydotplus
 import subprocess
 
-from data import crosstab
+from data import top_n_cat, crosstab
 from model import _get_feature_importances, _get_model_name
 
 # Helper Functions
-def top_n_cat(a, n=5):
-    a = a.fillna('missing')
-    counts = a.value_counts()
-    top = counts.iloc[:n].index
-    return a.apply(lambda x: x if x in top else 'other')
-
 def bin_cont(a, n=5):
     if a.value_counts().shape[0] <= n:
         return a
