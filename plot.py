@@ -10,6 +10,7 @@ from sklearn.metrics import confusion_matrix, roc_curve
 from sklearn.model_selection import learning_curve, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
+from rpy2.robjects import pandas2ri
 from sklearn import tree
 import pydotplus
 import subprocess
@@ -578,3 +579,17 @@ def plot_word_frequencies(docs, top=20, **kwargs):
     plt.legend().remove()
 
     return vocab
+
+def plot_loess(df, col1, col2):
+    pandas2ri.activate()
+    dfr = pandas2ri.py2ri(df)
+
+    a = r.loess('%s ~ %s' % (col2.replace('/', '.'), col1.replace('/', '.')), data=dfr)
+
+    x = pd.DataFrame(np.array(a.rx2('x')))
+    y = pd.DataFrame(np.array(a.rx2('fitted')))
+
+    x_sorted = x.sort_values(by=0).index
+
+    plt.scatter(df[col1], df[col2])
+    plt.plot(x.loc[x_sorted], y.loc[x_sorted])
