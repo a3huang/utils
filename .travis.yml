@@ -14,19 +14,17 @@ install:
     fi
   - bash miniconda.sh -b -p $HOME/miniconda
   - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
   - conda config --set always_yes yes --set changeps1 no
   - conda update --yes conda
   # Useful for debugging any issues with conda
   - conda info -a
 
-  # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy matplotlib dateutil pandas
-  - source activate test-environment
-  - python setup.py install
+  # # Replace dep1 dep2 ... with your dependencies
+  # - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy matplotlib dateutil pandas
+  # - source activate test-environment
+  # - python setup.py install
 
 script:
-    - python setup.py develop
     - py.test test.py
 after_success:
     - coveralls
