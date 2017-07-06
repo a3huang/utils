@@ -11,6 +11,14 @@ def top_n_cat(a, n=5):
     top = counts.iloc[:n].index
     return a.apply(lambda x: x if x in top else 'other')
 
+def top_n(df, col, n=5):
+    df = df.copy()
+    df[col] = df[col].fillna('missing')
+    counts = df[col].value_counts()
+    top = counts.iloc[:n].index
+    df[col] = df[col].apply(lambda x: x if x in top else 'other')
+    return df
+
 def input_requires(cols):
     def decorator(f):
         def wrapper(df, *args, **kwargs):
