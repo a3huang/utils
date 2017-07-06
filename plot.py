@@ -20,13 +20,18 @@ from data import top_n_cat, crosstab
 from model import _get_feature_importances, _get_model_name
 
 # Helper Functions
+def round_nice(x):
+    num_digits = len(str(x))
+    mult = 10**(num_digits-1)
+    return np.round(float(x)/mult) * mult
+    
 def bin_cont(a, n=5):
     if a.value_counts().shape[0] <= n:
         return a
 
-    num_bins = int(np.ceil((a.max() - a.min())/n))
+    binsize = round_nice(int(np.ceil(a.max() - a.min()) / n))
     min_edge = np.floor(a.min()/10)
-    bin_edges = [min_edge + n*i for i in range(num_bins+2)]
+    bin_edges = [min_edge + binsize*i for i in range(n+1)]
     return pd.cut(a, bins=bin_edges, include_lowest=True)
 
 def treat(a, n=5):
@@ -85,12 +90,7 @@ def plot_bar(df, *args, **kwargs):
         raise ValueError, 'Not a valid number of arguments'
 
 def _plot_bar_col(df, col, top=20, **kwargs):
-    # if col.dtype == 'O':
-    #   top_n_cat(col)
-    # if col.dtype in ['int64', 'float64']:
-    #   bin(col)
-
-    a = top_n_cat(df[col], top)
+    a = treat(df[col], top)
 
     a = a.value_counts(dropna=False)
     a = a / float(sum(a))
@@ -111,10 +111,10 @@ def _plot_bar_col_multi(df, col, top=20, **kwargs):
 
 def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, **kwargs):
     df = df.copy()
-    df[cat] = top_n_cat(df[cat], top)
+    df[cat] = treat(df[cat], top)
 
     if as_cat or df[col].dtype == 'O':
-        df[col] = top_n_cat(df[col], top)
+        df[col] = treat(df[col], top)
         a = pd.crosstab(df[cat], df[col], normalize='index')
         a.plot.barh(**kwargs)
         plt.gca().invert_yaxis()
@@ -144,8 +144,8 @@ def _plot_bar_col_multi_groupby_cat(df, cat, col_list, as_cat=False, top=20, **k
 
 def _plot_bar_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
-    df[cat1] = top_n_cat(df[cat1], top)
-    df[cat2] = top_n_cat(df[cat2], top)
+    df[cat1] = treat(df[cat1], top)
+    df[cat2] = treat(df[cat2], top)
 
     a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
     a.plot.barh(**kwargs)
@@ -154,7 +154,6 @@ def _plot_bar_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
     plt.legend(title=cat2, loc=(1, 0.5))
     return a
-
 
 def plot_box(df, *args, **kwargs):
     if len(args) == 2:
@@ -168,7 +167,7 @@ def plot_box(df, *args, **kwargs):
 
 def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, **kwargs):
     df = df.copy()
-    df[cat] = top_n_cat(df[cat], top)
+    df[cat] = treat(df[cat], top)
 
     sns.boxplot(y=cat, x=col, data=df, showfliers=showfliers, orient='h', **kwargs)
     plt.xlabel(col)
@@ -177,7 +176,7 @@ def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, **kwargs):
 
 def _plot_box_col_multi_groupby_cat(df, cat, col_list, showfliers=False, top=20, **kwargs):
     df = df.copy()
-    df[cat] = top_n_cat(df[cat], top)
+    df[cat] = treat(df[cat], top)
 
     a = df.melt([cat], col_list)
     sns.boxplot(y='variable', x='value', hue=cat, data=a, showfliers=showfliers,
@@ -197,8 +196,8 @@ def plot_heatmap(df, *args, **kwargs):
 
 def _plot_heatmap_groupby_cat2(df, cat1, cat2, normalize='index', top=20, **kwargs):
     df = df.copy()
-    df[cat1] = top_n_cat(df[cat1], top)
-    df[cat2] = top_n_cat(df[cat2], top)
+    df[cat1] = treat(df[cat1], top)
+    df[cat2] = treat(df[cat2], top)
 
     a = pd.crosstab(df[cat1], df[cat2], normalize=normalize)
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
@@ -208,8 +207,8 @@ def _plot_heatmap_groupby_cat2(df, cat1, cat2, normalize='index', top=20, **kwar
 
 def _plot_heatmap_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
-    df[cat1] = top_n_cat(df[cat1], top)
-    df[cat2] = top_n_cat(df[cat2], top)
+    df[cat1] = treat(df[cat1], top)
+    df[cat2] = treat(df[cat2], top)
 
     a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
@@ -251,7 +250,7 @@ def _plot_hist_col(df, col, density=False, winsorize_col=True, **kwargs):
 
 def _plot_hist_col_groupby_cat(df, cat, col, density=False, winsorize_col=True, top=20, **kwargs):
     df = df.copy()
-    df[cat] = top_n_cat(df[cat], top)
+    df[cat] = treat(df[cat], top)
 
     if winsorize_col:
         df[col] = winsorize(df[col])
@@ -286,7 +285,7 @@ def plot_line(df, *args, **kwargs):
 
 def _plot_line_col_groupby_cat(df, cat, col, top=20, **kwargs):
     df = df.copy()
-    df[cat] = top_n_cat(df[cat], top)
+    df[cat] = treat(df[cat], top)
 
     a = df.groupby(cat)[col].mean()
     a.plot(**kwargs)
@@ -297,8 +296,8 @@ def _plot_line_col_groupby_cat(df, cat, col, top=20, **kwargs):
 
 def _plot_line_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     df = df.copy()
-    df[cat1] = top_n_cat(df[cat1], top)
-    df[cat2] = top_n_cat(df[cat2], top)
+    df[cat1] = treat(df[cat1], top)
+    df[cat2] = treat(df[cat2], top)
 
     a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
     a.plot(**kwargs)
@@ -324,7 +323,7 @@ def _plot_scatter_col2(df, col1, col2, **kwargs):
 
 def _plot_scatter_col2_groupby_cat(df, cat, col1, col2, top=20, **kwargs):
     df = df.copy()
-    df[cat] = top_n_cat(df[cat], top)
+    df[cat] = treat(df[cat], top)
 
     sns.lmplot(col1, col2, hue=cat, data=df, fit_reg=False, **kwargs)
 
@@ -394,7 +393,7 @@ def _plot_ts_col(df, col, kind, date_col='date', freq='M', **kwargs):
 def _plot_ts_counts_groupby_cat(df, cat, kind, date_col='date', freq='M',
                                 top=20, **kwargs):
     df = df.copy()
-    df[cat] = top_n_cat(df[cat], top)
+    df[cat] = treat(df[cat], top)
 
     if freq in ['hour', 'month', 'weekday']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
@@ -410,7 +409,7 @@ def _plot_ts_counts_groupby_cat(df, cat, kind, date_col='date', freq='M',
 def _plot_ts_col_groupby_cat(df, cat, col, kind, date_col='date', freq='M',
                              top=20, **kwargs):
     df = df.copy()
-    df[cat] = top_n_cat(df[cat], top)
+    df[cat] = treat(df[cat], top)
 
     if freq in ['hour', 'month', 'weekday']:
         df[date_col] = getattr(df.set_index(date_col).index, freq)
@@ -594,8 +593,8 @@ def loess(df, col1, col2):
 
 def facet_cats(df, col1, col2, func, *args, **kwargs):
     df = df.copy()
-    df[col1] = top_n_cat(df[col1], 5)
-    df[col2] = top_n_cat(df[col2], 5)
+    df[col1] = treat(df[col1], 5)
+    df[col2] = treat(df[col2], 5)
 
     num_rows = len(df[col1].value_counts())
     num_col = len(df[col2].value_counts())
@@ -620,7 +619,7 @@ def facet_cats(df, col1, col2, func, *args, **kwargs):
 
 def facet_var(df, cat, func, cols, *args, **kwargs):
     df = df.copy()
-    df[cat] = top_n_cat(df[cat], 5)
+    df[cat] = treat(df[cat], 5)
 
     num_rows = len(df[cat].value_counts())
     num_col = len(cols)
