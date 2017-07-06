@@ -198,9 +198,16 @@ def add_agg_col(df, group, func, col=None):
 
 ######
 
-def transform(df, cols, func, name):
+# def transform(df, cols, func, name):
+#     df = df.copy()
+#     df[name] = df[cols].apply(func, axis=1)
+#     return df
+
+def transform(df, trans_dict):
     df = df.copy()
-    df[name] = df[cols].apply(func, axis=1)
+    for cols, trans in trans_dict.items():
+        col_names = list(cols)
+        df[col_names] = df[col_names].apply(trans)
     return df
 
 # needs date filter_start, filter_end, start, end column
@@ -264,3 +271,6 @@ def get_weekly_ts(df, window, name):
 # need error checking on preserve
 def my_query(df, query, on='user_id', preserve='group'):
     return df[[on, preserve]].merge(df.query(query).pipe(remove, [preserve]), on=on, how='left')
+
+def binarize(x):
+    return x.apply(lambda x: 1 if x > 0 else 0)
