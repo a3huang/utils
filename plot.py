@@ -504,9 +504,9 @@ def plot_correlation_matrix(df, **kwargs):
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     return a
 
-def plot_confusion_matrix(df, model, target, threshold=0.5, **kwargs):
-    X = df.drop(target, 1)
-    y = df[target]
+def plot_confusion_matrix(model, X, y, threshold=0.5, **kwargs):
+    # X = df.drop(target, 1)
+    # y = df[target]
 
     try:
         prediction = model.predict_proba(X)[:, 1] > threshold
