@@ -516,6 +516,8 @@ def plot_confusion_matrix(model, X, y, threshold=0.5, **kwargs):
     a = confusion_matrix(y, prediction)
     a = a / float(sum(sum(a)))
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
+    plt.ylabel('True')
+    plt.title('Predicted')
     return a
 
 def plot_roc_curve(df, model, target):
