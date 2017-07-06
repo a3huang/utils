@@ -39,10 +39,16 @@ class Interact(BaseEstimator, TransformerMixin):
 
 def interactions(df, subsets=None):
     df = df.copy()
+
     if subsets is None:
-        subsets = [df.columns]
-    for cols in subsets:
-        for i, j in itertools.combinations(cols, 2):
+        subsets = df.columns
+
+    if isinstance(subsets[0], (tuple, list)):
+        for cols in subsets:
+            for i, j in itertools.combinations(cols, 2):
+                df['%s*%s' % (i, j)] = df[i] * df[j]
+    else:
+        for i, j in itertools.combinations(subsets, 2):
             df['%s*%s' % (i, j)] = df[i] * df[j]
     return df
 
@@ -300,12 +306,11 @@ def evaluate_transforms(model_dict, X, y, transforms):
         l.append((model_name, auc, recall))
     return pd.DataFrame(l)
 
-# input list of lists of features to drop?
 def evaluate_feature_sets(model, dfs):
     l = []
     for df in dfs:
-        X = df.drop(['user_id', 'start', 'end', 'days', 'cancel'], 1)
-        y = df['cancel']
+        X = df[0]
+        y = df[1]
 
         cv = StratifiedKFold(n_splits=5, shuffle=True)
 
