@@ -8,6 +8,11 @@ from numpy import testing as npt
 from data import *
 from plot import *
 
+def test_round_nice():
+    assert round_nice(21449) == 20000
+    assert round_nice(9650) == 10000
+    assert round_nice(7) == 10
+
 def test_input_required_decorator():
     @input_requires(['user_id'])
     def f(df):
