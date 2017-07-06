@@ -450,7 +450,7 @@ def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
     X = df[df.columns.difference([cat])]
     df['PCA 1'] = pca_model.fit_transform(s.fit_transform(X))[:, 0]
     df['PCA 2'] = pca_model.fit_transform(s.fit_transform(X))[:, 1]
-    plot_scatter_groupby_1(df, cat, 'PCA 1', 'PCA 2', **kwargs)
+    plot_scatter(df, cat, 'PCA 1', 'PCA 2', **kwargs)
 
 def plot_clusters(df, cluster_model=None, pca_model=None, sample_size=1000, **kwargs):
     df = df.copy()
