@@ -23,13 +23,17 @@ from model import _get_feature_importances, _get_model_name
 def round_nice(x):
     num_digits = len(str(x))
     mult = 10**(num_digits-1)
+    if mult == 1:
+        mult = 10
     return np.round(float(x)/mult) * mult
-    
+
 def bin_cont(a, n=5):
     if a.value_counts().shape[0] <= n:
         return a
 
     binsize = round_nice(int(np.ceil(a.max() - a.min()) / n))
+    if binsize == 0:
+        binsize = 5
     min_edge = np.floor(a.min()/10)
     bin_edges = [min_edge + binsize*i for i in range(n+1)]
     return pd.cut(a, bins=bin_edges, include_lowest=True)
