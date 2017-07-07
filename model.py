@@ -359,7 +359,7 @@ def create_explainer(model, X_train):
     mi = lime.lime_tabular.LimeTabularExplainer(X_train.values, feature_names=X_train.columns.values)
     return mi
 
-def plot_explanations(exp, X_test, i=None):
+def plot_explanations(mi, model, X_test, i=None):
     if i is None:
         i = np.random.randint(0, X_test.shape[0])
     exp = mi.explain_instance(X_test.values[i], model.predict_proba)
@@ -378,9 +378,12 @@ def feat_shuffle(model, X, y):
         recall_list = []
         for i in range(10):
             X_train.loc[:, col] = np.random.permutation(X_train.loc[:, col])
+            #X_train.loc[:, col] = X_train.loc[:, col].sample(X_train.shape[0], replace=True)
             model.fit(X_train, y_train)
+
             auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
             recall = decile_recall(model, X_test, y_test)
+
             auc_list.append(abs(auc - auc_original))
             recall_list.append(abs(recall - recall_original))
 
