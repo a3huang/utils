@@ -329,7 +329,7 @@ def _plot_scatter_col2_groupby_cat(df, cat, col1, col2, top=20, **kwargs):
     df = df.copy()
     df[cat] = treat(df[cat], top)
 
-    sns.lmplot(col1, col2, hue=cat, data=df, fit_reg=False, **kwargs)
+    sns.lmplot(col1, col2, hue=cat, data=df, **kwargs)
 
 
 def plot_ts_line(df, cat=None, col=None, **kwargs):
@@ -485,8 +485,8 @@ def plot_decision_tree(df, target, filename, **kwargs):
     subprocess.call(('open', filename))
     return model
 
-def plot_feature_importances(df, model, target, top=None, **kwargs):
-    X = df[df.columns.difference([target])]
+def plot_feature_importances(model, X, top=None, **kwargs):
+    #X = df[df.columns.difference([target])]
     a = _get_feature_importances(model, X)
     model_name = _get_model_name(model)
 
