@@ -10,6 +10,8 @@ from sklearn.metrics import roc_auc_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
+import lime.lime_tabular
+
 class Transform(BaseEstimator, TransformerMixin):
     def __init__(self, d):
         self.d = d
@@ -328,3 +330,13 @@ def get_error_dfs(df, target):
     df.loc[(df[target] == True) & (df['pred'] == False), 'fn'] = 1
     df = df.fillna(0)
     return df
+
+def create_explainer(model, X_train):
+    mi = lime.lime_tabular.LimeTabularExplainer(X_train.values, feature_names=X_train.columns.values)
+    return mi
+
+def plot_explanations(exp, X_test, i=None):
+    if i is None:
+        i = np.random.randint(0, X_test.shape[0])
+    exp = mi.explain_instance(X_test.values[i], model.predict_proba)
+    pd.DataFrame(exp.as_list()).sort_index(ascending=False).set_index(0).plot.barh()
