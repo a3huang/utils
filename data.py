@@ -180,7 +180,7 @@ def get_columns_with(df, include=None, exclude=None):
 
     return c
 
-def add_column(df, col, name=None):
+def add_col(df, col, name=None):
     col = pd.DataFrame(col).reset_index(drop=True)
     if name:
         col.columns = [name]
@@ -212,6 +212,10 @@ def transform(df, trans_dict):
         col_names = list(cols)
         df[col_names] = df[col_names].apply(trans)
     return df
+
+def pca_transform(df, n_comp=2):
+    pca = make_pipeline(StandardScaler(), PCA())
+    return pd.DataFrame(pca.fit_transform(X)[:, :n_comp], columns=['PCA %s' % i for i in range(1, n_comp+1)])
 
 # needs date filter_start, filter_end, start, end column
 def frequency(df, group, col):
