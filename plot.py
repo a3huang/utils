@@ -41,7 +41,7 @@ def bin_cont(a, n=5):
 def treat(a, n=5):
     if a.dtype == 'O':
         return top_n_cat(a, n)
-    elif a.dtype in ['int64', 'float64']:
+    elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
         return bin_cont(a, n)
 
 def winsorize(x, p=.05):
@@ -178,7 +178,7 @@ def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, sort=True,
 
     if sort == True:
         order = df.pipe(add_column, df.groupby(cat)[col]\
-            .transform(lambda x: x.quantile(0.75) - x.quantile(0.25)), 'range')
+            .transform(lambda x: x.median()), 'range')
         order = order.sort_values(by='range', ascending=False).groupby(cat).head(1)[cat]
     else:
         order = None
@@ -463,7 +463,8 @@ def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
     X = df[df.columns.difference([cat])]
     df['PCA 1'] = pca_model.fit_transform(s.fit_transform(X))[:, 0]
     df['PCA 2'] = pca_model.fit_transform(s.fit_transform(X))[:, 1]
-    plot_scatter(df, cat, 'PCA 1', 'PCA 2', **kwargs)
+    plot_scatter(df, cat, 'PCA 1', 'PCA 2', fit_reg=False, **kwargs)
+    return df
 
 def plot_clusters(df, cluster_model=None, pca_model=None, sample_size=1000, **kwargs):
     df = df.copy()
@@ -478,6 +479,7 @@ def plot_clusters(df, cluster_model=None, pca_model=None, sample_size=1000, **kw
     cluster_model.fit(s.fit_transform(df))
     df['cluster'] = cluster_model.labels_
     plot_pca(df, 'cluster', pca_model, sample_size=None, **kwargs)
+    return df
 
 def plot_decision_tree(df, target, filename, **kwargs):
     X = df[df.columns.difference([target])]
