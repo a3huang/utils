@@ -203,7 +203,7 @@ def _plot_heatmap_groupby_cat2(df, cat1, cat2, normalize='index', top=20, **kwar
     df[cat1] = treat(df[cat1], top)
     df[cat2] = treat(df[cat2], top)
 
-    a = pd.crosstab(df[cat1], df[cat2], normalize=normalize)
+    a = pd.crosstab(df[cat1], df[cat2], normalize=normalize).fillna(0)
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     plt.gca().invert_yaxis()
     plt.title('%s and %s' % (cat1, cat2))
@@ -214,7 +214,7 @@ def _plot_heatmap_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     df[cat1] = treat(df[cat1], top)
     df[cat2] = treat(df[cat2], top)
 
-    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
+    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).fillna(0)
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     plt.gca().invert_yaxis()
     plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
