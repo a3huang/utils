@@ -3,14 +3,15 @@ import os
 import pandas as pd
 import numpy as np
 
-from collections import OrderedDict
+from collections import defaultdict, OrderedDict
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 import lime.lime_tabular
+import matplotlib.pyplot as plt
 
 class Transform(BaseEstimator, TransformerMixin):
     def __init__(self, d):
@@ -363,3 +364,38 @@ def plot_explanations(exp, X_test, i=None):
         i = np.random.randint(0, X_test.shape[0])
     exp = mi.explain_instance(X_test.values[i], model.predict_proba)
     pd.DataFrame(exp.as_list()).sort_index(ascending=False).set_index(0).plot.barh()
+
+def feat_shuffle(model, X, y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+    model.fit(X_train, y_train)
+    auc_original = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+    recall_original = decile_recall(model, X_test, y_test)
+
+    d = defaultdict(list)
+    for col in X_train.columns:
+        auc_list = []
+        recall_list = []
+        for i in range(10):
+            X_train.loc[:, col] = np.random.permutation(X_train.loc[:, col])
+            model.fit(X_train, y_train)
+            auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+            recall = decile_recall(model, X_test, y_test)
+            auc_list.append(auc - auc_original)
+            recall_list.append(recall - recall_original)
+
+        d['variable'].extend([col]*10)
+        d['auc'].extend(auc_list)
+        d['recall'].extend(recall_list)
+
+    return pd.DataFrame(d)
+
+def plot_fs_boxplots(df, score, top=None, **kwargs):
+    order = df[['variable']].pipe(add_column, df.groupby('variable').transform(lambda x: x.max() - x.min()))
+    order = order.sort_values(by=score, ascending=False).groupby('variable').head(1)['variable']
+
+    if top:
+        order = order[:top]
+        df = df[df['variable'].isin(order)]
+
+    df.pipe(plot_box, 'variable', score, top=top, order=order, **kwargs)
