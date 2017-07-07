@@ -177,7 +177,8 @@ def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, sort=True,
     df[cat] = treat(df[cat], top)
 
     if sort == True:
-        order = df.pipe(add_column, df.groupby(cat)[col].transform(lambda x: x.max() - x.min()), 'range')
+        order = df.pipe(add_column, df.groupby(cat)[col]\
+            .transform(lambda x: x.quantile(0.75) - x.quantile(0.25)), 'range')
         order = order.sort_values(by='range', ascending=False).groupby(cat).head(1)[cat]
     else:
         order = None
