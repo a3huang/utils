@@ -16,7 +16,7 @@ import itertools
 import pydotplus
 import subprocess
 
-from data import top_n_cat, crosstab
+from data import top_n_cat, crosstab, add_column
 from model import _get_feature_importances, _get_model_name
 
 # Helper Functions
@@ -172,11 +172,17 @@ def plot_box(df, *args, **kwargs):
     else:
         raise ValueError, 'Not a valid number of arguments'
 
-def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, **kwargs):
+def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, sort=True, **kwargs):
     df = df.copy()
     df[cat] = treat(df[cat], top)
 
-    sns.boxplot(y=cat, x=col, data=df, showfliers=showfliers, orient='h', **kwargs)
+    if sort == True:
+        order = df.pipe(add_column, df.groupby(cat)[col].transform(lambda x: x.max() - x.min()), 'range')
+        order = order.sort_values(by='range', ascending=False).groupby(cat).head(1)[cat]
+    else:
+        order = None
+
+    sns.boxplot(y=cat, x=col, data=df, showfliers=showfliers, orient='h', order=order, **kwargs)
     plt.xlabel(col)
     plt.ylabel(cat)
     plt.title('%s grouped by %s' % (col, cat))
