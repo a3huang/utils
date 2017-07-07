@@ -322,6 +322,29 @@ def evaluate_feature_sets(model, dfs):
         l.append((auc, recall))
     return pd.DataFrame(l)
 
+def evaluate_rocs(model, dfs):
+    l = []
+    for i, df in enumerate(dfs):
+        X = df[0]
+        y = df[1]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+        model.fit(X_train, y_train)
+
+        try:
+            prediction = model.predict_proba(X_test)[:, 1]
+        except:
+            prediction = model.predict(X_test)
+
+        fpr, tpr, _ = roc_curve(y_test, prediction)
+        plt.plot(fpr, tpr, label='Model %s' % i)
+
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.legend()
+
 # needs pred column
 def get_error_dfs(df, target):
     df = df.copy()
