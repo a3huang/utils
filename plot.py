@@ -119,7 +119,7 @@ def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, **kwargs):
 
     if as_cat or df[col].dtype == 'O':
         df[col] = treat(df[col], top)
-        a = pd.crosstab(df[cat], df[col], normalize='index')
+        a = pd.crosstab(df[cat], df[col], normalize='index').fillna(0)
         a.plot.barh(**kwargs)
         plt.gca().invert_yaxis()
         plt.xlabel('Proportion')
@@ -151,7 +151,7 @@ def _plot_bar_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
     df[cat1] = treat(df[cat1], top)
     df[cat2] = treat(df[cat2], top)
 
-    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
+    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).fillna(0)
     a.plot.barh(**kwargs)
     plt.gca().invert_yaxis()
     plt.xlabel('Mean')
