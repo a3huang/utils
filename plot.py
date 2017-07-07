@@ -113,7 +113,7 @@ def _plot_bar_col_multi(df, col, top=20, **kwargs):
     plt.xlabel('Proportion')
     return a
 
-def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, **kwargs):
+def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, sort='value', **kwargs):
     df = df.copy()
     df[cat] = treat(df[cat], top)
 
@@ -127,7 +127,10 @@ def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, **kwargs):
         plt.legend(title=col, loc=(1, 0.5))
     else:
         a = df.groupby(cat)[col].mean()
-        a.sort_index(ascending=False).plot.barh(**kwargs)
+        if sort == 'value':
+            a.sort_values(ascending=True).plot.barh(**kwargs)
+        else:
+            a.sort_index(ascending=False).plot.barh(**kwargs)
         plt.xlabel('Mean')
         plt.title('%s grouped by %s' % (col, cat))
 
