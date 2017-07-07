@@ -381,8 +381,8 @@ def feat_shuffle(model, X, y):
             model.fit(X_train, y_train)
             auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
             recall = decile_recall(model, X_test, y_test)
-            auc_list.append(auc - auc_original)
-            recall_list.append(recall - recall_original)
+            auc_list.append(abs(auc - auc_original))
+            recall_list.append(abs(recall - recall_original))
 
         d['variable'].extend([col]*10)
         d['auc'].extend(auc_list)
