@@ -16,7 +16,7 @@ import itertools
 import pydotplus
 import subprocess
 
-from data import top_n_cat, crosstab, add_column
+from data import top_n_cat, crosstab, add_col
 from model import _get_feature_importances, _get_model_name
 
 # Helper Functions
@@ -177,7 +177,7 @@ def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, sort=True,
     df[cat] = treat(df[cat], top)
 
     if sort == True:
-        order = df.pipe(add_column, df.groupby(cat)[col]\
+        order = df.pipe(add_col, df.groupby(cat)[col]\
             .transform(lambda x: x.median()), 'range')
         order = order.sort_values(by='range', ascending=False).groupby(cat).head(1)[cat]
     else:
@@ -390,7 +390,7 @@ def _plot_ts_counts(df, kind, date_col='date', freq='M', **kwargs):
     else:
         grouper = df.set_index(date_col).resample(freq)
 
-    grouper.size().plot(kind=kind, **kwargs)
+    grouper.size().reset_index().plot(kind=kind, **kwargs)
 
 def _plot_ts_col(df, col, kind, date_col='date', freq='M', **kwargs):
     df = df.copy()
