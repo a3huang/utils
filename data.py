@@ -291,3 +291,15 @@ def my_query(df, query, on='user_id', preserve='group'):
 
 def binarize(x):
     return x.apply(lambda x: 1 if x > 0 else 0)
+
+def combine_ratio(df, cols, name):
+    df = df.copy()
+    df[name] = df[cols].apply(lambda x: 0 if x[0] == 0 else x[1]/x[0], axis=1)
+    df = df.drop(cols, 1)
+    return df
+
+def combine_prod(df, cols, name):
+    df = df.copy()
+    df[name] = df[cols].apply(lambda x: 0 if x[0] == 0 else x[1]*x[0], axis=1)
+    df = df.drop(cols, 1)
+    return df
