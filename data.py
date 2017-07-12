@@ -160,10 +160,10 @@ def get_dups(df, col):
 def contains_any(a, strings):
     return any([x for x in strings if x in a])
 
-def contains_none_of(a, strings):
+def contains_none(a, strings):
     return bool(1 - contains_any(a, strings))
 
-def get_columns_with(df, include=None, exclude=None):
+def get_cols(df, include=None, exclude=None, return_df=True):
     df = df.copy()
 
     if include:
@@ -176,9 +176,12 @@ def get_columns_with(df, include=None, exclude=None):
     else:
         exclude = set()
 
-    c = [i for i in df.columns if contains_any(i, include) and contains_none_of(i, exclude)]
+    c = [i for i in df.columns if contains_any(i, include) and contains_none(i, exclude)]
 
-    return c
+    if return_df:
+        return df[c]
+    else:
+        return c
 
 def add_col(df, col, name=None):
     col = pd.DataFrame(col).reset_index(drop=True)
@@ -216,6 +219,13 @@ def transform(df, trans_dict):
 def pca_transform(df, n_comp=2):
     pca = make_pipeline(StandardScaler(), PCA())
     return pd.DataFrame(pca.fit_transform(X)[:, :n_comp], columns=['PCA %s' % i for i in range(1, n_comp+1)])
+
+def categorize(df, cols, name):
+    df = df.copy()
+    df[name] = df[cols].apply(lambda x: x.idxmax(), axis=1)
+    return df.drop(cols, 1)
+
+
 
 # needs date filter_start, filter_end, start, end column
 def frequency(df, group, col):
