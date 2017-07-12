@@ -55,8 +55,11 @@ def interactions(df, subsets=None):
             df['%s*%s' % (i, j)] = df[i] * df[j]
     return df
 
+def sorted_fi(df, scores, top=10):
+    return sorted(zip(df.columns, scores), key=lambda x: abs(x[1]), reverse=True)[:top]
+
 # test if pipeline part actually works
-def _get_feature_importances(model, X):
+def _get_feature_importances(model):
     if 'pipeline' in repr(model.__class__):
         model = model.steps[-1][1]
 
@@ -66,10 +69,7 @@ def _get_feature_importances(model, X):
 
             if len(scores.shape) > 1:
                 scores = scores[0]
-
-            a = pd.DataFrame(sorted(zip(X.columns, scores),
-                key=lambda x: abs(x[1]), reverse=True))
-            return a
+        return scores
 
 def _get_top_n_features(model, X):
     if 'sequentialfeatureselector' in repr(model.__class__).lower():
@@ -402,3 +402,12 @@ def plot_fs_boxplots(df, score, top=None, **kwargs):
         df = df[df['variable'].isin(order)]
 
     df.pipe(plot_box, 'variable', score, top=top, order=order, **kwargs)
+
+def get_top_n(model, X_train, y_train, n, coeff=True):
+    model.fit(X_train, y_train)
+
+    if coeff:
+        top = sorted_fi(X_train, _get_feature_importances(model), top=n)
+        return top
+    else:
+        return [i[0] for i in top]
