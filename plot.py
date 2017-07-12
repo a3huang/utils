@@ -242,6 +242,8 @@ def plot_hist(df, *args, **kwargs):
         raise ValueError, 'Not a valid number of arguments'
 
 def _plot_hist_col(df, col, density=False, winsorize_col=True, **kwargs):
+    assert isinstance(col, str), 'col must be a string'
+
     a = df[col]
 
     if winsorize_col:
@@ -642,7 +644,7 @@ def facet_var(df, cat, func, cols, *args, **kwargs):
     num_rows = len(df[cat].value_counts())
     num_col = len(cols)
 
-    fig, ax = plt.subplots(num_rows, num_col, figsize=(10,10))
+    fig, ax = plt.subplots(num_rows, num_col, figsize=(10, 10))
 
     val = df[cat].unique()
 
@@ -662,3 +664,6 @@ def facet_var(df, cat, func, cols, *args, **kwargs):
                 ax[i, 0].set_ylabel('%s = %s' % (cat, val[i]))
 
     plt.tight_layout()
+
+def plot_probs(model, X_test, **kwargs):
+    plt.hist(model.predict_proba(X_test)[:, 1], **kwargs)
