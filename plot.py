@@ -669,3 +669,7 @@ def facet_var(df, cat, func, cols, *args, **kwargs):
 
 def plot_probs(model, X_test, **kwargs):
     plt.hist(model.predict_proba(X_test)[:, 1], **kwargs)
+
+def facet(df, row, col, col_wrap=4):
+    g = sns.FacetGrid(row=row, col=col, col_wrap=col_wrap, data=df)
+    return g
