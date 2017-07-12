@@ -513,8 +513,10 @@ def plot_feature_importances(model, X, top=None, **kwargs):
     plt.legend().remove()
     return a
 
-def plot_correlation_matrix(df, **kwargs):
+def plot_correlation_matrix(df, slice=None, **kwargs):
     a = df.corr()
+    if slice:
+        a = a.iloc[slice, slice]
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     return a
 
