@@ -309,27 +309,17 @@ def evaluate_transforms(model_dict, X, y, transforms):
         l.append((model_name, auc, recall))
     return pd.DataFrame(l)
 
-def evaluate_feature_sets(model, dfs, B=100):
+def evaluate_feature_sets(model, dfs):
     l = []
-    for df in dfs:
-        l1 = []
-        for i in range(B):
-            X, y = df
+    for X, y in dfs:
+        cv = StratifiedKFold(n_splits=10, shuffle=True)
 
-            cv = StratifiedKFold(n_splits=10, shuffle=True)
+        auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+        recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
 
-            auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
-            recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
+        l.append((auc, recall))
 
-            l1.append((auc, recall))
-
-        l1 = pd.DataFrame(l1)
-        l.append(l1)
-        # l1 = np.array(l1)
-        # l.append((np.mean(l1[:, 0]), np.mean(l1[:, 1])))
-
-    return pd.concat(l, axis=1)
-    #return pd.DataFrame(l)
+    return pd.DataFrame(l)
 
 def evaluate_feature_sets_boot(model, dfs, B=100):
     l = []
@@ -401,7 +391,10 @@ def plot_explanations(mi, model, X_test, i=None):
     if i is None:
         i = np.random.randint(0, X_test.shape[0])
     exp = mi.explain_instance(X_test.values[i], model.predict_proba)
-    pd.DataFrame(exp.as_list()).sort_index(ascending=False).set_index(0).plot.barh()
+    a = pd.DataFrame(exp.as_list()).sort_index(ascending=False).set_index(0)
+    colors = ''.join(['r' if i >= 0 else 'g' for i in a[1]])
+    a.plot.barh(color=colors)
+    plt.legend().remove()
 
 def feat_shuffle(model, X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
