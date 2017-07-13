@@ -294,8 +294,17 @@ def binarize(x):
 
 def combine_ratio(df, cols, name):
     df = df.copy()
-    df[name] = df[cols].apply(lambda x: 0 if x[0] == 0 else x[1]/x[0], axis=1)
-    df = df.drop(cols, 1)
+    c = get_cols(df, cols, return_df=False)
+    c = disjoint_window(c, len(cols))
+
+    # if isinstance(cols[0], (list, tuple)):
+    for i, pair in enumerate(c):
+        col_pair = list(pair)
+        df["%s_%s" % (name, i)] = df[col_pair].apply(lambda x: 0 if x[0] == 0 else x[1]/x[0], axis=1)
+        df = df.drop(col_pair, 1)
+    # else:
+    #     df[name] = df[cols].apply(lambda x: 0 if x[0] == 0 else x[1]/x[0], axis=1)
+    #     df = df.drop(cols, 1)
     return df
 
 def combine_prod(df, cols, name):
@@ -303,3 +312,11 @@ def combine_prod(df, cols, name):
     df[name] = df[cols].apply(lambda x: 0 if x[0] == 0 else x[1]*x[0], axis=1)
     df = df.drop(cols, 1)
     return df
+
+# [(0,2), (2,4), (4,6)]
+def intervals(start, end, step=2):
+    return zip(range(start,end+step,step), range(start+step,end+step,step))
+
+# [0,1,2,3] -> [(0,1), (2,3)]
+def disjoint_window(a, n=2):
+    return zip(a, a[1:])[::n]
