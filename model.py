@@ -309,19 +309,57 @@ def evaluate_transforms(model_dict, X, y, transforms):
         l.append((model_name, auc, recall))
     return pd.DataFrame(l)
 
-def evaluate_feature_sets(model, dfs):
+def evaluate_feature_sets(model, dfs, B=100):
     l = []
     for df in dfs:
-        X = df[0]
-        y = df[1]
+        l1 = []
+        for i in range(B):
+            X, y = df
 
-        cv = StratifiedKFold(n_splits=5, shuffle=True)
+            cv = StratifiedKFold(n_splits=10, shuffle=True)
 
-        auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
-        recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
+            auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+            recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
 
-        l.append((auc, recall))
-    return pd.DataFrame(l)
+            l1.append((auc, recall))
+
+        l1 = pd.DataFrame(l1)
+        l.append(l1)
+        # l1 = np.array(l1)
+        # l.append((np.mean(l1[:, 0]), np.mean(l1[:, 1])))
+
+    return pd.concat(l, axis=1)
+    #return pd.DataFrame(l)
+
+def evaluate_feature_sets_boot(model, dfs, B=100):
+    l = []
+    for X, y in dfs:
+        l1 = []
+        df = pd.concat([X, y], axis=1)
+        for i in range(B):
+            df_b = df.sample(len(df), replace=True)
+
+            X = df_b.iloc[:, :-1]
+            y = df_b.iloc[:, -1]
+
+            model.fit(X, y)
+
+            df_test = df.loc[~df.index.isin(df_b.index)]
+            X_test = df_test.iloc[:, :-1]
+            y_test = df_test.iloc[:, -1]
+
+            auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
+            recall = decile_recall(model, X_test, y_test)
+
+            l1.append((auc, recall))
+
+        l1 = pd.DataFrame(l1)
+        l.append(l1)
+        #l1 = np.array(l1)
+        #l.append((np.mean(l1[:, 0]), np.mean(l1[:, 1])))
+
+    return pd.concat(l, axis=1)
+    #return pd.DataFrame(l)
 
 def evaluate_rocs(model, dfs):
     l = []
