@@ -5,6 +5,8 @@ import pandas as pd
 from datetime import datetime
 from pandas.tseries.offsets import *
 
+import re
+
 def top_n_cat(a, n=5):
     a = a.fillna('missing')
     counts = a.value_counts()
@@ -335,28 +337,32 @@ def get_ts_counts(df, n, name):
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a
 
-def parse_tree(s):
-    function_dict = {'add': '+', 'sub': '-', 'log': 'log'}
+def parse_tree(s, X):
+    tokens = [i for i in re.split(r'([,()])', s) if i != '']
+    function_dict = {'add': '+', 'sub': '-', 'log': 'np.log', 'min': 'min', 'div': '/'}
+
     parsed = ''
-    paren_count = 0
-    while len(s) > 0:
-        a = s.split('(', 1)
-        if len(a) == 1:
-            parsed += '%s' % a[0].split(')')[0]
-            break
-        op = function_dict[a[0].strip()]
-        if op == 'log':
-            parsed += 'np.log('
-            paren_count += 1
-            s = a[1]
-            continue
-        b = a[1].split(',', 1)
-        if len(b) == 1:
-            parsed += '%s' % b[0].split(')')[0]
-            break
+    current_op = None
+    for i in tokens:
+        i = i.strip()
+        if i in function_dict:
+            if i in ['add', 'sub', 'div']:
+                current_op = i
+            else:
+                parsed += i
+        elif i == '(':
+            parsed += i
+        elif i == ',':
+            if current_op:
+                parsed += ' %s ' % function_dict[current_op]
+                current_op = None
+            else:
+                parsed += i + ' '
         else:
-            parsed += '(%s %s ' % (b[0], op)
-            paren_count += 1
-            s = b[1]
-    parsed += ')'*paren_count
+            if i[0] == 'X':
+                col = X.columns[int(i[1:])]
+                parsed += "%s" % col
+            else:
+                parsed += i
+
     return parsed
