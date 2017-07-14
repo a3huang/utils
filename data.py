@@ -334,3 +334,29 @@ def get_ts_counts(df, n, name):
     a = mark_nth_day(df).groupby(['user_id', 'day'])['id'].nunique().unstack().iloc[:, :n].fillna(0)
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a
+
+def parse_tree(s):
+    function_dict = {'add': '+', 'sub': '-', 'log': 'log'}
+    parsed = ''
+    paren_count = 0
+    while len(s) > 0:
+        a = s.split('(', 1)
+        if len(a) == 1:
+            parsed += '%s' % a[0].split(')')[0]
+            break
+        op = function_dict[a[0].strip()]
+        if op == 'log':
+            parsed += 'np.log('
+            paren_count += 1
+            s = a[1]
+            continue
+        b = a[1].split(',', 1)
+        if len(b) == 1:
+            parsed += '%s' % b[0].split(')')[0]
+            break
+        else:
+            parsed += '(%s %s ' % (b[0], op)
+            paren_count += 1
+            s = b[1]
+    parsed += ')'*paren_count
+    return parsed
