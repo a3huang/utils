@@ -320,3 +320,17 @@ def intervals(start, end, step=2):
 # [0,1,2,3] -> [(0,1), (2,3)]
 def disjoint_window(a, n=2):
     return zip(a, a[1:])[::n]
+
+def mark_nth_day(df):
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
+    df['start'] = pd.to_datetime(df['start'])
+    df['day'] = (df['date'] - df['start']).dt.days + 1
+    df['day'] = df['day'].astype(int)
+    df.loc[df['day'] < 0, 'day'] = 0
+    return df
+
+def get_ts_counts(df, n, name):
+    a = mark_nth_day(df).groupby(['user_id', 'day'])['id'].nunique().unstack().iloc[:, :n].fillna(0)
+    a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
+    return a
