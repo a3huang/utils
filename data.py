@@ -91,6 +91,7 @@ def mark_nth_week(df):
     df['start'] = pd.to_datetime(df['start'])
     df['nth_week'] = (df['date'] - df['start']).dt.days / 7 + 1
     df['nth_week'] = df['nth_week'].astype(int)
+    df.loc[df['nth_week'] < 0, 'nth_week'] = 0
     return df
 
 @input_requires(['date'])
@@ -366,3 +367,18 @@ def parse_tree(s, X):
                 parsed += i
 
     return parsed
+
+def window_event_count(df, windows, name):
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
+    df['start'] = pd.to_datetime(df['start'])
+
+    l = []
+    for a, b in windows:
+        start = df['start'] + DateOffset(weeks=a)
+        end = df['start'] + DateOffset(weeks=b)
+        col = df[(df['date'] >= start) & (df['date'] < end)].groupby('user_id')['id'].count().reset_index()
+        col.columns = ['user_id', '%s_%s/%s' % (name, a, b)]
+        l.append(col)
+
+    return df[['user_id']].pipe(merge, l).groupby('user_id').head(1).fillna(0)
