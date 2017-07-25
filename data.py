@@ -4,6 +4,7 @@ import pandas as pd
 
 from datetime import datetime
 from pandas.tseries.offsets import *
+from patsy import dmatrices
 
 import re
 
@@ -382,3 +383,16 @@ def get_ts_counts(df, n, name):
     a = mark_nth_day(df).groupby(['user_id', 'day'])['id'].nunique().unstack().iloc[:, :n].fillna(0)
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a.reset_index()
+
+def formula(formula, df, include_all=False):
+    df = df.copy()
+    df.columns = [col.replace(' ', '_') for col in df.columns]
+
+    if include_all == True:
+        rest = ' + ' +  ' + '.join(df.columns)
+    else:
+        rest = ''
+
+    y, X = dmatrices(formula + rest, df)
+    y = y.reshape(len(y), )
+    return X, y
