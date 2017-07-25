@@ -333,11 +333,6 @@ def mark_nth_day(df):
     df.loc[df['day'] < 0, 'day'] = 0
     return df
 
-def get_ts_counts(df, n, name):
-    a = mark_nth_day(df).groupby(['user_id', 'day'])['id'].nunique().unstack().iloc[:, :n].fillna(0)
-    a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
-    return a
-
 def parse_tree(s, X):
     tokens = [i for i in re.split(r'([,()])', s) if i != '']
     function_dict = {'add': '+', 'sub': '-', 'log': 'np.log', 'min': 'min', 'div': '/'}
@@ -375,10 +370,15 @@ def window_event_count(df, windows, name):
 
     l = []
     for a, b in windows:
-        start = df['start'] + DateOffset(weeks=a)
-        end = df['start'] + DateOffset(weeks=b)
+        start = df['start'] + DateOffset(days=a)
+        end = df['start'] + DateOffset(days=b)
         col = df[(df['date'] >= start) & (df['date'] < end)].groupby('user_id')['id'].count().reset_index()
         col.columns = ['user_id', '%s_%s/%s' % (name, a, b)]
         l.append(col)
 
     return df[['user_id']].pipe(merge, l).groupby('user_id').head(1).fillna(0)
+
+def get_ts_counts(df, n, name):
+    a = mark_nth_day(df).groupby(['user_id', 'day'])['id'].nunique().unstack().iloc[:, :n].fillna(0)
+    a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
+    return a.reset_index()
