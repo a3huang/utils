@@ -673,3 +673,20 @@ def plot_probs(model, X_test, **kwargs):
 def facet(df, row, col, col_wrap=4):
     g = sns.FacetGrid(row=row, col=col, col_wrap=col_wrap, data=df)
     return g
+
+def compare_feature_sets_boot(a, b, col):
+    a['data'] = 1
+    b['data'] = 2
+
+    c = pd.concat([a, b])[[col, 'data']]
+    c.columns = ['Score_%s' % i for i in range(1, len(c.columns))] + ['data']
+
+    sns.boxplot(y='variable', x='value', hue='data', data=c.melt('data'), orient='h')
+    plt.legend(loc=(1,.5))
+
+def compare_feature_sets_bar(a, b, col):
+    a['data'] = 1
+    b['data'] = 2
+    
+    pd.concat([a, b], axis=1)[[col]].plot.bar()
+    plt.legend(loc=(1,.5))
