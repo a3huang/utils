@@ -396,3 +396,11 @@ def formula(formula, df, include_all=False):
     y, X = dmatrices(formula + rest, df)
     y = y.reshape(len(y), )
     return X, y
+
+def mark_within_hour(df, date_col):
+    df = df.copy()
+    df = df.sort_values(by=['anonymous_id', date_col])
+    is_diff_number = df([date_col] - df[date_col].shift()).dt.total_seconds()/3600 >= 1
+    is_diff_user = df['anonymous_id'] != df['anonymous_id'].shift()
+    df['group'] = (is_diff_number | is_diff_user).cumsum()
+    return df
