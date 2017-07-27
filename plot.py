@@ -52,6 +52,16 @@ def winsorize(x, p=.05):
     quantiles_to_keep = a[0].unique()[1:-1]
     return a[a[0].isin(quantiles_to_keep)].iloc[:, 0]
 
+def datecol(df, date_col='date', freq='M'):
+    df = df.copy()
+
+    if freq in ['hour', 'month', 'weekday']:
+        df[date_col] = getattr(df.set_index(date_col).index, freq)
+    else:
+        df = df.set_index(date_col).to_period(freq).reset_index()
+
+    return df
+
 # Main Functions
 def plot_missing(df, top=None, **kwargs):
     a = df.isnull().mean(axis=0)
@@ -687,6 +697,6 @@ def compare_feature_sets_boot(a, b, col):
 def compare_feature_sets_bar(a, b, col):
     a['data'] = 1
     b['data'] = 2
-    
+
     pd.concat([a, b], axis=1)[[col]].plot.bar()
     plt.legend(loc=(1,.5))
