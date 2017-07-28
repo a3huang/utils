@@ -110,8 +110,8 @@ def time_diff(df, group='user_id'):
 
     return df
 
-@input_requires(['user_id'])
-def dummies(df, col, top=None):
+#@input_requires(['user_id'])
+def dummies(df, col, top=None, obs_unit='user_id'):
     df = df.copy()
 
     if top:
@@ -120,7 +120,7 @@ def dummies(df, col, top=None):
     dummy_col = pd.get_dummies(df[col])
     dummy_col.columns = [str(i) for i in dummy_col.columns]
 
-    df = pd.concat([df[['user_id']], dummy_col], axis=1)
+    df = pd.concat([df[[obs_unit]], dummy_col], axis=1)
     return df
 
 def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
@@ -404,3 +404,6 @@ def mark_within_hour(df, date_col):
     is_diff_user = df['anonymous_id'] != df['anonymous_id'].shift()
     df['group'] = (is_diff_number | is_diff_user).cumsum()
     return df
+
+def split_list_col(df, col):
+    return pd.concat([df, pd.DataFrame(df[col].values.tolist())], axis=1).drop(col, 1)
