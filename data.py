@@ -406,4 +406,5 @@ def mark_within_hour(df, date_col):
     return df
 
 def split_list_col(df, col):
-    return pd.concat([df, pd.DataFrame(df[col].values.tolist())], axis=1).drop(col, 1)
+    return pd.concat([df.reset_index(drop=True), pd.DataFrame(df[col].values.tolist())],
+        axis=1).drop(col, 1)
