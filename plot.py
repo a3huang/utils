@@ -103,27 +103,35 @@ def plot_bar(df, *args, **kwargs):
     else:
         raise ValueError, 'Not a valid number of arguments'
 
-def _plot_bar_col(df, col, top=20, **kwargs):
+def _plot_bar_col(df, col, top=20, sort='index', **kwargs):
     a = treat(df[col], top)
 
     a = a.value_counts(dropna=False)
     a = a / float(sum(a))
 
-    a.sort_values().plot.barh(**kwargs)
+    if sort == 'value':
+        a.sort_values(ascending=True).plot.barh(**kwargs)
+    else:
+        a.sort_index(ascending=False).plot.barh(**kwargs)
+
     plt.xlabel('Proportion')
     plt.title(col)
     return a
 
-def _plot_bar_col_multi(df, col, top=20, **kwargs):
+def _plot_bar_col_multi(df, col, top=20, sort='index', **kwargs):
     # only supports column indices
     a = df.iloc[:, col].sum().sort_values(ascending=False)
     a = a / float(sum(a))
 
-    a.sort_values().plot.barh(**kwargs)
+    if sort == 'value':
+        a.sort_values(ascending=True).plot.barh(**kwargs)
+    else:
+        a.sort_index(ascending=False).plot.barh(**kwargs)
+
     plt.xlabel('Proportion')
     return a
 
-def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, sort='value', **kwargs):
+def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, sort='index', **kwargs):
     df = df.copy()
     df[cat] = treat(df[cat], top)
 
@@ -137,10 +145,12 @@ def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, sort='value', 
         plt.legend(title=col, loc=(1, 0.5))
     else:
         a = df.groupby(cat)[col].mean()
+
         if sort == 'value':
             a.sort_values(ascending=True).plot.barh(**kwargs)
         else:
             a.sort_index(ascending=False).plot.barh(**kwargs)
+        
         plt.xlabel('Mean')
         plt.title('%s grouped by %s' % (col, cat))
 
