@@ -150,7 +150,7 @@ def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, sort='index', 
             a.sort_values(ascending=True).plot.barh(**kwargs)
         else:
             a.sort_index(ascending=False).plot.barh(**kwargs)
-        
+
         plt.xlabel('Mean')
         plt.title('%s grouped by %s' % (col, cat))
 
