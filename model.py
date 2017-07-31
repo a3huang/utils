@@ -312,10 +312,10 @@ def evaluate_transforms(model_dict, X, y, transforms):
 def evaluate_feature_sets(model, dfs):
     l = []
     for X, y in dfs:
-        cv = StratifiedKFold(n_splits=10, shuffle=True)
+        #cv = StratifiedKFold(n_splits=5, shuffle=True)
 
-        auc = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
-        recall = cross_val_score(model, X, y, cv=cv, scoring=decile_recall).mean()
+        auc = cross_val_score(model, X, y, cv=5, scoring='roc_auc').mean()
+        recall = cross_val_score(model, X, y, cv=5, scoring=decile_recall).mean()
 
         l.append((auc, recall))
 
