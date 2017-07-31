@@ -408,3 +408,14 @@ def mark_within_hour(df, date_col):
 def split_list_col(df, col):
     return pd.concat([df.reset_index(drop=True), pd.DataFrame(df[col].values.tolist())],
         axis=1).drop(col, 1)
+
+def indicator(pos, size):
+    x = np.zeros(size)
+    x[pos] = 1
+    return x
+
+def merge_nodup(df1, df2, on):
+    return df1.reset_index().merge(df2, on=on, how='left').groupby('index').head(1).drop('index', 1)
+
+def group_into_list(df, group, col):
+    return df.groupby(group)[col].apply(list).reset_index()
