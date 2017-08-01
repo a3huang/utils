@@ -95,17 +95,17 @@ def mark_nth_week(df):
     df.loc[df['nth_week'] < 0, 'nth_week'] = 0
     return df
 
-@input_requires(['date'])
-def time_diff(df, group='user_id'):
+#@input_requires(['date'])
+def time_diff(df, date_col='date', group='user_id'):
     df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
+    df[date_col] = pd.to_datetime(df[date_col])
 
     if group is None:
-        df = df.sort_values(by='date')
-        df['time_diff'] = df['date'].diff().dt.total_seconds()
+        df = df.sort_values(by=date_col)
+        df['time_diff'] = df[date_col].diff().dt.total_seconds()
     else:
-        df = df.sort_values(by=[group, 'date'])
-        df['time_diff'] = df['date'].diff().dt.total_seconds()
+        df = df.sort_values(by=[group, date_col])
+        df['time_diff'] = df[date_col].diff().dt.total_seconds()
         df.loc[df[group] != df[group].shift(1), 'time_diff'] = np.nan
 
     return df
