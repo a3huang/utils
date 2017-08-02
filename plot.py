@@ -710,3 +710,9 @@ def compare_feature_sets_bar(a, b, col):
 
     pd.concat([a, b], axis=1)[[col]].plot.bar()
     plt.legend(loc=(1,.5))
+
+def plot_f1(model, X, y):
+    l = []
+    for i in np.linspace(.1,1,10):
+        l.append(f1_score(y, model.predict_proba(X)[:, 1] > i))
+    plt.plot(np.linspace(.1,1,10), l)
