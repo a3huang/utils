@@ -712,7 +712,15 @@ def compare_feature_sets_bar(a, b, col):
     plt.legend(loc=(1,.5))
 
 def plot_f1(model, X, y):
+    cv = StratifiedKFold(n_splits=5, shuffle=True)
+
     l = []
     for i in np.linspace(.1,1,10):
-        l.append(f1_score(y, model.predict_proba(X)[:, 1] > i))
+        l1 = []
+        for tr, te in cv.split(X, y):
+            true = y.values[te]
+            pred = model.predict_proba(X.values[te])[:, 1] > i
+            l1.append(f1_score(true, pred))
+        l.append(np.mean(l1))
+
     plt.plot(np.linspace(.1,1,10), l)
