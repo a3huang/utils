@@ -143,9 +143,10 @@ def stack(df_list):
         df['group'] = i
     return pd.concat(df_list)
 
-def missing_indicator(df, col):
+def missing_indicator(df, cols):
     df = df.copy()
-    df.loc[:, '%s_missing' % col] = df[col].apply(lambda x: 1 if pd.isnull(x) else 0)
+    for col in cols:
+        df.loc[:, '%s_missing' % col] = df[col].apply(lambda x: 1 if pd.isnull(x) else 0)
     return df
 
 def load(filename, date_cols, folder='/Users/alexhuang/Documents/data/gobble_data/'):
