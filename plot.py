@@ -6,7 +6,7 @@ import seaborn as sns
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics import confusion_matrix, roc_curve
+from sklearn.metrics import confusion_matrix, roc_curve, f1_score
 from sklearn.model_selection import learning_curve, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 
