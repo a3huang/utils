@@ -96,17 +96,18 @@ def mark_nth_week(df):
     return df
 
 #@input_requires(['date'])
-def time_diff(df, date_col='date', group='user_id'):
+def time_diff(df, date_col='date', groups=None):
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
 
-    if group is None:
+    if groups is None:
         df = df.sort_values(by=date_col)
         df['time_diff'] = df[date_col].diff().dt.total_seconds()
     else:
-        df = df.sort_values(by=[group, date_col])
+        df = df.sort_values(by=groups + [date_col])
         df['time_diff'] = df[date_col].diff().dt.total_seconds()
-        df.loc[df[group] != df[group].shift(1), 'time_diff'] = np.nan
+        for g in groups:
+            df.loc[df[g] != df[g].shift(1), 'time_diff'] = np.nan
 
     return df
 
@@ -419,3 +420,10 @@ def merge_nodup(df1, df2, on):
 
 def group_into_list(df, group, col):
     return df.groupby(group)[col].apply(list).reset_index()
+
+def merge_with_index(df1, df2, on, how='left'):
+    df1 = df1.copy()
+    df2 = df2.copy()
+    df1 = df1.reset_index().rename(columns={'index':'id_l'})
+    df2 = df2.reset_index().rename(columns={'index':'id_r'})
+    return df1.merge(df2, on=on, how=how)
