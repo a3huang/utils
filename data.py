@@ -428,3 +428,15 @@ def merge_with_index(df1, df2, on, how='left'):
     df1 = df1.reset_index().rename(columns={'index':'id_l'})
     df2 = df2.reset_index().rename(columns={'index':'id_r'})
     return df1.merge(df2, on=on, how=how)
+
+def check_unique(df, col):
+    if len(df.groupby(col).size().value_counts()) > 1:
+        return False
+    else:
+        return True
+
+def expit(x):
+    return 1/np.exp(-x)
+
+def rate(x):
+    return x/float(sum(x))
