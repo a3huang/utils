@@ -386,7 +386,7 @@ def get_ts_counts(df, n, name):
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a.reset_index()
 
-def formula(formula, df, include_all=False):
+def formula(df, formula, include_all=False):
     df = df.copy()
     df.columns = [col.replace(' ', '_') for col in df.columns]
 
@@ -396,7 +396,8 @@ def formula(formula, df, include_all=False):
         rest = ''
 
     y, X = dmatrices(formula + rest, df)
-    y = y.reshape(len(y), )
+    y = y.reshape(len(y),)
+
     return X, y
 
 def mark_within_hour(df, date_col):
@@ -440,3 +441,7 @@ def expit(x):
 
 def rate(x):
     return x/float(sum(x))
+
+def interaction(df, formula):
+    X = dmatrix(formula + ' -1', df)
+    return pd.DataFrame(X, columns=X.design_info.column_names)
