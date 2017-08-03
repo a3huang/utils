@@ -724,3 +724,11 @@ def plot_f1(model, X, y):
         l.append(np.mean(l1))
 
     plt.plot(np.linspace(.1,1,10), l)
+
+def plot_pred_true(model, X_test, y_test):
+    xlims = lr.predict(X_test).min(), lr.predict(X_test).max()
+    ylims = y_test.min(), y_test.max()
+    range_min = min(xlims[0], ylims[0])
+    range_max = max(xlims[1], ylims[1])
+    plt.scatter(lr.predict(X_test), y_test)
+    plt.plot([range_min, range_max], [range_min, range_max], linestyle='--')
