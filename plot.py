@@ -540,7 +540,7 @@ def plot_correlation_matrix(df, slice=None, **kwargs):
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     return a
 
-def plot_confusion_matrix(model, X, y, threshold=0.5, **kwargs):
+def plot_confusion_matrix(model, X, y, threshold=0.5, norm_axis=1, **kwargs):
     # X = df.drop(target, 1)
     # y = df[target]
 
@@ -549,8 +549,8 @@ def plot_confusion_matrix(model, X, y, threshold=0.5, **kwargs):
     except:
         prediction = model.predict(X)
 
-    a = confusion_matrix(y, prediction)
-    a = a / float(sum(sum(a)))
+    a = confusion_matrix(y, prediction).astype(float)
+    a = np.divide(a, np.sum(a, norm_axis))
     sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     plt.ylabel('True')
     plt.title('Predicted')
