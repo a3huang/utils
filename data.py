@@ -445,3 +445,11 @@ def rate(x):
 def interaction(df, formula):
     X = dmatrix(formula + ' -1', df)
     return pd.DataFrame(X, columns=X.design_info.column_names)
+
+def normalize(df, col):
+    df = df.copy()
+    df[col] = df[col] / float(sum(df[col]))
+    return df
+
+def logit(x):
+    return np.log(x/(1-x))
