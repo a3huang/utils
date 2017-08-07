@@ -324,23 +324,28 @@ def evaluate_feature_sets(model, dfs, target, omit):
 
     return pd.DataFrame(l)
 
-def evaluate_feature_sets_boot(model, dfs, target, omit, B=100):
+def evaluate_feature_sets_boot(model, dfs, B=100):
     l = []
-    for df in dfs:
+    for X, y in dfs:
         l1 = []
-        #df = pd.concat([X, y], axis=1)
+        df = pd.concat([X, y], axis=1)
 
         for i in range(B):
             df_b = df.sample(len(df), replace=True)
 
-            X = df_b.drop(omit + [target], 1)
-            y = df_b[target]
+            # X = df_b.drop(omit + [target], 1)
+            # y = df_b[target]
+
+            X = df_b.iloc[:, :-1]
+            y = df_b.iloc[:, -1]
 
             model.fit(X, y)
 
             df_test = df.loc[~df.index.isin(df_b.index)]
-            X_test = df_test.drop(omit + [target], 1)
-            y_test = df_test[target]
+            # X_test = df_test.drop(omit + [target], 1)
+            # y_test = df_test[target]
+            X_test = df_test.iloc[:, :-1]
+            y_test = df_test.iloc[:, -1]
 
             auc = roc_auc_score(y_test, model.predict_proba(X_test)[:, 1])
             recall = decile_recall(model, X_test, y_test)
