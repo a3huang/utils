@@ -381,8 +381,9 @@ def window_event_count(df, windows, name):
 
     return df[['user_id']].pipe(merge, l).groupby('user_id').head(1).fillna(0)
 
-def get_ts_counts(df, n, name):
-    a = mark_nth_day(df).groupby(['user_id', 'day'])['id'].nunique().unstack().iloc[:, :n].fillna(0)
+def get_ts_counts(df, start, end, name):
+    a = mark_nth_day(df).groupby(['user_id', 'day'])['id'].nunique().unstack()\
+        .iloc[:, start:end].fillna(0)
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a.reset_index()
 
@@ -453,3 +454,9 @@ def normalize(df, col):
 
 def logit(x):
     return np.log(x/(1-x))
+
+def quantile(df, col):
+    df = df.copy()
+    df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
+    df['quantile'] = pd.qcut(df.index, 10, labels=False) + 1
+    return df
