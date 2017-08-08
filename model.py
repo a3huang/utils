@@ -309,11 +309,11 @@ def evaluate_transforms(model_dict, X, y, transforms):
         l.append((model_name, auc, recall))
     return pd.DataFrame(l)
 
-def evaluate_feature_sets(model, dfs, target, omit):
+def evaluate_feature_sets(model, dfs):
     l = []
-    for df in dfs:
-        X = df.drop(omit + [target], 1)
-        y = df[target]
+    for X, y in dfs:
+        #X = df.drop(omit + [target], 1)
+        #y = df[target]
 
         #cv = StratifiedKFold(n_splits=5, shuffle=True)
 
