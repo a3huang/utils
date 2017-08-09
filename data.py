@@ -383,7 +383,7 @@ def window_event_count(df, windows, name):
 
 def get_ts_counts(df, start, end, name):
     a = mark_nth_day(df).groupby(['user_id', 'day'])['id'].nunique().unstack()\
-        .iloc[:, start:end].fillna(0)
+        .iloc[:, start:end]
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a.reset_index()
 
