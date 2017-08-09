@@ -312,6 +312,7 @@ def evaluate_transforms(model_dict, X, y, transforms):
 def evaluate_feature_sets(model, dfs):
     l = []
     for X, y in dfs:
+        X = X.drop(['user_id', 'start', 'end', 'days', 'left'], 1)
         #X = df.drop(omit + [target], 1)
         #y = df[target]
 
