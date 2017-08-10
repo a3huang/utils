@@ -309,10 +309,11 @@ def evaluate_transforms(model_dict, X, y, transforms):
         l.append((model_name, auc, recall))
     return pd.DataFrame(l)
 
-def evaluate_feature_sets(model, dfs):
+def evaluate_feature_sets(model, dfs, omit=None):
     l = []
     for X, y in dfs:
-        X = X.drop(['user_id', 'start', 'end', 'days', 'left'], 1)
+        if omit:
+            X = X.drop(omit, 1)
         #X = df.drop(omit + [target], 1)
         #y = df[target]
 
