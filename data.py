@@ -470,3 +470,6 @@ def quantile(df, col):
     df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
     df['quantile'] = pd.qcut(df.index, 10, labels=False) + 1
     return df
+
+def mask(df, f):
+	return df[f(df)]
