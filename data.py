@@ -383,7 +383,7 @@ def window_event_count(df, windows, name):
 
 def get_ts_counts(df, start, end, name):
     a = mark_nth_day(df).groupby(['user_id', 'day']).size().unstack()
-    missing_days = np.setdiff1d(np.array(range(a.columns.max()+1)), a.columns)
+    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
     a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
     a = a.iloc[:, start:end]
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
@@ -391,7 +391,7 @@ def get_ts_counts(df, start, end, name):
 
 def get_ts_sum(df, start, end, col, name):
     a = mark_nth_day(df).groupby(['user_id', 'day'])[col].sum().unstack()
-    missing_days = np.setdiff1d(np.array(range(a.columns.max()+1)), a.columns)
+    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
     a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
     a = a.iloc[:, start:end]
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
