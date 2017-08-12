@@ -473,3 +473,7 @@ def quantile(df, col):
 
 def mask(df, f):
 	return df[f(df)]
+
+def softmax(x):
+    x1 = np.exp(x)
+    return x1/float(sum(x1))
