@@ -111,37 +111,84 @@ def time_diff(df, date_col='date', groups=None):
 
     return df
 
-#@input_requires(['user_id'])
-def dummies(df, col, obs_unit, top=None):
-    df = df.copy()
+# #@input_requires(['user_id'])
+# def dummies(df, col, obs_unit, top=None):
+#     df = df.copy()
+#
+#     if top:
+#         df[col] = top_n_cat(df[col], top)
+#
+#     dummy_col = pd.get_dummies(df[col])
+#     dummy_col.columns = [str(i) for i in dummy_col.columns]
+#
+#     df = pd.concat([df[[obs_unit]], dummy_col], axis=1)
+#     return df
 
-    if top:
-        df[col] = top_n_cat(df[col], top)
+#####
+def check_unique(df, col):
+    if len(df.groupby(col).size().value_counts()) > 1:
+        return False
+    else:
+        return True
 
-    dummy_col = pd.get_dummies(df[col])
-    dummy_col.columns = [str(i) for i in dummy_col.columns]
-
-    df = pd.concat([df[[obs_unit]], dummy_col], axis=1)
-    return df
+def concat(df, df_list, **kwargs):
+    dfs = [df.reset_index(drop=True)] + [pd.DataFrame(df_i).reset_index(drop=True) for df_i in df_list]
+    return pd.concat(dfs, **kwargs)
 
 def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
-    df = df.copy()
-
     if col3 is None:
         return pd.crosstab(df[col1], df[col2], **kwargs)
     else:
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
-#######
 
 def merge(df, df_list, **kwargs):
-    for i in df_list:
-        df = df.merge(i, **kwargs)
+    df = df.copy()
+
+    for df_i in df_list:
+        df = df.merge(df_i, **kwargs)
+
     return df
 
-def stack(df_list):
-    for i, df in enumerate(df_list):
-        df['group'] = i
-    return pd.concat(df_list)
+def quantile(df, col, q=10):
+    df = df.copy()
+    df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
+    df['%s quantile' % col] = pd.qcut(df.index, q, labels=False) + 1
+    return df
+
+def query(df, func):
+    '''
+    df.pipe(query, lambda x: x['col'] > 5)
+    '''
+	return df[func(df)]
+
+def show_duplicates(df, col):
+    counts = df.groupby(col).size()
+    duplicates = counts[counts > 1].index
+    return df[df[col].isin(duplicates)].sort_values(by=col)
+
+def transform(df, cf_dict):
+    df = df.copy()
+
+    for cols, func in cf_dict.items():
+        col_names = list(cols)
+        df[col_names] = df[col_names].apply(func)
+
+    return df
+
+def one_hot(x):
+    '''
+    df[col].apply(one_hot)
+    df.pipe(transform, {'col': one_hot})
+    '''
+    return pd.get_dummies(x)
+
+def props(x):
+    '''
+    df[col].apply(props)
+    df.pipe(transform, {'col': props})
+    '''
+    return x/float(sum(x))
+#####
 
 def missing_indicator(df, cols):
     df = df.copy()
@@ -151,17 +198,6 @@ def missing_indicator(df, cols):
 
 def load(filename, date_cols, folder='/Users/alexhuang/Documents/data/gobble_data/'):
     return pd.read_csv(folder + filename, parse_dates=date_cols)
-
-def col_in(df, col, values):
-    return df[df[col].isin(values)]
-
-def col_between(df, left, col, right):
-    return df[(df[col] > left) & (df[col] < right)]
-
-def get_dups(df, col):
-    a = df.groupby(col).size()
-    dup = a[a > 1].index
-    return df[df[col].isin(dup)].sort_values(by=col)
 
 def contains_any(a, strings):
     return any([x for x in strings if x in a])
@@ -189,23 +225,11 @@ def get_cols(df, include=None, exclude=None, return_df=True):
     else:
         return c
 
-def add_col(df, col, name=None):
-    col = pd.DataFrame(col).reset_index(drop=True)
-    if name:
-        col.columns = [name]
-    return pd.concat([df.reset_index(drop=True), col], axis=1)
-
-def add_agg_col(df, group, func, col=None):
-    df = df.copy()
-
-    if col:
-        df[func] = df.groupby(group)[col].transform(func)
-    else:
-        df['count'] = df.groupby(group).transform('count').iloc[:, -1]
-
-    return df.groupby(group).head(1)
-
-######
+# def add_col(df, col, name=None):
+#     col = pd.DataFrame(col).reset_index(drop=True)
+#     if name:
+#         col.columns = [name]
+#     return pd.concat([df.reset_index(drop=True), col], axis=1)
 
 def top_n(df, col, n=5):
     df = df.copy()
@@ -215,23 +239,10 @@ def top_n(df, col, n=5):
     df[col] = df[col].apply(lambda x: x if x in top else 'other')
     return df
 
-def transform(df, trans_dict):
-    df = df.copy()
-    for cols, trans in trans_dict.items():
-        col_names = list(cols)
-        df[col_names] = df[col_names].apply(trans)
-    return df
-
-def pca_transform(df, n_comp=2):
-    pca = make_pipeline(StandardScaler(), PCA())
-    return pd.DataFrame(pca.fit_transform(X)[:, :n_comp], columns=['PCA %s' % i for i in range(1, n_comp+1)])
-
 def categorize(df, cols, name):
     df = df.copy()
     df[name] = df[cols].apply(lambda x: x.idxmax(), axis=1)
     return df.drop(cols, 1)
-
-
 
 # needs date filter_start, filter_end, start, end column
 def frequency(df, group, col):
@@ -250,16 +261,6 @@ def frequency(df, group, col):
     df['frequency'] = df['total'] / df['weeks']
     df = df[[group, 'frequency']]
     return df
-
-# make id default col?
-# needs user id column
-def get_grouped_rates(df, group, col):
-    # get counts aggregated by user id
-    a = df.pipe(add_agg_col, 'user_id', col, 'count')
-    return a[a[col] > 0].groupby(group)['count'].size() / a.groupby(group)['count'].size()
-def get_rate(df, col):
-    a = df[col].value_counts(dropna=False)
-    return a / float(sum(a))
 
 # add default "names" to all other functions as well
 def add_dow_offset(df, date_col, name='next_dow', **kwargs):
@@ -290,13 +291,6 @@ def get_weekly_ts(df, window, name):
               .pipe(dummies, 'nth_week')\
               .groupby('user_id').sum().reset_index()\
               .pipe(name_with_template, name)
-
-# need error checking on preserve
-def my_query(df, query, on='user_id', preserve='group'):
-    return df[[on, preserve]].merge(df.query(query).pipe(remove, [preserve]), on=on, how='left')
-
-def binarize(x):
-    return x.apply(lambda x: 1 if x > 0 else 0)
 
 def combine_ratio(df, cols, name):
     df = df.copy()
@@ -428,6 +422,7 @@ def indicator(pos, size):
     x[pos] = 1
     return x
 
+#?
 def merge_unique(df1, df2, on, how):
     return df1.reset_index().merge(df2, on=on, how=how).groupby('index').head(1).drop('index', 1)
 
@@ -441,39 +436,6 @@ def merge_with_index(df1, df2, on, how='left'):
     df2 = df2.reset_index().rename(columns={'index':'id_r'})
     return df1.merge(df2, on=on, how=how)
 
-def check_unique(df, col):
-    if len(df.groupby(col).size().value_counts()) > 1:
-        return False
-    else:
-        return True
-
-def expit(x):
-    return 1/np.exp(-x)
-
-def rate(x):
-    return x/float(sum(x))
-
 def interaction(df, formula):
     X = dmatrix(formula + ' -1', df)
     return pd.DataFrame(X, columns=X.design_info.column_names)
-
-def normalize(df, col):
-    df = df.copy()
-    df[col] = df[col] / float(sum(df[col]))
-    return df
-
-def logit(x):
-    return np.log(x/(1-x))
-
-def quantile(df, col):
-    df = df.copy()
-    df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
-    df['quantile'] = pd.qcut(df.index, 10, labels=False) + 1
-    return df
-
-def mask(df, f):
-	return df[f(df)]
-
-def softmax(x):
-    x1 = np.exp(x)
-    return x1/float(sum(x1))
