@@ -112,7 +112,7 @@ def time_diff(df, date_col='date', groups=None):
     return df
 
 #@input_requires(['user_id'])
-def dummies(df, col, top=None, obs_unit='user_id'):
+def dummies(df, col, top=None, obs_unit):
     df = df.copy()
 
     if top:
@@ -133,9 +133,9 @@ def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
 #######
 
-def merge(df, df_list, on='user_id'):
+def merge(df, df_list, on, how='left'):
     for i in df_list:
-        df = df.merge(i, on=on, how='left')
+        df = df.merge(i, on=on, how=how)
     return df
 
 def stack(df_list):
