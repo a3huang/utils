@@ -125,12 +125,7 @@ def time_diff(df, date_col='date', groups=None):
 #     return df
 
 #####
-def check_unique(df, col):
-    if len(df.groupby(col).size().value_counts()) > 1:
-        return False
-    else:
-        return True
-
+# dataframe functions
 def concat(df, df_list, **kwargs):
     dfs = [df.reset_index(drop=True)] + [pd.DataFrame(df_i).reset_index(drop=True) for df_i in df_list]
     return pd.concat(dfs, **kwargs)
@@ -141,19 +136,26 @@ def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     else:
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
 
-def merge(df, df_list, **kwargs):
+def merge(df, df_list, on, how, **kwargs):
     df = df.copy()
 
     for df_i in df_list:
-        df = df.merge(df_i, **kwargs)
+        if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
+            raise Exception, 'Many-to-many join will result in duplicate rows.'
+        df = df.merge(df_i, on, how, **kwargs)
 
     return df
 
-def quantile(df, col, q=10):
-    df = df.copy()
-    df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
-    df['%s quantile' % col] = pd.qcut(df.index, q, labels=False) + 1
-    return df
+def is_unique(df, col):
+    if len(df.groupby(col).size().value_counts()) > 1:
+        return False
+    else:
+        return True
+
+def duplicates(df, col):
+    counts = df.groupby(col).size()
+    dups = counts[counts > 1].index
+    return df[df[col].isin(dups)].sort_values(by=col)
 
 def query(df, func):
     '''
@@ -161,26 +163,47 @@ def query(df, func):
     '''
 	return df[func(df)]
 
-def show_duplicates(df, col):
-    counts = df.groupby(col).size()
-    duplicates = counts[counts > 1].index
-    return df[df[col].isin(duplicates)].sort_values(by=col)
+def quantile(df, col, q=10):
+    df = df.copy()
+    df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
+    df['%s quantile' % col] = pd.qcut(df.index, q, labels=False) + 1
+    return df
 
-def transform(df, cf_dict):
+def transform(df, cf_dict, append=False):
     df = df.copy()
 
     for cols, func in cf_dict.items():
         col_names = list(cols)
-        df[col_names] = df[col_names].apply(func)
+        if append:
+            df = df.pipe(concat, list(df[col_names].apply(func)), axis=1)
+        else:
+            df[col_names] = df[col_names].apply(func)
 
     return df
 
-def one_hot(x):
+def formula(df, formula):
     '''
-    df[col].apply(one_hot)
-    df.pipe(transform, {'col': one_hot})
+    new_cols = df.pipe(formula, 'col1*col2 + col3/col4')
+    df.pipe(concat, new_cols, axis=1)
+    '''
+    X = dmatrix(formula, df)
+    X = pd.DataFrame(X)
+    return X
+
+# general series functions
+def onehot(x):
+    '''
+    df[col].apply(onehot)
+    df.pipe(transform, {'col': onehot})
     '''
     return pd.get_dummies(x)
+
+def inv_onehot(df):
+    '''
+    df[cols].apply(inv_onehot)
+    df.pipe(transform, {('val1', 'val2', 'val3'): inv_onehot})
+    '''
+    return df.apply(lambda x: x.idxmax(), axis=1)
 
 def props(x):
     '''
@@ -188,16 +211,24 @@ def props(x):
     df.pipe(transform, {'col': props})
     '''
     return x/float(sum(x))
+
+def missing_ind(x):
+    '''
+    df[col].apply(missing_ind)
+    df.pipe(transform, {'col': missing_ind}, append=True)
+    '''
+    return x.apply(lambda x: 1 if pd.isnull(x) else 0)
+
+# miscellaneous functions
+def disjoint_sliding_window(x, n=2):
+    '''
+    [0,1,2,3] -> [(0,1), (2,3)]
+    '''
+    return zip(x, x[1:])[::n]
 #####
 
-def missing_indicator(df, cols):
-    df = df.copy()
-    for col in cols:
-        df.loc[:, '%s_missing' % col] = df[col].apply(lambda x: 1 if pd.isnull(x) else 0)
-    return df
-
-def load(filename, date_cols, folder='/Users/alexhuang/Documents/data/gobble_data/'):
-    return pd.read_csv(folder + filename, parse_dates=date_cols)
+# def load(filename, date_cols, folder='/Users/alexhuang/Documents/data/gobble_data/'):
+#     return pd.read_csv(folder + filename, parse_dates=date_cols)
 
 def contains_any(a, strings):
     return any([x for x in strings if x in a])
@@ -231,95 +262,9 @@ def get_cols(df, include=None, exclude=None, return_df=True):
 #         col.columns = [name]
 #     return pd.concat([df.reset_index(drop=True), col], axis=1)
 
-def top_n(df, col, n=5):
-    df = df.copy()
-    df[col] = df[col].fillna('missing')
-    counts = df[col].value_counts()
-    top = counts.iloc[:n].index
-    df[col] = df[col].apply(lambda x: x if x in top else 'other')
-    return df
-
-def categorize(df, cols, name):
-    df = df.copy()
-    df[name] = df[cols].apply(lambda x: x.idxmax(), axis=1)
-    return df.drop(cols, 1)
-
-# needs date filter_start, filter_end, start, end column
-def frequency(df, group, col):
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['date_string'] = df['date'].dt.date
-    df['total'] = df.groupby(group)['date_string'].transform('count')
-    df = df.groupby(group).head(1)
-
-    try:
-        df['weeks'] = (df['filter_end'] - df['filter_start']).dt.days / 7.0
-    except:
-        df['end'] = df['end'].fillna(datetime.now())
-        df['weeks'] = (df['end'] - df['start']).dt.days / 7.0
-
-    df['frequency'] = df['total'] / df['weeks']
-    df = df[[group, 'frequency']]
-    return df
-
-# add default "names" to all other functions as well
-def add_dow_offset(df, date_col, name='next_dow', **kwargs):
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df[name] = df[date_col].dt.to_period('W').dt.start_time + DateOffset(**kwargs)
-    return df
-
-def add_date_offset(df, date_col, name='next', **kwargs):
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df[name] = df[date_col].dt.date + DateOffset(**kwargs)
-    return df
-
-def consecutive_runs(df):
-    df = df.copy()
-    df = df.pipe(mark_nth_week)
-    df = df[~df['nth_week'].isnull()]
-    df = df.pipe(mark_consecutive_runs, 'nth_week')
-    df = df.groupby(['user_id', 'run']).size().reset_index().drop('run', axis=1)
-    return df
-
-def get_weekly_ts(df, window, name):
-    a, b = window
-    return df.pipe(filter_week_window, a, b)\
-              .pipe(mark_nth_week)\
-              .query('nth_week >= 0')\
-              .pipe(dummies, 'nth_week')\
-              .groupby('user_id').sum().reset_index()\
-              .pipe(name_with_template, name)
-
-def combine_ratio(df, cols, name):
-    df = df.copy()
-    c = get_cols(df, cols, return_df=False)
-    c = disjoint_window(c, len(cols))
-
-    # if isinstance(cols[0], (list, tuple)):
-    for i, pair in enumerate(c):
-        col_pair = list(pair)
-        df["%s_%s" % (name, i)] = df[col_pair].apply(lambda x: 0 if x[0] == 0 else x[1]/x[0], axis=1)
-        df = df.drop(col_pair, 1)
-    # else:
-    #     df[name] = df[cols].apply(lambda x: 0 if x[0] == 0 else x[1]/x[0], axis=1)
-    #     df = df.drop(cols, 1)
-    return df
-
-def combine_prod(df, cols, name):
-    df = df.copy()
-    df[name] = df[cols].apply(lambda x: 0 if x[0] == 0 else x[1]*x[0], axis=1)
-    df = df.drop(cols, 1)
-    return df
-
 # [(0,2), (2,4), (4,6)]
 def intervals(start, end, step=2):
     return zip(range(start,end+step,step), range(start+step,end+step,step))
-
-# [0,1,2,3] -> [(0,1), (2,3)]
-def disjoint_window(a, n=2):
-    return zip(a, a[1:])[::n]
 
 def mark_nth_day(df):
     df = df.copy()
@@ -330,50 +275,51 @@ def mark_nth_day(df):
     df.loc[df['day'] < 0, 'day'] = 0
     return df
 
-def parse_tree(s, X):
-    tokens = [i for i in re.split(r'([,()])', s) if i != '']
-    function_dict = {'add': '+', 'sub': '-', 'log': 'np.log', 'min': 'min', 'div': '/'}
-
-    parsed = ''
-    current_op = None
-    for i in tokens:
-        i = i.strip()
-        if i in function_dict:
-            if i in ['add', 'sub', 'div']:
-                current_op = i
-            else:
-                parsed += i
-        elif i == '(':
-            parsed += i
-        elif i == ',':
-            if current_op:
-                parsed += ' %s ' % function_dict[current_op]
-                current_op = None
-            else:
-                parsed += i + ' '
-        else:
-            if i[0] == 'X':
-                col = X.columns[int(i[1:])]
-                parsed += "%s" % col
-            else:
-                parsed += i
-
-    return parsed
-
-def window_event_count(df, windows, name):
+def mark_within_hour(df, date_col):
     df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['start'] = pd.to_datetime(df['start'])
+    df = df.sort_values(by=['anonymous_id', date_col])
+    is_diff_number = (df[date_col] - df[date_col].shift()).dt.total_seconds()/3600 >= 1
+    is_diff_user = df['anonymous_id'] != df['anonymous_id'].shift()
+    df['group'] = (is_diff_number | is_diff_user).cumsum()
+    return df
 
-    l = []
-    for a, b in windows:
-        start = df['start'] + DateOffset(days=a)
-        end = df['start'] + DateOffset(days=b)
-        col = df[(df['date'] >= start) & (df['date'] < end)].groupby('user_id')['id'].count().reset_index()
-        col.columns = ['user_id', '%s_%s/%s' % (name, a, b)]
-        l.append(col)
+def consecutive_runs(df):
+    df = df.copy()
+    df = df.pipe(mark_nth_week)
+    df = df[~df['nth_week'].isnull()]
+    df = df.pipe(mark_consecutive_runs, 'nth_week')
+    df = df.groupby(['user_id', 'run']).size().reset_index().drop('run', axis=1)
+    return df
 
-    return df[['user_id']].pipe(merge, l).groupby('user_id').head(1).fillna(0)
+# def parse_tree(s, X):
+#     tokens = [i for i in re.split(r'([,()])', s) if i != '']
+#     function_dict = {'add': '+', 'sub': '-', 'log': 'np.log', 'min': 'min', 'div': '/'}
+#
+#     parsed = ''
+#     current_op = None
+#     for i in tokens:
+#         i = i.strip()
+#         if i in function_dict:
+#             if i in ['add', 'sub', 'div']:
+#                 current_op = i
+#             else:
+#                 parsed += i
+#         elif i == '(':
+#             parsed += i
+#         elif i == ',':
+#             if current_op:
+#                 parsed += ' %s ' % function_dict[current_op]
+#                 current_op = None
+#             else:
+#                 parsed += i + ' '
+#         else:
+#             if i[0] == 'X':
+#                 col = X.columns[int(i[1:])]
+#                 parsed += "%s" % col
+#             else:
+#                 parsed += i
+#
+#     return parsed
 
 def get_ts_counts(df, start, end, name):
     a = mark_nth_day(df).groupby(['user_id', 'day']).size().unstack()
@@ -391,36 +337,9 @@ def get_ts_sum(df, start, end, col, name):
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a.reset_index()
 
-def formula(df, formula, include_all=False):
-    df = df.copy()
-    df.columns = [col.replace(' ', '_') for col in df.columns]
-
-    if include_all == True:
-        rest = ' + ' +  ' + '.join(df.columns)
-    else:
-        rest = ''
-
-    y, X = dmatrices(formula + rest, df)
-    y = y.reshape(len(y),)
-
-    return X, y
-
-def mark_within_hour(df, date_col):
-    df = df.copy()
-    df = df.sort_values(by=['anonymous_id', date_col])
-    is_diff_number = (df[date_col] - df[date_col].shift()).dt.total_seconds()/3600 >= 1
-    is_diff_user = df['anonymous_id'] != df['anonymous_id'].shift()
-    df['group'] = (is_diff_number | is_diff_user).cumsum()
-    return df
-
 def split_list_col(df, col):
     return pd.concat([df.reset_index(drop=True), pd.DataFrame(df[col].values.tolist())],
         axis=1).drop(col, 1)
-
-def indicator(pos, size):
-    x = np.zeros(size)
-    x[pos] = 1
-    return x
 
 #?
 def merge_unique(df1, df2, on, how):
@@ -428,14 +347,3 @@ def merge_unique(df1, df2, on, how):
 
 def group_into_list(df, group, col):
     return df.groupby(group)[col].apply(list).reset_index()
-
-def merge_with_index(df1, df2, on, how='left'):
-    df1 = df1.copy()
-    df2 = df2.copy()
-    df1 = df1.reset_index().rename(columns={'index':'id_l'})
-    df2 = df2.reset_index().rename(columns={'index':'id_r'})
-    return df1.merge(df2, on=on, how=how)
-
-def interaction(df, formula):
-    X = dmatrix(formula + ' -1', df)
-    return pd.DataFrame(X, columns=X.design_info.column_names)
