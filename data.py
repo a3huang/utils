@@ -1,16 +1,9 @@
-import itertools
-import numpy as np
-import pandas as pd
-
 from datetime import datetime
 from pandas.tseries.offsets import *
 from patsy import dmatrix
 
-def top_n_cat(a, n=5):
-    a = a.fillna('missing')
-    counts = a.value_counts()
-    top = counts.iloc[:n].index
-    return a.apply(lambda x: x if x in top else 'other')
+import numpy as np
+import pandas as pd
 
 def input_requires(cols):
     def decorator(f):
@@ -50,7 +43,12 @@ def check_unique_id(df, id_col):
         raise ValueError, 'Contains duplicate %s' % id_col
     return df
 
-@input_requires(['date', 'start'])
+def top_n_cat(a, n=5):
+    a = a.fillna('missing')
+    counts = a.value_counts()
+    top = counts.iloc[:n].index
+    return a.apply(lambda x: x if x in top else 'other')
+
 def filter_week_window(df, n1, n2):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -72,17 +70,19 @@ def mark_adjacent_groups(df, col, reset_count_on='user_id'):
 
     return df
 
-def is_diff_element(x):
-    '''
-    df[col].apply(is_diff_element)
-    df.pipe(transform, {'col': 'is_diff_element'})
-    '''
-    return x != x.shift()
+# def is_diff_element(x):
+#     '''
+#     df[col].apply(is_diff_element)
+#     df.pipe(transform, {'col': 'is_diff_element'})
+#     '''
+#     return x != x.shift()
+#
+# def is_nonconsecutive(x):
+#     return x != x.shift() + 1
+#
+# def is_within_hour(x):
+#     return (x - x.shift()).dt.total_seconds() / 3600 >= 1
 
-def is_nonconsecutive(x):
-    return x != x.shift() + 1
-
-#@input_requires(['date'])
 def time_diff(df, date_col='date', groups=None):
     df = df.copy()
     df[date_col] = pd.to_datetime(df[date_col])
@@ -98,23 +98,6 @@ def time_diff(df, date_col='date', groups=None):
 
     return df
 
-def mark_within_hour(df, date_col):
-    df = df.copy()
-    df = df.sort_values(by=['anonymous_id', date_col])
-    is_diff_number = (df[date_col] - df[date_col].shift()).dt.total_seconds()/3600 >= 1
-    is_diff_user = df['anonymous_id'] != df['anonymous_id'].shift()
-    df['group'] = (is_diff_number | is_diff_user).cumsum()
-    return df
-
-def consecutive_runs(df):
-    df = df.copy()
-    df = df.pipe(mark_nth_week)
-    df = df[~df['nth_week'].isnull()]
-    df = df.pipe(mark_consecutive_runs, 'nth_week')
-    df = df.groupby(['user_id', 'run']).size().reset_index().drop('run', axis=1)
-    return df
-
-@input_requires(['date', 'start'])
 def mark_nth_week(df):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -133,7 +116,6 @@ def mark_nth_day(df):
     df.loc[df['day'] < 0, 'day'] = 0
     return df
 
-#@input_requires(['user_id'])
 def dummies(df, col, obs_unit, top=None):
     df = df.copy()
 
@@ -155,13 +137,59 @@ def add_col(df, col, name=None):
 def intervals(start, end, step=2):
     return zip(range(start,end+step,step), range(start+step,end+step,step))
 
+def get_ts_counts(df, start, end, name):
+    a = mark_nth_day(df).groupby(['user_id', 'day']).size().unstack()
+    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
+    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
+    a = a.iloc[:, start:end]
+    a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
+    return a.reset_index()
+
+def get_ts_sum(df, start, end, col, name):
+    a = mark_nth_day(df).groupby(['user_id', 'day'])[col].sum().unstack()
+    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
+    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
+    a = a.iloc[:, start:end]
+    a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
+    return a.reset_index()
+
+# def parse_tree(s, X):
+#     tokens = [i for i in re.split(r'([,()])', s) if i != '']
+#     function_dict = {'add': '+', 'sub': '-', 'log': 'np.log', 'min': 'min', 'div': '/'}
+#
+#     parsed = ''
+#     current_op = None
+#     for i in tokens:
+#         i = i.strip()
+#         if i in function_dict:
+#             if i in ['add', 'sub', 'div']:
+#                 current_op = i
+#             else:
+#                 parsed += i
+#         elif i == '(':
+#             parsed += i
+#         elif i == ',':
+#             if current_op:
+#                 parsed += ' %s ' % function_dict[current_op]
+#                 current_op = None
+#             else:
+#                 parsed += i + ' '
+#         else:
+#             if i[0] == 'X':
+#                 col = X.columns[int(i[1:])]
+#                 parsed += "%s" % col
+#             else:
+#                 parsed += i
+#
+#     return parsed
+
 #####
 # general dataframe functions
 def concat(df, df_list, **kwargs):
     dfs = [df.reset_index(drop=True)] + [pd.DataFrame(df_i).reset_index(drop=True) for df_i in df_list]
     return pd.concat(dfs, **kwargs)
 
-# have way to reduce number of categories?
+# have way to reduce number of categories using top_cat?
 def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     if col3 is None:
         return pd.crosstab(df[col1], df[col2], **kwargs)
@@ -215,7 +243,7 @@ def transform(df, cf_dict, append=False):
 
 def formula(df, formula):
     '''
-    new_cols = df.pipe(formula, 'col1*col2 + col3/col4')
+    new_cols = df.pipe(formula, 'col1*col2 + col3/col4 + col5**2 + np.log(col6 + 1)')
     df.pipe(concat, new_cols, axis=1)
     '''
     X = dmatrix(formula, df)
@@ -247,6 +275,14 @@ def mark_timestep(df, unit):
     df['timestep'] = df['timestep'].astype(int)
 
     return df
+
+# needs user id
+def timeseries(df, start, end, unit):
+    a = mark_timestep(df, unit).groupby(['user_id', 'day']).size().unstack()
+    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
+    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
+    a = a.iloc[:, start:end]
+    return a.reset_index()
 
 # general series functions
 def onehot(x):
@@ -284,6 +320,15 @@ def missing_ind(x):
     '''
     return x.apply(lambda x: 1 if pd.isnull(x) else 0)
 
+def top_cat(x, n=5):
+    '''
+    df[col].apply(top_cat)
+    df.pipe(transform, {'col': top_cat}, append=True)
+    '''
+    counts = x.fillna('missing').value_counts()
+    top = counts.iloc[:n].index
+    return x.apply(lambda x: x if x in top else 'other')
+
 # miscellaneous functions
 def disjoint_sliding_window(x, n=2):
     '''
@@ -300,57 +345,3 @@ def disjoint_intervals(start, end, step=2):
 
 def contains_any(s, str_list):
     return any([i for i in str_list if i in s])
-#####
-
-# def parse_tree(s, X):
-#     tokens = [i for i in re.split(r'([,()])', s) if i != '']
-#     function_dict = {'add': '+', 'sub': '-', 'log': 'np.log', 'min': 'min', 'div': '/'}
-#
-#     parsed = ''
-#     current_op = None
-#     for i in tokens:
-#         i = i.strip()
-#         if i in function_dict:
-#             if i in ['add', 'sub', 'div']:
-#                 current_op = i
-#             else:
-#                 parsed += i
-#         elif i == '(':
-#             parsed += i
-#         elif i == ',':
-#             if current_op:
-#                 parsed += ' %s ' % function_dict[current_op]
-#                 current_op = None
-#             else:
-#                 parsed += i + ' '
-#         else:
-#             if i[0] == 'X':
-#                 col = X.columns[int(i[1:])]
-#                 parsed += "%s" % col
-#             else:
-#                 parsed += i
-#
-#     return parsed
-
-def get_ts_counts(df, start, end, name):
-    a = mark_nth_day(df).groupby(['user_id', 'day']).size().unstack()
-    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
-    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
-    a = a.iloc[:, start:end]
-    a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
-    return a.reset_index()
-
-def get_ts_sum(df, start, end, col, name):
-    a = mark_nth_day(df).groupby(['user_id', 'day'])[col].sum().unstack()
-    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
-    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
-    a = a.iloc[:, start:end]
-    a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
-    return a.reset_index()
-
-def split_list_col(df, col):
-    return pd.concat([df.reset_index(drop=True), pd.DataFrame(df[col].values.tolist())],
-        axis=1).drop(col, 1)
-
-def group_into_list(df, group, col):
-    return df.groupby(group)[col].apply(list).reset_index()
