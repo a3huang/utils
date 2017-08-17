@@ -183,6 +183,15 @@ def get_ts_sum(df, start, end, col, name):
 #
 #     return parsed
 
+def groupby(self, by, verify):
+    if self.pipe(is_unique, verify):
+        return self.groupby(by)
+    else:
+        raise Exception, 'Dataframe contains duplicates'
+
+def load(filename, date_cols):
+    return pd.read_csv('/Users/alexhuang/Documents/data/gobble_data/'+ filename, parse_dates=date_cols)
+
 #####
 # general dataframe functions
 def concat(df, df_list, **kwargs):
@@ -221,7 +230,7 @@ def query(df, func):
     '''
     df.pipe(query, lambda x: x['col'] > 5)
     '''
-	return df[func(df)]
+    return df[func(df)]
 
 def quantile(df, col, q=10):
     df = df.copy()
@@ -248,6 +257,11 @@ def formula(df, formula):
     '''
     X = dmatrix(formula, df)
     return pd.DataFrame(X)
+
+def name(df, names):
+    df = df.copy()
+    df.columns = names
+    return df
 
 # general functions for transactional data
 # all functions need start and date columns
