@@ -189,9 +189,6 @@ def groupby(self, by, verify):
     else:
         raise Exception, 'Dataframe contains duplicates'
 
-def load(filename, date_cols):
-    return pd.read_csv('/Users/alexhuang/Documents/data/gobble_data/'+ filename, parse_dates=date_cols)
-
 #####
 # general dataframe functions
 def concat(df, df_list, **kwargs):
