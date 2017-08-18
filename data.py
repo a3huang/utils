@@ -202,13 +202,14 @@ def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
     else:
         return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
 
-def merge(df, df_list, on, how, **kwargs):
+def merge(df, df_list, **kwargs):
     df = df.copy()
 
     for df_i in df_list:
-        if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
-            raise Exception, 'Many-to-many join results in duplicate rows.'
-        df = df.merge(df_i, on, how, **kwargs)
+        if 'on' in kwargs:
+            if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
+                raise Exception, 'Many-to-many join results in duplicate rows.'
+        df = df.merge(df_i, **kwargs)
 
     return df
 
@@ -257,6 +258,7 @@ def formula(df, formula):
 
 def name(df, names):
     df = df.copy()
+    df = pd.DataFrame(df, index=df.index)
     df.columns = names
     return df
 
