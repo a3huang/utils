@@ -116,7 +116,7 @@ def mark_nth_day(df):
     df.loc[df['day'] < 0, 'day'] = 0
     return df
 
-def dummies(df, col, obs_unit, top=None):
+def dummies(df, col, obs_unit='user_id', top=None):
     df = df.copy()
 
     if top:
@@ -207,6 +207,7 @@ def merge(df, df_list, **kwargs):
 
     for df_i in df_list:
         if 'on' in kwargs:
+            on = kwargs['on']
             if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
                 raise Exception, 'Many-to-many join results in duplicate rows.'
         df = df.merge(df_i, **kwargs)
