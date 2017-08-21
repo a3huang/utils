@@ -206,10 +206,10 @@ def merge(df, df_list, **kwargs):
     df = df.copy()
 
     for df_i in df_list:
-        if 'on' in kwargs:
-            on = kwargs['on']
-            if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
-                raise Exception, 'Many-to-many join results in duplicate rows.'
+        # if 'on' in kwargs:
+        #     on = kwargs['on']
+        #     if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
+        #         raise Exception, 'Many-to-many join results in duplicate rows.'
         df = df.merge(df_i, **kwargs)
 
     return df
