@@ -189,18 +189,46 @@ def groupby(self, by, verify):
     else:
         raise Exception, 'Dataframe contains duplicates'
 
-#####
-# general dataframe functions
-def concat(df, df_list, **kwargs):
-    dfs = [df.reset_index(drop=True)] + [pd.DataFrame(df_i).reset_index(drop=True) for df_i in df_list]
-    return pd.concat(dfs, **kwargs)
+def cohort_table(df, col=None, aggfunc='sum'):
+    grouped = df.set_index('start').to_period('W-MON').reset_index()\
+              .set_index('date').to_period('W-MON').reset_index()\
+              .groupby(['start', 'date'])
 
-# have way to reduce number of categories using top_cat?
-def crosstab(df, col1, col2, col3=None, aggfunc=np.mean, **kwargs):
-    if col3 is None:
-        return pd.crosstab(df[col1], df[col2], **kwargs)
+    if col is None:
+        return grouped.size().unstack()
     else:
-        return pd.crosstab(df[col1], df[col2], df[col3], aggfunc=aggfunc, **kwargs)
+        return grouped.agg({col: aggfunc}).unstack()
+#####
+
+### General Dataframe Functions ###
+def concat(df, df_list, axis=1, **kwargs):
+    '''
+    Useful for attaching individual columns to a single dataframe.
+
+    ex) df.pipe(concat, a)
+    '''
+
+    df_list = df_list if isinstance(df_list, list) else [df_list]
+    dfs = [df.reset_index(drop=True)] + [pd.DataFrame(df_i).reset_index(drop=True) for df_i in df_list]
+    return pd.concat(dfs, axis=axis, **kwargs)
+
+def crosstab(df, cat1, cat2, col=None, aggfunc=np.mean, n=10, **kwargs):
+    '''
+    Useful for calculating cross tabulations between 2 or 3 variables.
+
+    ex) df.pipe(cat1, cat2)
+    ex) df.pipe(cat1, cat2, col)
+    '''
+
+    df = df.copy()
+    df[cat1] = df[cat1].pipe(top_cat, n=n)
+    df[cat2] = df[cat2].pipe(top_cat, n=n)
+
+    if col is None:
+        return pd.crosstab(df[cat1], df[cat2], **kwargs)
+    else:
+        return pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=aggfunc, **kwargs)
+
 
 def merge(df, df_list, **kwargs):
     df = df.copy()
