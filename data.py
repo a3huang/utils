@@ -205,6 +205,7 @@ def cohort_table(df):
     return df.groupby(['user_id', 'start', 'value']).size().unstack().groupby('start').sum()
 #####
 
+
 ### General Dataframe Functions ###
 def concat(df, object, **kwargs):
     '''
@@ -249,19 +250,31 @@ def merge(df, df_list, on, how, **kwargs):
 
     return df
 
+def check_unique(df, col):
+    '''
+    Check if column values are unique.
 
-#####
-def is_unique(df, col):
+    ex) df.pipe(check_unique, col)
+    '''
+
     if len(df.groupby(col).size().value_counts()) > 1:
         return False
     else:
         return True
 
-def duplicates(df, col):
-    counts = df.groupby(col).size()
-    dups = counts[counts > 1].index
-    return df[df[col].isin(dups)].sort_values(by=col)
+def show_duplicates(df, col):
+    '''
+    Show rows where column value is duplicated.
 
+    ex) df.pipe(show_duplicates, col)
+    '''
+
+    counts = df.groupby(col).size()
+    duplicates = counts[counts > 1].index
+    return df[df[col].isin(duplicates)].sort_values(by=col)
+
+
+#####
 def query(df, func):
     '''
     df.pipe(query, lambda x: x['col'] > 5)
