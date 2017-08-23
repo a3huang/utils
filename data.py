@@ -189,58 +189,68 @@ def groupby(self, by, verify):
     else:
         raise Exception, 'Dataframe contains duplicates'
 
-def cohort_table(df, col=None, aggfunc='sum'):
-    grouped = df.set_index('start').to_period('W-MON').reset_index()\
-              .set_index('date').to_period('W-MON').reset_index()\
-              .groupby(['start', 'date'])
+def cohort_table(df):
+    # pass in user_id, start, end
+    df = df.copy()
+    daterange = (df['end'].max() - df['start'].min()).days / 7
 
-    if col is None:
-        return grouped.size().unstack()
-    else:
-        return grouped.agg({col: aggfunc}).unstack()
+    weeks = pd.concat([df['start'] + DateOffset(weeks=i) for i in range(1, datediff+1)], axis=1)
+    weeks.columns = ['week %s' % i for i in range(1, datediff+1)]
+
+    df = pd.concat([df, weeks], axis=1)
+    df = df.melt(['user_id', 'start', 'end'], df.columns[3:])
+    df = df.pipe(query, lambda x: (x['value'].between(x['start'], x['end'])) | x['end'].isnull())\
+           .pipe(query, lambda x: x['value'] < datetime.now())
+
+    return df.groupby(['user_id', 'start', 'value']).size().unstack().groupby('start').sum()
 #####
 
 ### General Dataframe Functions ###
-def attach(df, x, **kwargs):
+def concat(df, object, **kwargs):
     '''
-    Attach individual column to a central dataframe.
+    Concatenate a column or dataframe horizontally with an existing dataframe.
 
-    ex) df.pipe(attach, x)
+    ex) df.pipe(concat, x)
     '''
 
-    objects = [df.reset_index(drop=True), pd.DataFrame(x).reset_index(drop=True)]
+    objects = [df.reset_index(drop=True), pd.DataFrame(object).reset_index(drop=True)]
     return pd.concat(objects, axis=1, **kwargs)
 
-def crosstab(df, cat1, cat2, col=None, aggfunc=np.mean, n=10, **kwargs):
+def crosstab(df, row, column, value=None, aggfunc=np.mean, n=10, **kwargs):
     '''
-    Calculate cross tabulation between 2 categorical variables.
+    Calculate the cross tabulatation of 2 categorical factors.
 
     ex) df.pipe(crosstab, cat1, cat2)
-    ex) df.pipe(crosstab, cat1, cat2, col).pipe(heatmap)
+    ex) df.pipe(crosstab, cat1, cat2, col)
     '''
 
     df = df.copy()
-    df[cat1] = df[cat1].pipe(top_cat, n=n)
-    df[cat2] = df[cat2].pipe(top_cat, n=n)
+    df[row] = df[row].pipe(top_cat, n=n)
+    df[column] = df[column].pipe(top_cat, n=n)
 
     if col is None:
-        return pd.crosstab(df[cat1], df[cat2], **kwargs)
+        return pd.crosstab(df[row], df[column], **kwargs)
     else:
-        return pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=aggfunc, **kwargs)
+        return pd.crosstab(df[row], df[column], df[value], aggfunc=aggfunc, **kwargs)
 
+def merge(df, df_list, on, how, **kwargs):
+    '''
+    Merge a list of dataframes with an existing dataframe.
 
-def merge(df, df_list, **kwargs):
+    ex) df.pipe(merge, [df1, df2, df3], on='user_id', how='left')
+    '''
+
     df = df.copy()
 
     for df_i in df_list:
-        # if 'on' in kwargs:
-        #     on = kwargs['on']
-        #     if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
-        #         raise Exception, 'Many-to-many join results in duplicate rows.'
-        df = df.merge(df_i, **kwargs)
+        if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
+            raise Exception, 'many-to-many'
+        df = df.merge(df_i, on=on, how=how, **kwargs)
 
     return df
 
+
+#####
 def is_unique(df, col):
     if len(df.groupby(col).size().value_counts()) > 1:
         return False
