@@ -250,6 +250,15 @@ def merge(df, df_list, on, how, **kwargs):
 
     return df
 
+def query(df, func):
+    '''
+    Query a dataframe using boolean expressions within a method chain.
+
+    ex) df.pipe(query, lambda x: x['date'] > '2017-01-01')
+    '''
+
+    return df[func(df)]
+
 def check_unique(df, col):
     '''
     Check if column values are unique.
@@ -275,12 +284,6 @@ def show_duplicates(df, col):
 
 
 #####
-def query(df, func):
-    '''
-    df.pipe(query, lambda x: x['col'] > 5)
-    '''
-    return df[func(df)]
-
 def quantile(df, col, q=10):
     df = df.copy()
     df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
