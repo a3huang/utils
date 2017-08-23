@@ -192,11 +192,12 @@ def groupby(self, by, verify):
 def cohort_table(df):
     # pass in user_id, start, end
     df = df.copy()
-    daterange = (df['end'].max() - df['start'].min()).days / 7
+    datediff = (df['end'].max() - df['start'].min()).days / 7
 
     weeks = pd.concat([df['start'] + DateOffset(weeks=i) for i in range(1, datediff+1)], axis=1)
     weeks.columns = ['week %s' % i for i in range(1, datediff+1)]
 
+    # this is for cohort retention without explicit activity
     df = pd.concat([df, weeks], axis=1)
     df = df.melt(['user_id', 'start', 'end'], df.columns[3:])
     df = df.pipe(query, lambda x: (x['value'].between(x['start'], x['end'])) | x['end'].isnull())\
@@ -282,14 +283,26 @@ def show_duplicates(df, col):
     duplicates = counts[counts > 1].index
     return df[df[col].isin(duplicates)].sort_values(by=col)
 
+def normalize(x):
+    '''
+    Normalize a series by dividing by its sum.
+
+    ex) df[col].pipe(normalize)
+    '''
+
+    return x / float(sum(x))
+
+def quantile(x, q=10):
+    '''
+    Calculate the quantiles of a series with 1 denoting the largest quantile.
+
+    ex) df[col].pipe(quantile)
+    '''
+
+    return 10 - (pd.qcut(x, q, labels=False) + 1)
+
 
 #####
-def quantile(df, col, q=10):
-    df = df.copy()
-    df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
-    df['%s quantile' % col] = pd.qcut(df.index, q, labels=False) + 1
-    return df
-
 def transform(df, cf_dict, append=False):
     df = df.copy()
 
@@ -351,6 +364,12 @@ def timeseries(df, start, end, unit):
     a = a.iloc[:, start:end]
     return a.reset_index()
 
+def quantile(df, col, q=10):
+    df = df.copy()
+    df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
+    df['%s quantile' % col] = pd.qcut(df.index, q, labels=False) + 1
+    return df
+
 # general series functions
 def onehot(x):
     '''
@@ -365,20 +384,6 @@ def inv_onehot(df):
     df.pipe(transform, {('val1', 'val2', 'val3'): inv_onehot})
     '''
     return df.apply(lambda x: x.idxmax(), axis=1)
-
-def binarize(df):
-    '''
-    df[col].apply(binarize)
-    df.pipe(transform, {'col': binarize})
-    '''
-    return df.apply(lambda x: 1 if x > 0 else 0, axis=1)
-
-def props(x):
-    '''
-    df[col].apply(props)
-    df.pipe(transform, {'col': props})
-    '''
-    return x/float(sum(x))
 
 def missing_ind(x):
     '''
