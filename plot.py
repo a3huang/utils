@@ -62,6 +62,10 @@ def datecol(df, date_col='date', freq='M'):
 
     return df
 
+def heatmap(m, **kwargs):
+    sns.heatmap(m, annot=True, fmt='.2f', **kwargs)
+#####
+
 # Main Functions
 def plot_missing(df, top=None, **kwargs):
     a = df.isnull().mean(axis=0)
