@@ -201,23 +201,22 @@ def cohort_table(df, col=None, aggfunc='sum'):
 #####
 
 ### General Dataframe Functions ###
-def concat(df, df_list, axis=1, **kwargs):
+def attach(df, x, **kwargs):
     '''
-    Useful for attaching individual columns to a single dataframe.
+    Attach individual column to a central dataframe.
 
-    ex) df.pipe(concat, a)
+    ex) df.pipe(attach, x)
     '''
 
-    df_list = df_list if isinstance(df_list, list) else [df_list]
-    dfs = [df.reset_index(drop=True)] + [pd.DataFrame(df_i).reset_index(drop=True) for df_i in df_list]
-    return pd.concat(dfs, axis=axis, **kwargs)
+    objects = [df.reset_index(drop=True), pd.DataFrame(x).reset_index(drop=True)]
+    return pd.concat(objects, axis=1, **kwargs)
 
 def crosstab(df, cat1, cat2, col=None, aggfunc=np.mean, n=10, **kwargs):
     '''
-    Useful for calculating cross tabulations between 2 or 3 variables.
+    Calculate cross tabulation between 2 categorical variables.
 
-    ex) df.pipe(cat1, cat2)
-    ex) df.pipe(cat1, cat2, col)
+    ex) df.pipe(crosstab, cat1, cat2)
+    ex) df.pipe(crosstab, cat1, cat2, col).pipe(heatmap)
     '''
 
     df = df.copy()
