@@ -245,8 +245,8 @@ def merge(df, df_list, on, how, **kwargs):
     df = df.copy()
 
     for df_i in df_list:
-        if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
-            raise Exception, 'many-to-many'
+        # if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
+        #     raise Exception, 'many-to-many'
         df = df.merge(df_i, on=on, how=how, **kwargs)
 
     return df
