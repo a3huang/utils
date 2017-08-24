@@ -230,7 +230,7 @@ def crosstab(df, row, column, value=None, aggfunc=np.mean, n=10, **kwargs):
     df[row] = df[row].pipe(top_cat, n=n)
     df[column] = df[column].pipe(top_cat, n=n)
 
-    if col is None:
+    if value is None:
         return pd.crosstab(df[row], df[column], **kwargs)
     else:
         return pd.crosstab(df[row], df[column], df[value], aggfunc=aggfunc, **kwargs)
@@ -331,8 +331,8 @@ def top(x, n=5):
     '''
     Take only the top n most common categories and group the rest into 'other'.
 
-    ex) df[col].apply(top_cat)
-    df.pipe(transform, {'col': top_cat}, append=True)
+    ex) df[col].pipe(top_cat)
+    ex) df.assign(col=lambda x: top_cat(x[col]))
     '''
 
     counts = x.fillna('missing').value_counts()
