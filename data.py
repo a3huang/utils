@@ -316,7 +316,7 @@ def normalize(x):
 
     return x / float(sum(x))
 
-def quantile(x, q=10):
+def qbin(x, q=10):
     '''
     Calculate the quantiles of a series with the largest quantile being 1.
 
@@ -324,7 +324,7 @@ def quantile(x, q=10):
     '''
 
     a = x.sort_values().reset_index().reset_index()
-    a['quantile'] = 10 - (pd.qcut(a['level_0'], 10, labels=False) + 1) + 1
+    a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
     return a.set_index('index').sort_index().reset_index()['quantile']
 
 def top(x, n=5):
