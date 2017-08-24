@@ -261,6 +261,18 @@ def query(df, func):
 
     return df[func(df)]
 
+def rename(df, name_list):
+    '''
+    Rename the columns of a dataframe without having to specify its old names.
+
+    ex) df.pipe(rename, ['col1', 'col2', 'col3'])
+    '''
+
+    df = df.copy()
+    df = pd.DataFrame(df, index=df.index)
+    df.columns = name_list
+    return df
+
 def check_unique(df, col):
     '''
     Check if column values are unique.
@@ -284,17 +296,16 @@ def show_duplicates(df, col):
     duplicates = counts[counts > 1].index
     return df[df[col].isin(duplicates)].sort_values(by=col)
 
-def rename(df, name_list):
+def interaction(df, col1, col2):
     '''
-    Rename the columns of a dataframe without having to specify its old names.
+    Create a column(s) for the interaction between 2 variables.
 
-    ex) df.pipe(rename, ['col1', 'col2', 'col3'])
+    ex) df.pipe(interaction, col1, col2)
     '''
 
-    df = df.copy()
-    df = pd.DataFrame(df, index=df.index)
-    df.columns = name_list
-    return df
+    formula = '%s:%s - 1' % (col1, col2)
+    X = dmatrix(formula, df)
+    return pd.DataFrame(X, columns=X.design_info.column_names)
 
 def normalize(x):
     '''
@@ -312,18 +323,24 @@ def quantile(x, q=10):
     ex) df[col].pipe(quantile)
     '''
 
-    return 10 - (pd.qcut(x, q, labels=False) + 1)
+    a = x.sort_values().reset_index().reset_index()
+    a['quantile'] = 10 - (pd.qcut(a['level_0'], 10, labels=False) + 1) + 1
+    return a.set_index('index').sort_index().reset_index()['quantile']
+
+def top(x, n=5):
+    '''
+    Take only the top n most common categories and group the rest into 'other'.
+
+    ex) df[col].apply(top_cat)
+    df.pipe(transform, {'col': top_cat}, append=True)
+    '''
+
+    counts = x.fillna('missing').value_counts()
+    top = counts.iloc[:n].index
+    return x.apply(lambda x: x if x in top else 'other')
 
 
 #####
-def formula(df, formula):
-    '''
-    new_cols = df.pipe(formula, 'col1*col2 + col3/col4 + col5**2 + np.log(col6 + 1)')
-    df.pipe(concat, new_cols, axis=1)
-    '''
-    X = dmatrix(formula, df)
-    return pd.DataFrame(X)
-
 # general functions for transactional data
 # all functions need start and date columns
 def time_window(df, offset1, offset2, freq='W'):
@@ -359,12 +376,6 @@ def timeseries(df, start, end, unit):
     a = a.iloc[:, start:end]
     return a.reset_index()
 
-# def quantile(df, col, q=10):
-#     df = df.copy()
-#     df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
-#     df['%s quantile' % col] = pd.qcut(df.index, q, labels=False) + 1
-#     return df
-
 # general series functions
 def onehot(x):
     '''
@@ -386,15 +397,6 @@ def missing_ind(x):
     df.pipe(transform, {'col': missing_ind}, append=True)
     '''
     return x.apply(lambda x: 1 if pd.isnull(x) else 0)
-
-def top_cat(x, n=5):
-    '''
-    df[col].apply(top_cat)
-    df.pipe(transform, {'col': top_cat}, append=True)
-    '''
-    counts = x.fillna('missing').value_counts()
-    top = counts.iloc[:n].index
-    return x.apply(lambda x: x if x in top else 'other')
 
 # miscellaneous functions
 def disjoint_sliding_window(x, n=2):
