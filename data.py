@@ -253,7 +253,8 @@ def merge(df, df_list, on, how, **kwargs):
 
 def query(df, func):
     '''
-    Query a dataframe using boolean expressions within a method chain.
+    Query a dataframe using complex boolean expressions without having to
+    specify its name. Useful in the middle of a long method chain.
 
     ex) df.pipe(query, lambda x: x['date'] > '2017-01-01')
     '''
@@ -283,18 +284,30 @@ def show_duplicates(df, col):
     duplicates = counts[counts > 1].index
     return df[df[col].isin(duplicates)].sort_values(by=col)
 
+def rename(df, name_list):
+    '''
+    Rename the columns of a dataframe without having to specify its old names.
+
+    ex) df.pipe(rename, ['col1', 'col2', 'col3'])
+    '''
+
+    df = df.copy()
+    df = pd.DataFrame(df, index=df.index)
+    df.columns = name_list
+    return df
+
 def normalize(x):
     '''
     Normalize a series by dividing by its sum.
 
-    ex) df[col].pipe(normalize)
+    ex) df[col].value_counts().pipe(normalize)
     '''
 
     return x / float(sum(x))
 
 def quantile(x, q=10):
     '''
-    Calculate the quantiles of a series with 1 denoting the largest quantile.
+    Calculate the quantiles of a series with the largest quantile being 1.
 
     ex) df[col].pipe(quantile)
     '''
@@ -303,18 +316,6 @@ def quantile(x, q=10):
 
 
 #####
-def transform(df, cf_dict, append=False):
-    df = df.copy()
-
-    for cols, func in cf_dict.items():
-        col_names = list(cols)
-        if append:
-            df = df.pipe(concat, list(df[col_names].apply(func)), axis=1)
-        else:
-            df[col_names] = df[col_names].apply(func)
-
-    return df
-
 def formula(df, formula):
     '''
     new_cols = df.pipe(formula, 'col1*col2 + col3/col4 + col5**2 + np.log(col6 + 1)')
@@ -322,12 +323,6 @@ def formula(df, formula):
     '''
     X = dmatrix(formula, df)
     return pd.DataFrame(X)
-
-def name(df, names):
-    df = df.copy()
-    df = pd.DataFrame(df, index=df.index)
-    df.columns = names
-    return df
 
 # general functions for transactional data
 # all functions need start and date columns
@@ -364,11 +359,11 @@ def timeseries(df, start, end, unit):
     a = a.iloc[:, start:end]
     return a.reset_index()
 
-def quantile(df, col, q=10):
-    df = df.copy()
-    df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
-    df['%s quantile' % col] = pd.qcut(df.index, q, labels=False) + 1
-    return df
+# def quantile(df, col, q=10):
+#     df = df.copy()
+#     df = df.sort_values(by=col, ascending=False).reset_index(drop=True)
+#     df['%s quantile' % col] = pd.qcut(df.index, q, labels=False) + 1
+#     return df
 
 # general series functions
 def onehot(x):
