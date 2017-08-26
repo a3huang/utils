@@ -204,6 +204,9 @@ def cohort_table(df):
            .pipe(query, lambda x: x['value'] < datetime.now())
 
     return df.groupby(['user_id', 'start', 'value']).size().unstack().groupby('start').sum()
+
+def drop_consec_dups(df, col):
+    return df[df[col] != df[col].shift()]
 #####
 
 
