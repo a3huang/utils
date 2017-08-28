@@ -189,26 +189,40 @@ def groupby(self, by, verify):
     else:
         raise Exception, 'Dataframe contains duplicates'
 
-def cohort_table(df):
-    # pass in user_id, start, end
-    df = df.copy()
-    datediff = (df['end'].max() - df['start'].min()).days / 7
+def cohort_table(df, groupby):
+    df = df[['user_id', 'start', 'end', groupby]].groupby('user_id').head(1)
+    daterange = (df['end'].max() - df['start'].min()).days / 7
 
-    weeks = pd.concat([df['start'] + DateOffset(weeks=i) for i in range(1, datediff+1)], axis=1)
-    weeks.columns = ['week %s' % i for i in range(1, datediff+1)]
+    weeks = pd.concat([df['start'] + DateOffset(weeks=i) for i in range(daterange)], axis=1)
+    weeks.columns = ['week %s' % i for i in range(1, daterange+1)]
 
-    # this is for cohort retention without explicit activity
     df = pd.concat([df, weeks], axis=1)
-    df = df.melt(['user_id', 'start', 'end'], df.columns[3:])
-    df = df.pipe(query, lambda x: (x['value'].between(x['start'], x['end'])) | x['end'].isnull())\
+    df = df.melt([groupby, 'start', 'end'], df.columns.difference([groupby, 'user_id', 'start', 'end']))
+    df = df.pipe(query, lambda x: (x['end'] > x['value'] + DateOffset(weeks=1)) | x['end'].isnull())\
            .pipe(query, lambda x: x['value'] < datetime.now())
 
-    return df.groupby(['user_id', 'start', 'value']).size().unstack().groupby('start').sum()
+    a = df.groupby([groupby, 'start', 'value']).size().unstack().groupby(groupby).sum()
+    a.columns = ['retention %s' % i for i in a.columns.astype(str)]
+    return a
 
-def drop_consec_dups(df, col):
-    return df[df[col] != df[col].shift()]
+def ordinal_cohort_table(df, groupby):
+    df = df[['user_id', 'start', 'end', groupby]].groupby('user_id').head(1)
+    daterange = (df['end'].max() - df['start'].min()).days / 7
+
+    weeks = pd.concat([df['start'] + DateOffset(weeks=i) for i in range(daterange)], axis=1)
+    weeks.columns = ['week %s' % i for i in range(1, daterange+1)]
+
+    df = pd.concat([df, weeks], axis=1)
+    df = df.melt([groupby, 'start', 'end'], df.columns.difference([groupby, 'user_id', 'start', 'end']))
+    df = df.pipe(query, lambda x: (x['end'] > x['value'] + DateOffset(weeks=1)) | x['end'].isnull())\
+           .pipe(query, lambda x: x['value'] < datetime.now())
+    a = df.groupby(['code', 'variable']).size().unstack()
+    a.columns = ['retention %s' % i for i in a.columns]
+    sorted_columns = sorted(a.columns, key=lambda x: int(x.split(' ')[-1]))
+    a = a[sorted_columns]
+    a = a.div(a.iloc[:, 0], axis=0)
+    return a
 #####
-
 
 ### General Dataframe Functions ###
 def concat(df, object, **kwargs):
@@ -420,3 +434,9 @@ def contains_any(s, str_list):
 
 def count_val(df, val):
     return df.value_counts().loc[val]
+
+def seq_props(x):
+    return x / x[0]
+
+def drop_consec_dups(df, col):
+    return df[df[col] != df[col].shift()]
