@@ -404,7 +404,7 @@ def missing_ind(x):
 # miscellaneous functions
 def disjoint_sliding_window(x, n=2):
     '''
-    disjoint_sliding_window([0,1,2,3], 2) -> [(0,1), (2,3)]
+    disjoint_sliding_window([0, 1, 2, 3], 2) -> [(0, 1), (2, 3)]
     '''
     return zip(x, x[1:])[::n]
 
@@ -417,3 +417,6 @@ def disjoint_intervals(start, end, step=2):
 
 def contains_any(s, str_list):
     return any([i for i in str_list if i in s])
+
+def count_val(df, val):
+    return df.value_counts().loc[val]
