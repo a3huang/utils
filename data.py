@@ -244,8 +244,9 @@ def crosstab(df, row, column, value=None, aggfunc=np.mean, n=10, **kwargs):
     '''
 
     df = df.copy()
-    df[row] = df[row].pipe(top_cat, n=n)
-    df[column] = df[column].pipe(top_cat, n=n)
+
+    #df[row] = df[row].pipe(top, n=n)
+    #df[column] = df[column].pipe(top, n=n)
 
     if value is None:
         return pd.crosstab(df[row], df[column], **kwargs)
