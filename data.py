@@ -444,3 +444,9 @@ def drop_consec_dups(df, col):
 
 def get_feature_scores(df, scores, top=5):
     return pd.DataFrame(sorted(zip(df.columns, scores), key=lambda x: x[1], reverse=True)[:top])
+
+def bin(x, binsize):
+    num_bins = int(np.ceil((a.max() - a.min())/binsize))
+    min_edge = np.floor(a.min()/binsize)
+    bin_edges = [min_edge + binsize*i for i in range(num_bins+1)]
+    return pd.cut(x, bins=bin_edges, include_lowest=True)
