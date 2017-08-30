@@ -738,3 +738,7 @@ def plot_true_pred(model, X_test, y_test):
     plt.plot([range_min, range_max], [range_min, range_max], linestyle='--')
     plt.xlabel('True Values')
     plt.ylabel('Predictions')
+
+def plot_feature_scores(df, scores, top=5):
+    pd.DataFrame(sorted(zip(df.columns, scores), key=lambda x: x[1], reverse=True)[:top])\
+        .set_index(0).sort_values(by=1).plot.barh()
