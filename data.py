@@ -441,3 +441,6 @@ def seq_props(x):
 
 def drop_consec_dups(df, col):
     return df[df[col] != df[col].shift()]
+
+def get_feature_scores(df, scores, top=5):
+    return pd.DataFrame(sorted(zip(df.columns, scores), key=lambda x: x[1], reverse=True)[:top])
