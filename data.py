@@ -325,11 +325,11 @@ def interaction(df, col1, col2):
     X = dmatrix(formula, df)
     return pd.DataFrame(X, columns=X.design_info.column_names)
 
-def normalize(x):
+def rates(x):
     '''
     Normalize a series by dividing by its sum.
 
-    ex) df[col].value_counts().pipe(normalize)
+    ex) df[col].value_counts().pipe(rates)
     '''
 
     return x / float(sum(x))
