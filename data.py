@@ -450,3 +450,6 @@ def bin(x, binsize):
     min_edge = np.floor(a.min()/binsize)
     bin_edges = [min_edge + binsize*i for i in range(num_bins+1)]
     return pd.cut(x, bins=bin_edges, include_lowest=True)
+
+def grouped_rates(x, col):
+    return x / x.groupby(col).sum()
