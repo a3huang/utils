@@ -42,12 +42,7 @@ def check_unique_id(df, id_col):
     if len(df.groupby(id_col).size().value_counts()) > 1:
         raise ValueError, 'Contains duplicate %s' % id_col
     return df
-
-def top_n_cat(a, n=5):
-    a = a.fillna('missing')
-    counts = a.value_counts()
-    top = counts.iloc[:n].index
-    return a.apply(lambda x: x if x in top else 'other')
+#####
 
 def filter_week_window(df, n1, n2):
     df = df.copy()
@@ -116,27 +111,6 @@ def mark_nth_day(df):
     df.loc[df['day'] < 0, 'day'] = 0
     return df
 
-def dummies(df, col, obs_unit='user_id', top=None):
-    df = df.copy()
-
-    if top:
-        df[col] = top_n_cat(df[col], top)
-
-    dummy_col = pd.get_dummies(df[col])
-    dummy_col.columns = [str(i) for i in dummy_col.columns]
-
-    df = pd.concat([df[[obs_unit]], dummy_col], axis=1)
-    return df
-
-def add_col(df, col, name=None):
-    col = pd.DataFrame(col).reset_index(drop=True)
-    if name:
-        col.columns = [name]
-    return pd.concat([df.reset_index(drop=True), col], axis=1)
-
-def intervals(start, end, step=2):
-    return zip(range(start,end+step,step), range(start+step,end+step,step))
-
 def get_ts_counts(df, start, end, name):
     a = mark_nth_day(df).groupby(['user_id', 'day']).size().unstack()
     missing_days = np.setdiff1d(np.array(range(end)), a.columns)
@@ -182,76 +156,129 @@ def get_ts_sum(df, start, end, col, name):
 #                 parsed += i
 #
 #     return parsed
-
-def groupby(self, by, verify):
-    if self.pipe(is_unique, verify):
-        return self.groupby(by)
-    else:
-        raise Exception, 'Dataframe contains duplicates'
-
-def cohort_table(df, groupby):
-    df = df[['user_id', 'start', 'end', groupby]].groupby('user_id').head(1)
-    daterange = (df['end'].max() - df['start'].min()).days / 7
-
-    weeks = pd.concat([df['start'] + DateOffset(weeks=i) for i in range(daterange)], axis=1)
-    weeks.columns = ['week %s' % i for i in range(1, daterange+1)]
-
-    df = pd.concat([df, weeks], axis=1)
-    df = df.melt([groupby, 'start', 'end'], df.columns.difference([groupby, 'user_id', 'start', 'end']))
-    df = df.pipe(query, lambda x: (x['end'] > x['value'] + DateOffset(weeks=1)) | x['end'].isnull())\
-           .pipe(query, lambda x: x['value'] < datetime.now())
-
-    a = df.groupby([groupby, 'start', 'value']).size().unstack().groupby(groupby).sum()
-    a.columns = ['retention %s' % i for i in a.columns.astype(str)]
-    return a
-
-def ordinal_cohort_table(df, groupby):
-    df = df[['user_id', 'start', 'end', groupby]].groupby('user_id').head(1)
-    daterange = (df['end'].max() - df['start'].min()).days / 7
-
-    weeks = pd.concat([df['start'] + DateOffset(weeks=i) for i in range(daterange)], axis=1)
-    weeks.columns = ['week %s' % i for i in range(1, daterange+1)]
-
-    df = pd.concat([df, weeks], axis=1)
-    df = df.melt([groupby, 'start', 'end'], df.columns.difference([groupby, 'user_id', 'start', 'end']))
-    df = df.pipe(query, lambda x: (x['end'] > x['value'] + DateOffset(weeks=1)) | x['end'].isnull())\
-           .pipe(query, lambda x: x['value'] < datetime.now())
-    a = df.groupby(['code', 'variable']).size().unstack()
-    a.columns = ['retention %s' % i for i in a.columns]
-    sorted_columns = sorted(a.columns, key=lambda x: int(x.split(' ')[-1]))
-    a = a[sorted_columns]
-    a = a.div(a.iloc[:, 0], axis=0)
-    return a
 #####
 
-### General Dataframe Functions ###
-def concat(df, object, **kwargs):
+def disjoint_intervals(start, end, step=2):
     '''
-    Concatenate a column or dataframe horizontally with an existing dataframe.
+    Generate 2-tuples of integers with a given range and step. Typically used
+    to represent disjoint time ranges.
 
-    ex) df.pipe(concat, x)
+    ex) disjoint_intervals(0, 6, 2) -> [(0,2), (2,4), (4,6)]
+    ex) disjoint_intervals(0, 6, 3) -> [(0,3), (3,6)]
     '''
 
-    objects = [df.reset_index(drop=True), pd.DataFrame(object).reset_index(drop=True)]
+    return zip(range(start, end+step, step), range(start+step, end+step, step))
+
+def disjoint_sliding_windows(x, n=2):
+    '''
+    Generate sliding windows of a given width across a list of integers.
+
+    ex) disjoint_sliding_windows([0, 1, 2, 3], 2) -> [(0, 1), (2, 3)]
+    '''
+
+    return zip(x, x[1:])[::n]
+
+def cut(a, bin_width=None, bin_range=None, num_bins=None):
+    '''
+    Cut a continuous variable into bins of desired widths or number.
+
+    ex) df[col].pipe(cut, num_bins=10)
+    ex) df[col].pipe(cut, bin_width=30, range=(0, 100))
+    '''
+
+    if bin_range is None:
+        bin_range = a.min(), a.max()
+
+    if bin_width is None:
+        bin_width = int(np.ceil((bin_range[1] - bin_range[0]) / num_bins))
+
+    elif num_bins is None:
+        num_bins = int(np.ceil((bin_range[1] - bin_range[0]) / bin_width))
+
+    else:
+        raise Exception, 'Need to specify either one of bin_width or num_bins.'
+
+    min_edge = np.floor(bin_range[0] / bin_width)
+    bin_edges = [min_edge + bin_width * i for i in range(num_bins + 1)]
+    return pd.cut(a, bins=bin_edges, include_lowest=True)
+
+def top(a, n):
+    '''
+    Keep the n most common levels of a categorical variable and label the rest as 'other'.
+
+    ex) df[cat].pipe(top, 5)
+    ex) df.assign(cat=lambda x: top(x[cat], 5))
+    '''
+
+    counts = a.fillna('missing').value_counts()
+    top = counts.iloc[:n].index
+    return a.apply(lambda x: x if x in top else 'other')
+
+def dummy(a):
+    '''
+    Turn a categorical variable into dummy indicator variables.
+
+    ex) df[col].apply(dummy)
+    ex) df.pipe(cbind, df[col].pipe(dummy))
+    '''
+
+    return pd.get_dummies(a)
+
+def undummy(a):
+    '''
+    Turn dummy indicator variables back into a categorical variable.
+
+    ex) df[cols].apply(undummy)
+    ex) df.pipe(cbind, df.iloc[:, 5:10].pipe(undummy))
+    '''
+
+    return a.apply(lambda x: x.idxmax(), axis=1)
+
+def reduce_cardinality(a, n):
+    '''
+    Reduce the number of unique values of a variable. For a categorical variable,
+    n specifies the number of categories. For a continuous variable, n specifies
+    the bin widths.
+
+    ex) df[col].pipe(reduce_cardinality, num_values=5)
+    '''
+
+    if a.dtype == 'O':
+        return top(a, n)
+
+    elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
+        return cut(a, bin_width=n)
+
+def cbind(df, obj, **kwargs):
+    '''
+    Append a column or dataframe to an existing dataframe as new columns.
+
+    ex) df.pipe(cbind, a)
+    '''
+
+    objects = [df.reset_index(drop=True), pd.DataFrame(obj).reset_index(drop=True)]
     return pd.concat(objects, axis=1, **kwargs)
 
-def crosstab(df, row, column, value=None, aggfunc=np.mean, n=10, **kwargs):
+def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=np.mean, **kwargs):
     '''
-    Calculate the cross tabulatation of 2 categorical factors.
+    Calculate the cross tabulation between 2 categorical variables.
 
-    ex) df.pipe(crosstab, cat1, cat2)
-    ex) df.pipe(crosstab, cat1, cat2, col)
+    ex) df.pipe(table, cat1, cat2)
+    ex) df.pipe(table, cat1, cat2, col)
+    ex) df.pipe(table, col, cat, row=5).iloc[:5]
     '''
 
     df = df.copy()
 
-    #df[row] = df[row].pipe(top, n=n)
-    #df[column] = df[column].pipe(top, n=n)
+    if row:
+        df[row_var] = df[row_var].pipe(reduce_cardinality, row_n)
+    if col:
+        df[col_var] = df[col_var].pipe(reduce_cardinality, col_n)
 
-    if value is None:
-        return pd.crosstab(df[row], df[column], **kwargs)
+    if val_var is None:
+        return pd.crosstab(df[row_var], df[col_var], **kwargs)
     else:
-        return pd.crosstab(df[row], df[column], df[value], aggfunc=aggfunc, **kwargs)
+        return pd.crosstab(df[row_var], df[col_var], df[val_var], aggfunc=agg_func, **kwargs)
 
 def merge(df, df_list, on, how, **kwargs):
     '''
@@ -263,11 +290,10 @@ def merge(df, df_list, on, how, **kwargs):
     df = df.copy()
 
     for df_i in df_list:
-        # if not df.pipe(is_unique, on) and not df_i.pipe(is_unique, on):
-        #     raise Exception, 'many-to-many'
         df = df.merge(df_i, on=on, how=how, **kwargs)
 
     return df
+#####
 
 def query(df, func):
     '''
@@ -345,19 +371,6 @@ def qbin(x, q=10):
     a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
     return a.set_index('index').sort_index().reset_index()['quantile']
 
-def top(x, n=5):
-    '''
-    Take only the top n most common categories and group the rest into 'other'.
-
-    ex) df[col].pipe(top_cat)
-    ex) df.assign(col=lambda x: top_cat(x[col]))
-    '''
-
-    counts = x.fillna('missing').value_counts()
-    top = counts.iloc[:n].index
-    return x.apply(lambda x: x if x in top else 'other')
-
-
 #####
 # general functions for transactional data
 # all functions need start and date columns
@@ -394,41 +407,12 @@ def timeseries(df, start, end, unit):
     a = a.iloc[:, start:end]
     return a.reset_index()
 
-# general series functions
-def onehot(x):
-    '''
-    df[col].apply(onehot)
-    df.pipe(transform, {'col': onehot})
-    '''
-    return pd.get_dummies(x)
-
-def inv_onehot(df):
-    '''
-    df[cols].apply(inv_onehot)
-    df.pipe(transform, {('val1', 'val2', 'val3'): inv_onehot})
-    '''
-    return df.apply(lambda x: x.idxmax(), axis=1)
-
 def missing_ind(x):
     '''
     df[col].apply(missing_ind)
     df.pipe(transform, {'col': missing_ind}, append=True)
     '''
     return x.apply(lambda x: 1 if pd.isnull(x) else 0)
-
-# miscellaneous functions
-def disjoint_sliding_window(x, n=2):
-    '''
-    disjoint_sliding_window([0, 1, 2, 3], 2) -> [(0, 1), (2, 3)]
-    '''
-    return zip(x, x[1:])[::n]
-
-def disjoint_intervals(start, end, step=2):
-    '''
-    disjoint_intervals(0, 6, 2) -> [(0,2), (2,4), (4,6)]
-    disjoint_intervals(0, 6, 3) -> [(0,3), (3,6)]
-    '''
-    return zip(range(start, end+step, step), range(start+step, end+step, step))
 
 def contains_any(s, str_list):
     return any([i for i in str_list if i in s])
@@ -444,12 +428,6 @@ def drop_consec_dups(df, col):
 
 def get_feature_scores(df, scores, top=5):
     return pd.DataFrame(sorted(zip(df.columns, scores), key=lambda x: x[1], reverse=True)[:top])
-
-def bin(x, binsize):
-    num_bins = int(np.ceil((a.max() - a.min())/binsize))
-    min_edge = np.floor(a.min()/binsize)
-    bin_edges = [min_edge + binsize*i for i in range(num_bins+1)]
-    return pd.cut(x, bins=bin_edges, include_lowest=True)
 
 def grouped_rates(x, col):
     return x / x.groupby(col).sum()
