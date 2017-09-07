@@ -5,94 +5,6 @@ from patsy import dmatrix
 import numpy as np
 import pandas as pd
 
-def input_requires(cols):
-    def decorator(f):
-        def wrapper(df, *args, **kwargs):
-            for i in cols:
-                if i not in df.columns:
-                    raise ValueError('df needs column named %s' % i)
-            return f(df, *args, **kwargs)
-        return wrapper
-    return decorator
-
-def check_output_schema(df, num_cols):
-    if len(df.columns) != num_cols:
-        raise ValueError, 'Incorrect number of columns'
-    return df
-
-def output_schema(num_cols):
-    def decorator(f):
-        def wrapper(df, *args, **kwargs):
-            output = f(df, *args, **kwargs)
-            if len(output.columns) != num_cols:
-                raise ValueError, 'Incorrect number of columns'
-            return output
-        return wrapper
-    return decorator
-
-def nonconstant_col(f):
-    def wrapper(df, *args, **kwargs):
-        output = f(df, *args, **kwargs)
-        if len(output.iloc[:, -1].value_counts()) == 1:
-            raise ValueError, 'Contains constant column'
-        return output
-    return wrapper
-
-def check_unique_id(df, id_col):
-    if len(df.groupby(id_col).size().value_counts()) > 1:
-        raise ValueError, 'Contains duplicate %s' % id_col
-    return df
-#####
-
-def filter_week_window(df, n1, n2):
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['start'] = pd.to_datetime(df['start'])
-    df['filter_start'] = df['start'] + DateOffset(weeks=n1)
-    df['filter_end'] = df['start'] + DateOffset(weeks=n2)
-    df = df.query('filter_start <= date < filter_end')
-    return df
-
-def mark_adjacent_groups(df, col, reset_count_on='user_id'):
-    df = df.copy()
-    is_diff_number = df[col] != df[col].shift()
-
-    if reset_count_on:
-        is_diff_user = df['user_id'] != df['user_id'].shift()
-        df['group'] = (is_diff_number | is_diff_user).cumsum()
-    else:
-        df['group'] = (is_diff_number).cumsum()
-
-    return df
-
-# def is_diff_element(x):
-#     '''
-#     df[col].apply(is_diff_element)
-#     df.pipe(transform, {'col': 'is_diff_element'})
-#     '''
-#     return x != x.shift()
-#
-# def is_nonconsecutive(x):
-#     return x != x.shift() + 1
-#
-# def is_within_hour(x):
-#     return (x - x.shift()).dt.total_seconds() / 3600 >= 1
-
-def time_diff(df, date_col='date', groups=None):
-    df = df.copy()
-    df[date_col] = pd.to_datetime(df[date_col])
-
-    if groups is None:
-        df = df.sort_values(by=date_col)
-        df['time_diff'] = df[date_col].diff().dt.total_seconds()
-    else:
-        df = df.sort_values(by=groups + [date_col])
-        df['time_diff'] = df[date_col].diff().dt.total_seconds()
-        for g in groups:
-            df.loc[df[g] != df[g].shift(1), 'time_diff'] = np.nan
-
-    return df
-
 def mark_nth_week(df):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
@@ -163,20 +75,20 @@ def disjoint_intervals(start, end, step=2):
     Generate 2-tuples of integers with a given range and step. Typically used
     to represent disjoint time ranges.
 
-    ex) disjoint_intervals(0, 6, 2) -> [(0,2), (2,4), (4,6)]
-    ex) disjoint_intervals(0, 6, 3) -> [(0,3), (3,6)]
+    ex) disjoint_intervals(0, 6, 2) -> [(0, 2), (2, 4), (4, 6)]
+    ex) disjoint_intervals(0, 6, 3) -> [(0, 3), (3, 6)]
     '''
 
     return zip(range(start, end+step, step), range(start+step, end+step, step))
 
-def disjoint_sliding_windows(x, n=2):
-    '''
-    Generate sliding windows of a given width across a list of integers.
-
-    ex) disjoint_sliding_windows([0, 1, 2, 3], 2) -> [(0, 1), (2, 3)]
-    '''
-
-    return zip(x, x[1:])[::n]
+# def disjoint_sliding_windows(x, n=2):
+#     '''
+#     Generate disjoint sliding windows of a given width across a list of integers.
+#
+#     ex) disjoint_sliding_windows([0, 1, 2, 3], 2) -> [(0, 1), (2, 3)]
+#     '''
+#
+#     return zip(x, x[1:])[::n]
 
 def cut(a, bin_width=None, bin_range=None, num_bins=None):
     '''
@@ -201,6 +113,17 @@ def cut(a, bin_width=None, bin_range=None, num_bins=None):
     min_edge = np.floor(bin_range[0] / bin_width)
     bin_edges = [min_edge + bin_width * i for i in range(num_bins + 1)]
     return pd.cut(a, bins=bin_edges, include_lowest=True)
+
+def qcut(a, q=10):
+    '''
+    Cut a series into quantiles with the smallest quantile equal to 1.
+
+    ex) df[col].pipe(qcut)
+    '''
+
+    a = a.sort_values().reset_index().reset_index()
+    a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
+    return a.set_index('index').sort_index().reset_index()['quantile']
 
 def top(a, n):
     '''
@@ -249,6 +172,15 @@ def reduce_cardinality(a, n):
     elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
         return cut(a, bin_width=n)
 
+def rates(a):
+    '''
+    Calculate proportions by dividing a series by its sum.
+
+    ex) df[col].value_counts().pipe(rates)
+    '''
+
+    return x / float(sum(x))
+
 def cbind(df, obj, **kwargs):
     '''
     Append a column or dataframe to an existing dataframe as new columns.
@@ -293,21 +225,20 @@ def merge(df, df_list, on, how, **kwargs):
         df = df.merge(df_i, on=on, how=how, **kwargs)
 
     return df
-#####
 
-def query(df, func):
+def slice(df, f):
     '''
-    Query a dataframe using complex boolean expressions without having to
-    specify its name. Useful in the middle of a long method chain.
+    Slice a dataframe using complex boolean expressions without having to
+    specify its name. Useful when method chaining.
 
-    ex) df.pipe(query, lambda x: x['date'] > '2017-01-01')
+    ex) df.pipe(slice, lambda x: x['date'] > '2017-01-01')
     '''
 
-    return df[func(df)]
+    return df[f(df)]
 
 def rename(df, name_list):
     '''
-    Rename the columns of a dataframe without having to specify its old names.
+    Rename the columns of a dataframe without having to respecify old names.
 
     ex) df.pipe(rename, ['col1', 'col2', 'col3'])
     '''
@@ -331,7 +262,7 @@ def check_unique(df, col):
 
 def show_duplicates(df, col):
     '''
-    Show rows where column value is duplicated.
+    Show rows containing duplicate values of a given column.
 
     ex) df.pipe(show_duplicates, col)
     '''
@@ -340,9 +271,66 @@ def show_duplicates(df, col):
     duplicates = counts[counts > 1].index
     return df[df[col].isin(duplicates)].sort_values(by=col)
 
+def filter_time_window(df, left_offset, right_offset, frequency):
+    '''
+    Filter rows of a transactional dataframe with date lying within the specified time window.
+
+    ex) df.pipe(filter_time_window, 1, 2, freq='7D')
+    '''
+
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
+    df['start'] = pd.to_datetime(df['start'])
+    df['left_bound'] = df.set_index('start').shift(periods=left_offset, freq=freq).index
+    df['right_bound'] = df.set_index('start').shift(periods=right_offset, freq=freq).index
+    df = df.query('left_bound <= date < right_bound')
+    return df
+#####
+
+# def mark_timestep(df, unit):
+#     '''
+#     df.pipe(mark_timestep, 'week')
+#     '''
+#     df = df.copy()
+#     df['date'] = pd.to_datetime(df['date'])
+#     df['start'] = pd.to_datetime(df['start'])
+#
+#     time_difference = (df['date'] - df['start']).dt.total_seconds()
+#     unit_dict = {'sec': 1, 'min': 60, 'hour': 3600, 'day': 3600*24, 'week': 3600*24*7}
+#
+#     df['timestep'] = time_difference / unit_dict[unit] + 1
+#     df['timestep'] = df['timestep'].astype(int)
+#
+#     return df
+
+def timeseries(df, start, end, datecol, freq, aggfunc):
+    a = df.set_index(datecol).to_period(freq).reset_index()\
+            .groupby(['user_id', datecol]).agg(aggfunc).unstack()
+    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
+    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
+    a = a.iloc[:, start:end]
+    return a.reset_index()
+
+def timeseries_new(df, start, end, datecol, freq, aggfunc):
+    a = df.set_index(datecol).to_period(freq).reset_index()\
+        .groupby(['user_id', datecol]).agg(aggfunc).unstack()
+    min_date = df[datecol].min() + DateOffset(days=-6)
+    max_date = df[datecol].max()
+    date_range = pd.date_range(start=min_date, end=max_date, freq='W-MON').astype(str).values
+    missing_days = np.setdiff1d(daterange, a.columns)
+    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
+    a = a.iloc[:, start:end]
+    return a.reset_index()
+
+def get_feature_scores(col_names, scores, top=5):
+    '''
+    ex) get_feature_scores(X_train.columns, model.feature_importances_)
+    '''
+    return pd.DataFrame(sorted(zip(col_names, scores), key=lambda x: x[1], reverse=True)[:top])
+
 def interaction(df, col1, col2):
     '''
-    Create a column(s) for the interaction between 2 variables.
+    Create interaction terms between 2 variables.
 
     ex) df.pipe(interaction, col1, col2)
     '''
@@ -350,84 +338,3 @@ def interaction(df, col1, col2):
     formula = '%s:%s - 1' % (col1, col2)
     X = dmatrix(formula, df)
     return pd.DataFrame(X, columns=X.design_info.column_names)
-
-def rates(x):
-    '''
-    Normalize a series by dividing by its sum.
-
-    ex) df[col].value_counts().pipe(rates)
-    '''
-
-    return x / float(sum(x))
-
-def qbin(x, q=10):
-    '''
-    Calculate the quantiles of a series with the largest quantile being 1.
-
-    ex) df[col].pipe(quantile)
-    '''
-
-    a = x.sort_values().reset_index().reset_index()
-    a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
-    return a.set_index('index').sort_index().reset_index()['quantile']
-
-#####
-# general functions for transactional data
-# all functions need start and date columns
-def time_window(df, offset1, offset2, freq='W'):
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['start'] = pd.to_datetime(df['start'])
-    df['filter_start'] = df.set_index('start').shift(periods=offset1, freq=freq).index
-    df['filter_end'] = df.set_index('start').shift(periods=offset2, freq=freq).index
-    df = df.query('filter_start <= date < filter_end')
-    return df
-
-def mark_timestep(df, unit):
-    '''
-    df.pipe(mark_timestep, 'week')
-    '''
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['start'] = pd.to_datetime(df['start'])
-
-    time_difference = (df['date'] - df['start']).dt.total_seconds()
-    unit_dict = {'sec': 1, 'min': 60, 'hour': 3600, 'day': 3600*24, 'week': 3600*24*7}
-
-    df['timestep'] = time_difference / unit_dict[unit] + 1
-    df['timestep'] = df['timestep'].astype(int)
-
-    return df
-
-# needs user id
-def timeseries(df, start, end, unit):
-    a = mark_timestep(df, unit).groupby(['user_id', 'day']).size().unstack()
-    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
-    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
-    a = a.iloc[:, start:end]
-    return a.reset_index()
-
-def missing_ind(x):
-    '''
-    df[col].apply(missing_ind)
-    df.pipe(transform, {'col': missing_ind}, append=True)
-    '''
-    return x.apply(lambda x: 1 if pd.isnull(x) else 0)
-
-def contains_any(s, str_list):
-    return any([i for i in str_list if i in s])
-
-def count_val(df, val):
-    return df.value_counts().loc[val]
-
-def seq_props(x):
-    return x / x[0]
-
-def drop_consec_dups(df, col):
-    return df[df[col] != df[col].shift()]
-
-def get_feature_scores(df, scores, top=5):
-    return pd.DataFrame(sorted(zip(df.columns, scores), key=lambda x: x[1], reverse=True)[:top])
-
-def grouped_rates(x, col):
-    return x / x.groupby(col).sum()
