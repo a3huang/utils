@@ -401,11 +401,13 @@ def create_explainer(model, X_train):
 def plot_explanations(mi, model, X_test, i=None):
     if i is None:
         i = np.random.randint(0, X_test.shape[0])
+
     exp = mi.explain_instance(X_test.values[i], model.predict_proba)
     a = pd.DataFrame(exp.as_list()).sort_index(ascending=False).set_index(0)
-    colors = ''.join(['r' if i >= 0 else 'g' for i in a[1]])
+    colors = ''.join(['g' if i >= 0 else 'r' for i in a[1]])
     a.plot.barh(color=colors)
     plt.legend().remove()
+    plt.ylabel('')
 
 def feat_shuffle(model, X, y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
@@ -453,3 +455,14 @@ def get_top_n(model, X_train, y_train, n, coeff=True):
         return top
     else:
         return [i[0] for i in top]
+
+# for feat sets -> 1 model
+def evaluate(model, X, y, feat_sets):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+
+    predictions = []
+    for cols in feat_sets:
+        model.fit(X_train[cols], y_train)
+        predictions.append(model.predict(X_test[cols]))
+
+    return predictions, y_test
