@@ -95,7 +95,6 @@ def hist(df, col, range=None, bins=None, prop=False):
         weights = np.ones_like(df[col])
 
     df[col].hist(range=(left_edge, right_edge), bins=num_bins, weights=weights)
-    
 #####
 
 # Helper Functions
