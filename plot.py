@@ -19,6 +19,41 @@ import subprocess
 from data import top_n_cat, crosstab, add_col
 from model import _get_feature_importances, _get_model_name
 
+#####
+def bar(df, col, by=None, val=None, prop=False, return_obj=False):
+    '''
+    Plot a bar plot or grouped bar plot of a categorical column.
+
+    ex) df.pipe(bar, by='cat', col='col', prop=True)
+    '''
+
+    if by and val:
+        a = df.pipe(crosstab, by, col, val, aggfunc=np.mean)
+    elif by:
+        a = df.pipe(crosstab, by, col)
+        a = a.div(a.sum(axis=1) if prop else 1, axis=0)
+    elif val:
+        raise Exception, 'Cannot use "val" without "by".'
+    else:
+        a = df[col].value_counts()
+        a = a.div(a.sum(axis=0) if prop else 1, axis=1)
+
+    if return_obj:
+        return a
+    else:
+        a.plot.barh()
+        plt.gca().invert_yaxis()
+        plt.legend(title=col, loc=(1, 0))
+
+def heatmap(df, **kwargs):
+    '''
+    Plot a heatmap of a table of values.
+
+    ex) df.pipe(heatmap)
+    '''
+    sns.heatmap(df, annot=True, fmt='.2f', **kwargs)
+#####
+
 # Helper Functions
 # def round_nice(x):
 #     num_digits = len(str(x))
@@ -38,19 +73,19 @@ from model import _get_feature_importances, _get_model_name
 #     bin_edges = [min_edge + binsize*i for i in range(n+1)]
 #     return pd.cut(a, bins=bin_edges, include_lowest=True)
 
-def treat(a, n=5):
-    if a.dtype == 'O':
-        return top_n_cat(a, n)
-    elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
-        return bin(a, n)
+# def treat(a, n=5):
+#     if a.dtype == 'O':
+#         return top_n_cat(a, n)
+#     elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
+#         return bin(a, n)
 
-def winsorize(x, p=.05):
-    n = int(1/p)
-    sorted_col = x.sort_values().reset_index(drop=True)
-    quantiles = pd.qcut(sorted_col.reset_index()['index'], n).cat.codes
-    a = pd.concat([sorted_col, quantiles], axis=1)
-    quantiles_to_keep = a[0].unique()[1:-1]
-    return a[a[0].isin(quantiles_to_keep)].iloc[:, 0]
+# def winsorize(x, p=.05):
+#     n = int(1/p)
+#     sorted_col = x.sort_values().reset_index(drop=True)
+#     quantiles = pd.qcut(sorted_col.reset_index()['index'], n).cat.codes
+#     a = pd.concat([sorted_col, quantiles], axis=1)
+#     quantiles_to_keep = a[0].unique()[1:-1]
+#     return a[a[0].isin(quantiles_to_keep)].iloc[:, 0]
 
 def datecol(df, date_col='date', freq='M'):
     df = df.copy()
@@ -61,130 +96,6 @@ def datecol(df, date_col='date', freq='M'):
         df = df.set_index(date_col).to_period(freq).reset_index()
 
     return df
-
-def heatmap(m, **kwargs):
-    sns.heatmap(m, annot=True, fmt='.2f', **kwargs)
-#####
-
-# Main Functions
-def plot_missing(df, top=None, **kwargs):
-    a = df.isnull().mean(axis=0)
-    a = a[a > 0]
-
-    if len(a) == 0:
-        return 'No Missing Values'
-
-    a = a.sort_values(ascending=False)
-
-    if top:
-        a = a[:top]
-
-    a.sort_values().plot.barh(**kwargs)
-    plt.xlabel('Proportion')
-    plt.title('Missing')
-    return a
-
-def get_missing_grouped(df, group):
-    non_missing = df.groupby(group).count().apply(lambda x: x / df1.groupby(group).size())
-    return (1 - non_missing)
-
-def plot_bar(df, *args, **kwargs):
-    if len(args) == 1:
-        if isinstance(args[0], list):
-            return _plot_bar_col_multi(df, *args, **kwargs)
-        else:
-            return _plot_bar_col(df, *args, **kwargs)
-
-    elif len(args) == 2:
-        if isinstance(args[1], list):
-            return _plot_bar_col_multi_groupby_cat(df, *args, **kwargs)
-        else:
-            return _plot_bar_col_groupby_cat(df, *args, **kwargs)
-
-    elif len(args) == 3:
-        return _plot_bar_col_groupby_cat2(df, *args, **kwargs)
-
-    else:
-        raise ValueError, 'Not a valid number of arguments'
-
-def _plot_bar_col(df, col, top=20, sort='index', **kwargs):
-    a = treat(df[col], top)
-
-    a = a.value_counts(dropna=False)
-    a = a / float(sum(a))
-
-    if sort == 'value':
-        a.sort_values(ascending=True).plot.barh(**kwargs)
-    else:
-        a.sort_index(ascending=False).plot.barh(**kwargs)
-
-    plt.xlabel('Proportion')
-    plt.title(col)
-    return a
-
-def _plot_bar_col_multi(df, col, top=20, sort='index', **kwargs):
-    # only supports column indices
-    a = df.iloc[:, col].sum().sort_values(ascending=False)
-    a = a / float(sum(a))
-
-    if sort == 'value':
-        a.sort_values(ascending=True).plot.barh(**kwargs)
-    else:
-        a.sort_index(ascending=False).plot.barh(**kwargs)
-
-    plt.xlabel('Proportion')
-    return a
-
-def _plot_bar_col_groupby_cat(df, cat, col, as_cat=False, top=20, sort='index', **kwargs):
-    df = df.copy()
-    df[cat] = treat(df[cat], top)
-
-    if as_cat or df[col].dtype == 'O':
-        df[col] = treat(df[col], top)
-        a = pd.crosstab(df[cat], df[col], normalize='index').fillna(0)
-        a.plot.barh(**kwargs)
-        plt.gca().invert_yaxis()
-        plt.xlabel('Proportion')
-        plt.title('%s grouped by %s' % (col, cat))
-        plt.legend(title=col, loc=(1, 0.5))
-    else:
-        a = df.groupby(cat)[col].mean()
-
-        if sort == 'value':
-            a.sort_values(ascending=True).plot.barh(**kwargs)
-        else:
-            a.sort_index(ascending=False).plot.barh(**kwargs)
-
-        plt.xlabel('Mean')
-        plt.title('%s grouped by %s' % (col, cat))
-
-    return a
-
-def _plot_bar_col_multi_groupby_cat(df, cat, col_list, as_cat=False, top=20, **kwargs):
-    # df = df.copy()
-    # df[cat] = top_n_cat(df[cat], top)
-    #
-    # a = df.groupby('cat')[col_list]
-    # a.plot.barh(**kwargs)
-    # plt.gca().invert_yaxis()
-    # plt.xlabel('Mean')
-    # plt.legend(title=cat, loc=(1, 0.5))
-
-    a = df.melt([cat], col_list)
-    return _plot_bar_col_groupby_cat2(a, 'variable', cat, 'value', **kwargs)
-
-def _plot_bar_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
-    df = df.copy()
-    df[cat1] = treat(df[cat1], top)
-    df[cat2] = treat(df[cat2], top)
-
-    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).fillna(0)
-    a.plot.barh(**kwargs)
-    plt.gca().invert_yaxis()
-    plt.xlabel('Mean')
-    plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
-    plt.legend(title=cat2, loc=(1, 0.5))
-    return a
 
 def plot_box(df, *args, **kwargs):
     if len(args) == 2:
@@ -578,9 +489,9 @@ def plot_roc_curve(df, model, target):
     plt.ylabel('True Positive Rate')
     plt.title(model_name)
 
-def plot_learning_curves(df, model, target):
-    X = df.drop(target, 1)
-    y = df[target]
+def plot_learning_curves(model, X, y):
+    # X = df.drop(target, 1)
+    # y = df[target]
 
     cv = StratifiedKFold(n_splits=5, shuffle=True)
 
