@@ -22,9 +22,9 @@ from model import _get_feature_importances, _get_model_name
 #####
 def bar(df, col, by=None, val=None, prop=False, return_obj=False):
     '''
-    Plot a bar plot or grouped bar plot of a categorical column.
+    Plot a bar plot or a grouped bar plot for a categorical column.
 
-    ex) df.pipe(bar, by='cat', col='col', prop=True)
+    ex) df.pipe(bar, by=cat, col=col, prop=True)
     '''
 
     if by and val:
@@ -45,13 +45,57 @@ def bar(df, col, by=None, val=None, prop=False, return_obj=False):
         plt.gca().invert_yaxis()
         plt.legend(title=col, loc=(1, 0))
 
-def heatmap(df, **kwargs):
+def box(df, col, by, orient='h'):
     '''
-    Plot a heatmap of a table of values.
+    Plot a grouped box plot for a continuous column.
 
-    ex) df.pipe(heatmap)
+    ex) df.pipe(box, by=cat, col=col)
     '''
+
+    order = df.groupby(by)[col].median().sort_values().index
+
+    if orient == 'h':
+        x, y = col, by
+    elif orient == 'v':
+        x, y = by, col
+
+    sns.boxplot(x, y, data=df, orient=orient, order=order)
+
+def heat(df, **kwargs):
+    '''
+    Plot a heatmap for a table of values.
+
+    ex) df.pipe(heat)
+    '''
+
     sns.heatmap(df, annot=True, fmt='.2f', **kwargs)
+
+def hist(df, col, range=None, bins=None, prop=False):
+    '''
+    Plot a histogram for a continuous variable.
+
+    ex) df.pipe(hist, col, prop=True)
+
+    '''
+
+    df[col].hist(range=range)
+    ticks = plt.xticks()[0]
+    left_edge, right_edge = ticks[1], ticks[-2]
+    total_length = right_edge - left_edge
+    width = ticks[1] - ticks[0]
+    num_bins = int(total_length / width)
+    plt.clf()
+
+    if bins:
+        num_bins = bins
+
+    if prop:
+        weights = np.ones_like(df[col]) / float(len(df[col]))
+    else:
+        weights = np.ones_like(df[col])
+
+    df[col].hist(range=(left_edge, right_edge), bins=num_bins, weights=weights)
+    
 #####
 
 # Helper Functions
@@ -96,75 +140,6 @@ def datecol(df, date_col='date', freq='M'):
         df = df.set_index(date_col).to_period(freq).reset_index()
 
     return df
-
-def plot_box(df, *args, **kwargs):
-    if len(args) == 2:
-        if isinstance(args[1], list):
-            return _plot_box_col_multi_groupby_cat(df, *args, **kwargs)
-        else:
-            return _plot_box_col_groupby_cat(df, *args, **kwargs)
-
-    else:
-        raise ValueError, 'Not a valid number of arguments'
-
-def _plot_box_col_groupby_cat(df, cat, col, showfliers=False, top=20, sort=True, **kwargs):
-    df = df.copy()
-    df[cat] = treat(df[cat], top)
-
-    if sort == True:
-        order = df.pipe(add_col, df.groupby(cat)[col]\
-            .transform(lambda x: x.median()), 'range')
-        order = order.sort_values(by='range', ascending=False).groupby(cat).head(1)[cat]
-    else:
-        order = None
-
-    sns.boxplot(y=cat, x=col, data=df, showfliers=showfliers, orient='h', order=order, **kwargs)
-    plt.xlabel(col)
-    plt.ylabel(cat)
-    plt.title('%s grouped by %s' % (col, cat))
-
-def _plot_box_col_multi_groupby_cat(df, cat, col_list, showfliers=False, top=20, **kwargs):
-    df = df.copy()
-    df[cat] = treat(df[cat], top)
-
-    a = df.melt([cat], col_list)
-    sns.boxplot(y='variable', x='value', hue=cat, data=a, showfliers=showfliers,
-                **kwargs)
-    plt.legend(loc=(1, .5))
-
-
-def plot_heatmap(df, *args, **kwargs):
-    if len(args) == 2:
-        return _plot_heatmap_groupby_cat2(df, *args, **kwargs)
-
-    elif len(args) == 3:
-        return _plot_heatmap_col_groupby_cat2(df, *args, **kwargs)
-
-    else:
-        raise ValueError, 'Not a valid number of arguments'
-
-def _plot_heatmap_groupby_cat2(df, cat1, cat2, normalize='index', top=20, **kwargs):
-    df = df.copy()
-    df[cat1] = treat(df[cat1], top)
-    df[cat2] = treat(df[cat2], top)
-
-    a = pd.crosstab(df[cat1], df[cat2], normalize=normalize).fillna(0)
-    sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
-    plt.gca().invert_yaxis()
-    plt.title('%s and %s' % (cat1, cat2))
-    return a
-
-def _plot_heatmap_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
-    df = df.copy()
-    df[cat1] = treat(df[cat1], top)
-    df[cat2] = treat(df[cat2], top)
-
-    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean).fillna(0)
-    sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
-    plt.gca().invert_yaxis()
-    plt.title('%s grouped by %s and %s' % (col, cat1, cat2))
-    return a
-
 
 def plot_hist(df, *args, **kwargs):
     if len(args) == 1:
