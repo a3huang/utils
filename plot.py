@@ -16,9 +16,6 @@ import itertools
 import pydotplus
 import subprocess
 
-from data import top_n_cat, crosstab, add_col
-from model import _get_feature_importances, _get_model_name
-
 #####
 def bar(df, col, by=None, val=None, prop=False, return_obj=False):
     '''
@@ -70,31 +67,30 @@ def heat(df, **kwargs):
 
     sns.heatmap(df, annot=True, fmt='.2f', **kwargs)
 
-def hist(df, col, range=None, bins=None, prop=False):
+def hist(df, col, by=None, range=None, prop=False):
     '''
     Plot a histogram for a continuous variable.
 
     ex) df.pipe(hist, col, prop=True)
-
     '''
 
     df[col].hist(range=range)
     ticks = plt.xticks()[0]
-    left_edge, right_edge = ticks[1], ticks[-2]
-    total_length = right_edge - left_edge
-    width = ticks[1] - ticks[0]
-    num_bins = int(total_length / width)
+    range = ticks[1], ticks[-2]
+    total_length = range[1] - range[0]
+    bin_size = ticks[1] - ticks[0]
+    bins = int(total_length / bin_size)
     plt.clf()
 
-    if bins:
-        num_bins = bins
+    if by:
+        for i, a in df.groupby(by)[col]:
+            weights = np.ones_like(a) / float(len(a) if prop else 1)
+            a.plot.hist(range=range, bins=bins, weights=weights, label=i, alpha=0.3)
+        plt.legend(title=by, loc=(1, 0))
 
-    if prop:
-        weights = np.ones_like(df[col]) / float(len(df[col]))
     else:
-        weights = np.ones_like(df[col])
-
-    df[col].hist(range=(left_edge, right_edge), bins=num_bins, weights=weights)
+        weights = np.ones_like(df[col]) / float(len(df[col]) if prop else 1)
+        df[col].hist(range=range, bins=bins, weights=weights)
 #####
 
 # Helper Functions
