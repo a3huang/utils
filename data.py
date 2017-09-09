@@ -68,28 +68,21 @@ def get_ts_sum(df, start, end, col, name):
 #                 parsed += i
 #
 #     return parsed
-#####
 
+#####
 def disjoint_intervals(start, end, step=2):
     '''
-    Generate 2-tuples of integers with a given range and step. Typically used
-    to represent disjoint time ranges.
+    Generate 2-tuples of integers where each end point is equal to the next
+    start point. Can be used to represent disjoint time intervals.
 
     ex) disjoint_intervals(0, 6, 2) -> [(0, 2), (2, 4), (4, 6)]
     ex) disjoint_intervals(0, 6, 3) -> [(0, 3), (3, 6)]
     '''
 
     return zip(range(start, end+step, step), range(start+step, end+step, step))
+#$
 
-# def disjoint_sliding_windows(x, n=2):
-#     '''
-#     Generate disjoint sliding windows of a given width across a list of integers.
-#
-#     ex) disjoint_sliding_windows([0, 1, 2, 3], 2) -> [(0, 1), (2, 3)]
-#     '''
-#
-#     return zip(x, x[1:])[::n]
-
+# split into cut_width and cut_num?
 def cut(a, bin_width=None, bin_range=None, num_bins=None):
     '''
     Cut a continuous variable into bins of desired widths or number.
@@ -179,7 +172,7 @@ def rates(a):
     ex) df[col].value_counts().pipe(rates)
     '''
 
-    return x / float(sum(x))
+    return a / float(sum(a))
 
 def cbind(df, obj, **kwargs):
     '''
@@ -202,9 +195,9 @@ def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=n
 
     df = df.copy()
 
-    if row:
+    if row_n:
         df[row_var] = df[row_var].pipe(reduce_cardinality, row_n)
-    if col:
+    if col_n:
         df[col_var] = df[col_var].pipe(reduce_cardinality, col_n)
 
     if val_var is None:
@@ -271,6 +264,15 @@ def show_duplicates(df, col):
     duplicates = counts[counts > 1].index
     return df[df[col].isin(duplicates)].sort_values(by=col)
 
+def count_missing(df):
+    '''
+    Count number of missing values in each column.
+
+    ex) df.pipe(count_missing).iloc[:5].sort_values().plot.barh()
+    '''
+
+    return df.shape[0] - df.describe().loc['count']
+
 def filter_time_window(df, left_offset, right_offset, frequency):
     '''
     Filter rows of a transactional dataframe with date lying within the specified time window.
@@ -303,23 +305,19 @@ def filter_time_window(df, left_offset, right_offset, frequency):
 #
 #     return df
 
-def timeseries(df, start, end, datecol, freq, aggfunc):
+def timeseries(df, datecol, user_col, freq, aggfunc):
+    # if want to start on monday -> choose W-SUN
     a = df.set_index(datecol).to_period(freq).reset_index()\
-            .groupby(['user_id', datecol]).agg(aggfunc).unstack()
-    missing_days = np.setdiff1d(np.array(range(end)), a.columns)
-    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
-    a = a.iloc[:, start:end]
-    return a.reset_index()
-
-def timeseries_new(df, start, end, datecol, freq, aggfunc):
-    a = df.set_index(datecol).to_period(freq).reset_index()\
-        .groupby(['user_id', datecol]).agg(aggfunc).unstack()
-    min_date = df[datecol].min() + DateOffset(days=-6)
+            .groupby([user_col, datecol]).agg(aggfunc).unstack()
+    min_date = df[datecol].min()
     max_date = df[datecol].max()
-    date_range = pd.date_range(start=min_date, end=max_date, freq='W-MON').astype(str).values
-    missing_days = np.setdiff1d(daterange, a.columns)
+    date_range = pd.date_range(start=min_date, end=max_date, freq=freq) - DateOffset(days=6)
+
+    date_range = date_range.to_series().astype(str).str.split(' ', expand=True)[0]
+    a.columns = a.columns.to_series().astype(str).str.split('/', expand=True)[0]
+
+    missing_days = np.setdiff1d(date_range.values, a.columns.values)
     a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
-    a = a.iloc[:, start:end]
     return a.reset_index()
 
 def get_feature_scores(col_names, scores, top=5):
