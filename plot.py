@@ -17,11 +17,11 @@ import pydotplus
 import subprocess
 
 #####
-def bar(df, col, by=None, val=None, prop=False, return_obj=False):
+def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
     '''
     Plot a bar plot or a grouped bar plot for a categorical column.
 
-    ex) df.pipe(bar, by=cat, col=col, prop=True)
+    ex) df.pipe(barplot, by=cat, col=col, prop=True)
     '''
 
     if by and val:
@@ -42,11 +42,11 @@ def bar(df, col, by=None, val=None, prop=False, return_obj=False):
         plt.gca().invert_yaxis()
         plt.legend(title=col, loc=(1, 0))
 
-def box(df, col, by, orient='h'):
+def boxplot(df, col, by, orient='h'):
     '''
     Plot a grouped box plot for a continuous column.
 
-    ex) df.pipe(box, by=cat, col=col)
+    ex) df.pipe(boxplot, by=cat, col=col)
     '''
 
     order = df.groupby(by)[col].median().sort_values().index
@@ -58,20 +58,20 @@ def box(df, col, by, orient='h'):
 
     sns.boxplot(x, y, data=df, orient=orient, order=order)
 
-def heat(df, **kwargs):
+def heatmap(df, **kwargs):
     '''
     Plot a heatmap for a table of values.
 
-    ex) df.pipe(heat)
+    ex) df.pipe(heatmap)
     '''
 
     sns.heatmap(df, annot=True, fmt='.2f', **kwargs)
 
-def hist(df, col, by=None, range=None, prop=False):
+def histogram(df, col, by=None, range=None, prop=False):
     '''
     Plot a histogram or a grouped histogram for a continuous column.
 
-    ex) df.pipe(hist, col, prop=True)
+    ex) df.pipe(histogram, col, prop=True)
     '''
 
     df[col].hist(range=range)
@@ -91,6 +91,20 @@ def hist(df, col, by=None, range=None, prop=False):
     else:
         weights = np.ones_like(df[col]) / float(len(df[col]) if prop else 1)
         df[col].hist(range=range, bins=bins, weights=weights)
+
+def kdeplot(df, col, by=None):
+    '''
+    Plot a density plot or a grouped density plot for a continuous column.
+
+    ex) df.pipe(kdeplot, col)
+    '''
+
+    if by:
+        df.groupby(by)[col].plot(kind='density')
+        plt.legend(title=by, loc=(1, 0))
+
+    else:
+        df[col].plot(kind='density')
 #####
 
 # Helper Functions
