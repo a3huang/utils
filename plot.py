@@ -69,7 +69,7 @@ def heat(df, **kwargs):
 
 def hist(df, col, by=None, range=None, prop=False):
     '''
-    Plot a histogram for a continuous variable.
+    Plot a histogram or a grouped histogram for a continuous column.
 
     ex) df.pipe(hist, col, prop=True)
     '''
