@@ -45,7 +45,7 @@ def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
         plt.gca().invert_yaxis()
         plt.legend(title=col, loc=(1, 0))
 
-def boxplot(df, col, by, orient='h'):
+def boxplot(df, col, by, hue=None, orient='h'):
     # plotbox
     '''
     Plot a grouped box plot for a continuous column.
@@ -60,7 +60,10 @@ def boxplot(df, col, by, orient='h'):
     elif orient == 'v':
         x, y = by, col
 
-    sns.boxplot(x, y, data=df, orient=orient, order=order)
+    if hue:
+        sns.boxplot(x, y, hue=hue, data=df, orient=orient, order=order)
+    else:
+        sns.boxplot(x, y, data=df, orient=orient, order=order)
 
 def heatmap(df, col=None, by=None, val=None, **kwargs):
     # plotheat
@@ -145,127 +148,38 @@ def scatterplot(df, x, y, by=None):
 
     if by:
         sns.lmplot(x, y, hue=by, ci=False, data=df)
+        plt.legend(loc=(1, 0))
 
     else:
         sns.lmplot(x, y, data=df, ci=False)
+
+def tsplot(df, date, by=None, val=None, freq='W', kind='line'):
+    # allow only line, bar, area
+    '''
+    Plot a time series.
+
+    ex) df.pipe(tsplot, date, by=col)
+
+    '''
+
+    if by and val:
+        df.set_index('date').groupby(by).resample(freq)[val].mean().unstack(by).plot(kind=kind)
+    elif by:
+        df.set_index('date').groupby(by).resample(freq).size().unstack(by).plot(kind=kind)
+    elif val:
+        df.set_index('date').resample(freq)[val].mean().plot(kind=kind)
+    else:
+        df.set_index('date').resample(freq).size().plot(kind=kind)
+
+def tsboxplot(df, date, col, freq='M'):
+    '''
+    Plot a boxplot of a continuous column for each aggregated time window.
+
+    ex) df.pipe(tsboxplot, date, col=col)
+    '''
+
+    df.set_index(date).to_period(freq).reset_index().boxplot(by=date, column=col)
 #####
-
-# def datecol(df, date_col='date', freq='M'):
-#     df = df.copy()
-#
-#     if freq in ['hour', 'month', 'weekday']:
-#         df[date_col] = getattr(df.set_index(date_col).index, freq)
-#     else:
-#         df = df.set_index(date_col).to_period(freq).reset_index()
-#
-#     return df
-
-def plot_ts_line(df, cat=None, col=None, **kwargs):
-    if cat is None and col is None:
-        return _plot_ts_counts(df, kind='line', **kwargs)
-
-    elif cat is None:
-        return _plot_ts_col(df, col, kind='line', **kwargs)
-
-    elif col is None:
-        return _plot_ts_counts_groupby_cat(df, cat, kind='line', **kwargs)
-
-    else:
-        return _plot_ts_col_groupby_cat(df, cat, col, kind='line', **kwargs)
-
-def plot_ts_area(df, cat=None, col=None, **kwargs):
-    if cat is None and col is None:
-        return _plot_ts_counts(df, kind='area', **kwargs)
-
-    elif cat is None:
-        return _plot_ts_col(df, col, kind='area', **kwargs)
-
-    elif col is None:
-        return _plot_ts_counts_groupby_cat(df, cat, kind='area', **kwargs)
-
-    else:
-        return _plot_ts_col_groupby_cat(df, cat, col, kind='area', **kwargs)
-
-def plot_ts_bar(df, cat=None, col=None, **kwargs):
-    if cat is None and col is None:
-        return _plot_ts_counts(df, kind='bar', **kwargs)
-
-    elif cat is None:
-        return _plot_ts_col(df, col, kind='bar', **kwargs)
-
-    elif col is None:
-        return _plot_ts_counts_groupby_cat(df, cat, kind='bar', **kwargs)
-
-    else:
-        return _plot_ts_col_groupby_cat(df, cat, col, kind='bar', **kwargs)
-
-def _plot_ts_counts(df, kind, date_col='date', freq='M', **kwargs):
-    df = df.copy()
-
-    if freq in ['hour', 'month', 'weekday']:
-        df[date_col] = getattr(df.set_index(date_col).index, freq)
-        grouper = df.groupby(date_col)
-    else:
-        grouper = df.set_index(date_col).resample(freq)
-
-    grouper.size().reset_index().plot(kind=kind, **kwargs)
-
-def _plot_ts_col(df, col, kind, date_col='date', freq='M', **kwargs):
-    df = df.copy()
-
-    if freq in ['hour', 'month', 'weekday']:
-        df[date_col] = getattr(df.set_index(date_col).index, freq)
-        grouper = df.groupby(date_col)
-    else:
-        grouper = df.set_index(date_col).resample(freq)
-
-    grouper[col].mean().plot(kind=kind, **kwargs)
-    plt.legend(loc=(1, 0.5))
-
-def _plot_ts_counts_groupby_cat(df, cat, kind, date_col='date', freq='M',
-                                top=20, **kwargs):
-    df = df.copy()
-    df[cat] = treat(df[cat], top)
-
-    if freq in ['hour', 'month', 'weekday']:
-        df[date_col] = getattr(df.set_index(date_col).index, freq)
-    else:
-        df = df.set_index(date_col).to_period(freq).reset_index()
-
-    a = df.pipe(crosstab, date_col, cat)
-    a.plot(kind=kind, **kwargs)
-    plt.legend(loc=(1, 0.5))
-
-    return a
-
-def _plot_ts_col_groupby_cat(df, cat, col, kind, date_col='date', freq='M',
-                             top=20, **kwargs):
-    df = df.copy()
-    df[cat] = treat(df[cat], top)
-
-    if freq in ['hour', 'month', 'weekday']:
-        df[date_col] = getattr(df.set_index(date_col).index, freq)
-    else:
-        df = df.set_index(date_col).to_period(freq).reset_index()
-
-    a = df.pipe(crosstab, date_col, cat, col)
-    a.plot(kind=kind, **kwargs)
-    plt.legend(loc=(1, 0.5))
-
-    return a
-
-
-def plot_ts_box(df, col, date_col='date', freq='M', **kwargs):
-    df = df.copy()
-
-    if freq in ['month', 'weekday', 'hour']:
-        df[date_col] = getattr(df.set_index(date_col).index, freq)
-    else:
-        df = df.set_index(date_col).to_period(freq)
-
-    df.boxplot(by=date_col, column=col, **kwargs)
-    plt.xticks(rotation=90)
-########
 
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
     df = df.copy()
