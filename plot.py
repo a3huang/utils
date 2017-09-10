@@ -32,11 +32,11 @@ def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
     elif by:
         a = df.pipe(crosstab, by, col)
         a = a.div(a.sum(axis=1) if prop else 1, axis=0)
-    elif val:
-        raise Exception, 'Cannot use "val" without "by".'
-    else:
+    elif not (by or val):
         a = df[col].value_counts()
         a = a.div(a.sum(axis=0) if prop else 1, axis=1)
+    else:
+        raise Exception, "Invalid combination of arguments."
 
     if return_obj:
         return a
@@ -62,28 +62,25 @@ def boxplot(df, col, by, orient='h'):
 
     sns.boxplot(x, y, data=df, orient=orient, order=order)
 
-def heatmap(df, col, by, val=None, **kwargs):
+def heatmap(df, col=None, by=None, val=None, **kwargs):
     # plotheat
     '''
-    Plot a heatmap to compare two categorical columns or to create an interaction
-    plot between two predictor columns and a target column.
-
-    ex) df.pipe(heatmap, col, by)
-    '''
-
-    if val:
-        sns.heatmap(df.pipe(table, col, by, val), annot=True, fmt='.2f', **kwargs)
-    else:
-        sns.heatmap(df.pipe(table, col, by), annot=True, fmt='.2f', **kwargs)
-
-def heat(df, **kwargs):
-    '''
+    Plot a heatmap to compare two categorical columns.
+    Plot an interaction heatmap between two predictor columns and a target column.
     Plot a heatmap of a table of values.
 
+    ex) df.pipe(heatmap, col, by)
     ex) df.iloc[:, 4:10].corr().pipe(heat)
     '''
 
-    sns.heatmap(df, annot=True, fmt='.2f', **kwargs)
+    if col and by and val:
+        sns.heatmap(df.pipe(table, col, by, val), annot=True, fmt='.2f', **kwargs)
+    elif col and by:
+        sns.heatmap(df.pipe(table, col, by), annot=True, fmt='.2f', **kwargs)
+    elif not (col or by or val):
+        sns.heatmap(df, annot=True, fmt='.2f', **kwargs)
+    else:
+        raise Exception, "Invalid combination of arguments."
 
 def histogram(df, col, by=None, range=None, prop=False):
     # plothist
@@ -129,7 +126,7 @@ def kdeplot(df, col, by=None):
 def lineplot(df, col, by, val):
     # plotline
     '''
-    Plot an interaction plot between two predictor columns and a target column.
+    Plot an interaction lineplot between two predictor columns and a target column.
 
     ex) df.pipe(lineplot, col1, col2, target)
     '''
