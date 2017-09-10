@@ -27,13 +27,13 @@ def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
     '''
 
     if by and val:
-        a = df.pipe(crosstab, by, col, val, aggfunc=np.mean)
+        a = df.pipe(table, by, col, val)
     elif by:
-        a = df.pipe(crosstab, by, col)
+        a = df.pipe(table, by, col)
         a = a.div(a.sum(axis=1) if prop else 1, axis=0)
     elif not (by or val):
         a = df[col].value_counts()
-        a = a.div(a.sum(axis=0) if prop else 1, axis=1)
+        a = a.div(a.sum() if prop else 1)
     else:
         raise Exception, "Invalid combination of arguments."
 
@@ -100,12 +100,14 @@ def histogram(df, col, by=None, range=None, prop=False):
     if by:
         for i, a in df.groupby(by)[col]:
             weights = np.ones_like(a) / float(len(a) if prop else 1)
-            a.plot.hist(range=range, bins=bins, weights=weights, label=i, alpha=0.3)
+            sns.distplot(a, kde=False, bins=bins, hist_kws={'range': range,
+                'weights': weights, 'label': str(i)})
         plt.legend(title=by, loc=(1, 0))
 
     else:
         weights = np.ones_like(df[col]) / float(len(df[col]) if prop else 1)
-        df[col].hist(range=range, bins=bins, weights=weights)
+        sns.distplot(df[col], kde=False, bins=bins, hist_kws={'range': range,
+            'weights': weights})
 
 def distplot(df, col, by=None):
     '''
@@ -173,7 +175,8 @@ def tsboxplot(df, date, col, freq='M'):
     ex) df.pipe(tsboxplot, date, col=col)
     '''
 
-    df.set_index(date).to_period(freq).reset_index().boxplot(by=date, column=col)
+    #df.set_index(date).to_period(freq).reset_index().boxplot(by=date, column=col)
+    sns.boxplot(x=date, y=col, data=df.set_index(date).to_period(freq).reset_index())
 #####
 
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
