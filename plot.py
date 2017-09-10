@@ -20,7 +20,6 @@ from utils.data import table
 
 #####
 def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
-    # plotbar
     '''
     Plot a bar plot or a grouped bar plot for a categorical column.
 
@@ -46,7 +45,6 @@ def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
         plt.legend(title=col, loc=(1, 0))
 
 def boxplot(df, col, by, hue=None, orient='h'):
-    # plotbox
     '''
     Plot a grouped box plot for a continuous column.
 
@@ -66,7 +64,6 @@ def boxplot(df, col, by, hue=None, orient='h'):
         sns.boxplot(x, y, data=df, orient=orient, order=order)
 
 def heatmap(df, col=None, by=None, val=None, **kwargs):
-    # plotheat
     '''
     Plot a heatmap to compare two categorical columns.
     Plot an interaction heatmap between two predictor columns and a target column.
@@ -86,7 +83,6 @@ def heatmap(df, col=None, by=None, val=None, **kwargs):
         raise Exception, "Invalid combination of arguments."
 
 def histogram(df, col, by=None, range=None, prop=False):
-    # plothist
     '''
     Plot a histogram or a grouped histogram for a continuous column.
 
@@ -111,12 +107,11 @@ def histogram(df, col, by=None, range=None, prop=False):
         weights = np.ones_like(df[col]) / float(len(df[col]) if prop else 1)
         df[col].hist(range=range, bins=bins, weights=weights)
 
-def kdeplot(df, col, by=None):
-    # plotden
+def distplot(df, col, by=None):
     '''
     Plot a density plot or a grouped density plot for a continuous column.
 
-    ex) df.pipe(kdeplot, col)
+    ex) df.pipe(distplot, col)
     '''
 
     if by:
@@ -138,7 +133,6 @@ def lineplot(df, col, by, val):
     plt.legend(title=by, loc=(1, 0))
 
 def scatterplot(df, x, y, by=None):
-    # plotscat
     '''
     Plot a scatter plot for 2 continuous variables. Group by an optional 3rd variable
     using color.
@@ -153,14 +147,15 @@ def scatterplot(df, x, y, by=None):
     else:
         sns.lmplot(x, y, data=df, ci=False)
 
-def tsplot(df, date, by=None, val=None, freq='W', kind='line'):
-    # allow only line, bar, area
+def tsplot(df, date, by=None, val=None, freq='M', kind='line'):
     '''
     Plot a time series.
 
     ex) df.pipe(tsplot, date, by=col)
-
     '''
+
+    if kind not in ['area', 'bar', 'line']:
+        raise Exception, 'Invalid plot type'
 
     if by and val:
         df.set_index('date').groupby(by).resample(freq)[val].mean().unstack(by).plot(kind=kind)
