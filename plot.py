@@ -16,8 +16,11 @@ import itertools
 import pydotplus
 import subprocess
 
+from utils.data import table
+
 #####
 def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
+    # plotbar
     '''
     Plot a bar plot or a grouped bar plot for a categorical column.
 
@@ -43,6 +46,7 @@ def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
         plt.legend(title=col, loc=(1, 0))
 
 def boxplot(df, col, by, orient='h'):
+    # plotbox
     '''
     Plot a grouped box plot for a continuous column.
 
@@ -58,16 +62,31 @@ def boxplot(df, col, by, orient='h'):
 
     sns.boxplot(x, y, data=df, orient=orient, order=order)
 
-def heatmap(df, **kwargs):
+def heatmap(df, col, by, val=None, **kwargs):
+    # plotheat
     '''
-    Plot a heatmap for a table of values.
+    Plot a heatmap to compare two categorical columns or to create an interaction
+    plot between two predictor columns and a target column.
 
-    ex) df.pipe(heatmap)
+    ex) df.pipe(heatmap, col, by)
+    '''
+
+    if val:
+        sns.heatmap(df.pipe(table, col, by, val), annot=True, fmt='.2f', **kwargs)
+    else:
+        sns.heatmap(df.pipe(table, col, by), annot=True, fmt='.2f', **kwargs)
+
+def heat(df, **kwargs):
+    '''
+    Plot a heatmap of a table of values.
+
+    ex) df.iloc[:, 4:10].corr().pipe(heat)
     '''
 
     sns.heatmap(df, annot=True, fmt='.2f', **kwargs)
 
 def histogram(df, col, by=None, range=None, prop=False):
+    # plothist
     '''
     Plot a histogram or a grouped histogram for a continuous column.
 
@@ -93,6 +112,7 @@ def histogram(df, col, by=None, range=None, prop=False):
         df[col].hist(range=range, bins=bins, weights=weights)
 
 def kdeplot(df, col, by=None):
+    # plotden
     '''
     Plot a density plot or a grouped density plot for a continuous column.
 
@@ -107,6 +127,7 @@ def kdeplot(df, col, by=None):
         df[col].plot(kind='density')
 
 def lineplot(df, col, by, val):
+    # plotline
     '''
     Plot an interaction plot between two predictor columns and a target column.
 
@@ -115,70 +136,32 @@ def lineplot(df, col, by, val):
 
     df.pipe(table, col, by, val).plot()
     plt.legend(title=by, loc=(1, 0))
+
+def scatterplot(df, x, y, by=None):
+    # plotscat
+    '''
+    Plot a scatter plot for 2 continuous variables. Group by an optional 3rd variable
+    using color.
+
+    ex) df.pipe(scatterplot, x, y, by=target)
+    '''
+
+    if by:
+        sns.lmplot(x, y, hue=by, ci=False, data=df)
+
+    else:
+        sns.lmplot(x, y, data=df, ci=False)
 #####
 
-# Helper Functions
-# def round_nice(x):
-#     num_digits = len(str(x))
-#     mult = 10**(num_digits-1)
-#     if mult == 1:
-#         mult = 10
-#     return np.round(float(x)/mult) * mult
-
-# def bin_cont(a, n=5):
-#     if a.value_counts().shape[0] <= n:
-#         return a
+# def datecol(df, date_col='date', freq='M'):
+#     df = df.copy()
 #
-#     binsize = round_nice(int(np.ceil(a.max() - a.min()) / n))
-#     if binsize == 0:
-#         binsize = 5
-#     min_edge = np.floor(a.min()/10)
-#     bin_edges = [min_edge + binsize*i for i in range(n+1)]
-#     return pd.cut(a, bins=bin_edges, include_lowest=True)
-
-# def treat(a, n=5):
-#     if a.dtype == 'O':
-#         return top_n_cat(a, n)
-#     elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
-#         return bin(a, n)
-
-# def winsorize(x, p=.05):
-#     n = int(1/p)
-#     sorted_col = x.sort_values().reset_index(drop=True)
-#     quantiles = pd.qcut(sorted_col.reset_index()['index'], n).cat.codes
-#     a = pd.concat([sorted_col, quantiles], axis=1)
-#     quantiles_to_keep = a[0].unique()[1:-1]
-#     return a[a[0].isin(quantiles_to_keep)].iloc[:, 0]
-
-def datecol(df, date_col='date', freq='M'):
-    df = df.copy()
-
-    if freq in ['hour', 'month', 'weekday']:
-        df[date_col] = getattr(df.set_index(date_col).index, freq)
-    else:
-        df = df.set_index(date_col).to_period(freq).reset_index()
-
-    return df
-
-def plot_scatter(df, *args, **kwargs):
-    if len(args) == 2:
-        return _plot_scatter_col2(df, *args, **kwargs)
-
-    elif len(args) == 3:
-        return _plot_scatter_col2_groupby_cat(df, *args, **kwargs)
-
-    else:
-        raise ValueError, 'Not a valid number of arguments'
-
-def _plot_scatter_col2(df, col1, col2, **kwargs):
-    sns.lmplot(col1, col2, data=df, ci=False, **kwargs)
-
-def _plot_scatter_col2_groupby_cat(df, cat, col1, col2, top=20, **kwargs):
-    df = df.copy()
-    df[cat] = treat(df[cat], top)
-
-    sns.lmplot(col1, col2, hue=cat, data=df, **kwargs)
-
+#     if freq in ['hour', 'month', 'weekday']:
+#         df[date_col] = getattr(df.set_index(date_col).index, freq)
+#     else:
+#         df = df.set_index(date_col).to_period(freq).reset_index()
+#
+#     return df
 
 def plot_ts_line(df, cat=None, col=None, **kwargs):
     if cat is None and col is None:
@@ -287,7 +270,6 @@ def plot_ts_box(df, col, date_col='date', freq='M', **kwargs):
     plt.xticks(rotation=90)
 ########
 
-
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
     df = df.copy()
     s = StandardScaler()
@@ -347,13 +329,6 @@ def plot_feature_importances(model, X, top=None, **kwargs):
     plt.ylabel('Feature')
     plt.title(model_name)
     plt.legend().remove()
-    return a
-
-def plot_correlation_matrix(df, slice=None, **kwargs):
-    a = df.corr()
-    if slice:
-        a = a.iloc[slice, slice]
-    sns.heatmap(a, annot=True, fmt='.2f', **kwargs)
     return a
 
 def plot_confusion_matrix(model, X, y, threshold=0.5, norm_axis=1, **kwargs):
