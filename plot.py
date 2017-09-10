@@ -105,6 +105,16 @@ def kdeplot(df, col, by=None):
 
     else:
         df[col].plot(kind='density')
+
+def lineplot(df, col, by, val):
+    '''
+    Plot an interaction plot between two predictor columns and a target column.
+
+    ex) df.pipe(lineplot, col1, col2, target)
+    '''
+
+    df.pipe(table, col, by, val).plot()
+    plt.legend(title=by, loc=(1, 0))
 #####
 
 # Helper Functions
@@ -149,99 +159,6 @@ def datecol(df, date_col='date', freq='M'):
         df = df.set_index(date_col).to_period(freq).reset_index()
 
     return df
-
-def plot_hist(df, *args, **kwargs):
-    if len(args) == 1:
-        return _plot_hist_col(df, *args, **kwargs)
-
-    elif len(args) == 2:
-        return _plot_hist_col_groupby_cat(df, *args, **kwargs)
-
-    else:
-        raise ValueError, 'Not a valid number of arguments'
-
-def _plot_hist_col(df, col, density=False, winsorize_col=True, **kwargs):
-    assert isinstance(col, str), 'col must be a string'
-
-    a = df[col]
-
-    if winsorize_col:
-        a = winsorize(a)
-
-    assert len(a.shape) == 1, 'Must be single column'
-    assert len(a) > 0, 'Must have at least 1 element'
-
-    if density:
-        kde = True
-        hist = False
-    else:
-        kde = False
-        hist = True
-
-    weights = np.ones_like(a) / float(len(a))
-    sns.distplot(a, hist=hist, kde=kde, **kwargs)
-    plt.ylabel('Proportion')
-    plt.title(col)
-
-def _plot_hist_col_groupby_cat(df, cat, col, density=False, winsorize_col=True, top=20, **kwargs):
-    df = df.copy()
-    df[cat] = treat(df[cat], top)
-
-    if winsorize_col:
-        df[col] = winsorize(df[col])
-        df = df[~df[col].isnull()]
-
-    assert df[col].isnull().any() == False, 'Column contains null values'
-
-    if density:
-        kde = True
-        hist = False
-    else:
-        kde = False
-        hist = True
-
-    bins = np.histogram(df[col])[1]
-    groups = df.groupby(cat)[col]
-    for k, v in groups:
-        sns.distplot(v, hist=hist, kde=kde, bins=bins, label=str(k), **kwargs)
-
-    plt.legend(title=cat, loc=(1, 0.5))
-    plt.title(col)
-
-def plot_line(df, *args, **kwargs):
-    if len(args) == 2:
-        return _plot_line_col_groupby_cat(df, *args, **kwargs)
-
-    elif len(args) == 3:
-        return _plot_line_col_groupby_cat2(df, *args, **kwargs)
-
-    else:
-        raise ValueError, 'Not a valid number of arguments'
-
-def _plot_line_col_groupby_cat(df, cat, col, top=20, **kwargs):
-    df = df.copy()
-    df[cat] = treat(df[cat], top)
-
-    a = df.groupby(cat)[col].mean()
-    a.plot(**kwargs)
-    plt.xlabel(cat)
-    plt.ylabel('Mean')
-    plt.title('%s grouped by %s' % (col, cat))
-    return a
-
-def _plot_line_col_groupby_cat2(df, cat1, cat2, col, top=20, **kwargs):
-    df = df.copy()
-    df[cat1] = treat(df[cat1], top)
-    df[cat2] = treat(df[cat2], top)
-
-    a = pd.crosstab(df[cat1], df[cat2], df[col], aggfunc=np.mean)
-    a.plot(**kwargs)
-    plt.xlabel(cat1)
-    plt.ylabel('Mean of %s' % col)
-    plt.title('Interaction Effect of %s and %s on %s' % (cat1, cat2, col))
-    plt.legend(title=cat2, loc=(1, 0.5))
-    return a
-
 
 def plot_scatter(df, *args, **kwargs):
     if len(args) == 2:
