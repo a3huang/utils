@@ -174,6 +174,15 @@ def rates(a):
 
     return a / float(sum(a))
 
+def timeunit(a, unit):
+    '''
+    Calculate a given time unit of a time series.
+
+    ex) df[date].pipe(timeunit, 'weekday')
+    '''
+
+    return getattr(a.dt, unit)
+
 def cbind(df, obj, **kwargs):
     '''
     Append a column or dataframe to an existing dataframe as new columns.
