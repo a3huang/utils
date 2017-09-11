@@ -191,6 +191,25 @@ def facet(df, row, col, **kwargs):
     ex) df.pipe(facet, 'Generation', 'Legendary').map(plt.scatter, 'Attack', 'Defense')
     '''
     return sns.FacetGrid(df, row=row, col=col, **kwargs)
+
+def facet_histogram(df, row, val, col=None):
+    # how to add prop to histograms?
+    '''
+    Convenience function to facet either by 2 categorical variables or 2
+    continuous variables.
+
+    ex) df.pipe(facet_histogram, cat, [col1, col2])
+    '''
+
+    if col:
+        df.pipe(facet, row, col).map(plt.hist, val)
+    elif isinstance(val, list):
+        a = df.melt(row, val)
+        a.pipe(facet, row, 'variable').map(plt.hist, 'value')
+    elif isinstance(val, str):
+        df.pipe(facet, None, row).map(plt.hist, val)
+    else:
+        raise Exception, 'Invalid combination of arguments.'
 #####
 
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
