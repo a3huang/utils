@@ -183,6 +183,14 @@ def tsboxplot(df, date, col, freq='M'):
     '''
 
     sns.boxplot(x=date, y=col, data=df.set_index(date).to_period(freq).reset_index())
+
+def facet(df, row, col, **kwargs):
+    '''
+    Convenience function to create facet grid.
+
+    ex) df.pipe(facet, 'Generation', 'Legendary').map(plt.scatter, 'Attack', 'Defense')
+    '''
+    return sns.FacetGrid(df, row=row, col=col, **kwargs)
 #####
 
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
@@ -246,6 +254,10 @@ def plot_feature_importances(model, X, top=None, **kwargs):
     plt.legend().remove()
     return a
 
+def plot_feature_scores(df, scores, top=5):
+    pd.DataFrame(sorted(zip(df.columns, scores), key=lambda x: x[1], reverse=True)[:top])\
+        .set_index(0).sort_values(by=1).plot.barh()
+
 def plot_confusion_matrix(model, X, y, threshold=0.5, norm_axis=1, **kwargs):
     # X = df.drop(target, 1)
     # y = df[target]
@@ -303,6 +315,9 @@ def plot_prob_estimates(df, model):
     plt.label('Probability')
     plt.title(model_name)
 
+def plot_probs(model, X_test, **kwargs):
+    plt.hist(model.predict_proba(X_test)[:, 1], **kwargs)
+
 def plot_word_frequencies(docs, top=20, **kwargs):
     c = CountVectorizer()
     c.fit(docs)
@@ -338,67 +353,6 @@ def loess(df, col1, col2):
     x_sorted = x.sort_values(by=0).index
 
     return x.loc[x_sorted], y.loc[x_sorted]
-
-def facet_cats(df, col1, col2, func, *args, **kwargs):
-    df = df.copy()
-    df[col1] = treat(df[col1], 5)
-    df[col2] = treat(df[col2], 5)
-
-    num_rows = len(df[col1].value_counts())
-    num_col = len(df[col2].value_counts())
-
-    fig, ax = plt.subplots(num_rows, num_col, figsize=(10,10))
-
-    coords = [i for i in itertools.product(range(num_rows), range(num_col))]
-
-    val1= df[col1].unique()
-    val2 = df[col2].unique()
-
-    for i, j in coords:
-        a = df[(df[col1] == val1[i]) & (df[col2] == val2[j])]
-        a.pipe(func, *args, ax=ax[i, j], **kwargs)
-
-        if i == 0:
-            ax[i, j].set_title('%s = %s' % (col2, val2[j]))
-        if j != 1:
-            ax[i, j].set_ylabel('%s = %s' % (col1, val1[i]))
-
-    plt.tight_layout()
-
-def facet_var(df, cat, func, cols, *args, **kwargs):
-    df = df.copy()
-    df[cat] = treat(df[cat], 5)
-
-    num_rows = len(df[cat].value_counts())
-    num_col = len(cols)
-
-    fig, ax = plt.subplots(num_rows, num_col, figsize=(10, 10))
-
-    val = df[cat].unique()
-
-    for i in range(num_rows):
-        a = df[df[cat] == val[i]]
-
-        for j in range(num_col):
-            a.pipe(func, cols[j], ax=ax[i, j], **kwargs)
-            ax[i, j].set_title('')
-            ax[i, j].set_xlabel('')
-            ax[i, j].set_ylabel('')
-
-            if i == 0:
-                ax[i, j].set_title('%s' % cols[j])
-
-            if j != 1:
-                ax[i, 0].set_ylabel('%s = %s' % (cat, val[i]))
-
-    plt.tight_layout()
-
-def plot_probs(model, X_test, **kwargs):
-    plt.hist(model.predict_proba(X_test)[:, 1], **kwargs)
-
-def facet(df, row, col, col_wrap=4):
-    g = sns.FacetGrid(row=row, col=col, col_wrap=col_wrap, data=df)
-    return g
 
 def compare_feature_sets_boot(a, b, col):
     a['data'] = 1
@@ -440,7 +394,3 @@ def plot_true_pred(model, X_test, y_test):
     plt.plot([range_min, range_max], [range_min, range_max], linestyle='--')
     plt.xlabel('True Values')
     plt.ylabel('Predictions')
-
-def plot_feature_scores(df, scores, top=5):
-    pd.DataFrame(sorted(zip(df.columns, scores), key=lambda x: x[1], reverse=True)[:top])\
-        .set_index(0).sort_values(by=1).plot.barh()
