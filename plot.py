@@ -20,29 +20,38 @@ from utils.data import table
 
 #####
 def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
+    # how to adjust order of bars
     '''
     Plot a bar plot or a grouped bar plot for a categorical column.
 
     ex) df.pipe(barplot, by=cat, col=col, prop=True)
     '''
 
+    df = df.copy()
+
     if by and val:
-        a = df.pipe(table, by, col, val)
+        #a = df.pipe(table, by, col, val)
+        a = df.pipe(table, by, col, val).stack().reset_index()
+        sns.barplot(y=by, x=0, hue=col, orient='h', data=a)
     elif by:
-        a = df.pipe(table, by, col)
-        a = a.div(a.sum(axis=1) if prop else 1, axis=0)
+        df['count'] = 1. / (df.groupby(by)[col].transform('size') if prop else 1)
+        sns.barplot(y=by, x='count', hue=col, orient='h', data=df, estimator=np.sum)
+        # a = df.pipe(table, by, col)
+        # a = a.div(a.sum(axis=1) if prop else 1, axis=0)
     elif not (by or val):
-        a = df[col].value_counts()
-        a = a.div(a.sum() if prop else 1)
+        df['count'] = 1. / (len(df) if prop else 1)
+        sns.barplot(y=col, x='count', orient='h', data=df, estimator=np.sum)
+        #a = df[col].value_counts()
+        #a = a.div(a.sum() if prop else 1)
     else:
         raise Exception, "Invalid combination of arguments."
 
-    if return_obj:
-        return a
-    else:
-        a.plot.barh()
-        plt.gca().invert_yaxis()
-        plt.legend(title=col, loc=(1, 0))
+    # if return_obj:
+    #     return a
+    # else:
+    #     a.plot.barh()
+    #     plt.gca().invert_yaxis()
+    #     plt.legend(title=col, loc=(1, 0))
 
 def boxplot(df, col, by, hue=None, orient='h'):
     '''
@@ -100,14 +109,13 @@ def histogram(df, col, by=None, range=None, prop=False):
     if by:
         for i, a in df.groupby(by)[col]:
             weights = np.ones_like(a) / float(len(a) if prop else 1)
-            sns.distplot(a, kde=False, bins=bins, hist_kws={'range': range,
-                'weights': weights, 'label': str(i)})
+            a.plot.hist(range=range, bins=bins, weights=weights, alpha=0.4,
+                        label=i)
         plt.legend(title=by, loc=(1, 0))
 
     else:
         weights = np.ones_like(df[col]) / float(len(df[col]) if prop else 1)
-        sns.distplot(df[col], kde=False, bins=bins, hist_kws={'range': range,
-            'weights': weights})
+        df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
 
 def distplot(df, col, by=None):
     '''
@@ -124,7 +132,6 @@ def distplot(df, col, by=None):
         df[col].plot(kind='density')
 
 def lineplot(df, col, by, val):
-    # plotline
     '''
     Plot an interaction lineplot between two predictor columns and a target column.
 
@@ -175,7 +182,6 @@ def tsboxplot(df, date, col, freq='M'):
     ex) df.pipe(tsboxplot, date, col=col)
     '''
 
-    #df.set_index(date).to_period(freq).reset_index().boxplot(by=date, column=col)
     sns.boxplot(x=date, y=col, data=df.set_index(date).to_period(freq).reset_index())
 #####
 
