@@ -16,61 +16,104 @@ import itertools
 import pydotplus
 import subprocess
 
-from utils.data import table
+from utils.data import table, rename
+
+import os
 
 #####
-def barplot(df, col, by=None, val=None, prop=False, return_obj=False):
-    # how to adjust order of bars
+def dummy_categorical(df, n):
     '''
-    Plot a bar plot or a grouped bar plot for a categorical column.
+    Create a categorical column numbered from 1 to n for testing purposes.
 
-    ex) df.pipe(barplot, by=cat, col=col, prop=True)
+    ex) df['dummy'] = df.pipe(dummy_categorical, 5)
     '''
 
-    df = df.copy()
+    size = df.shape[0] / n
+    remainder = df.shape[0] - n * size
 
-    if by and val:
-        #a = df.pipe(table, by, col, val)
-        a = df.pipe(table, by, col, val).stack().reset_index()
-        sns.barplot(y=by, x=0, hue=col, orient='h', data=a)
-    elif by:
-        df['count'] = 1. / (df.groupby(by)[col].transform('size') if prop else 1)
-        sns.barplot(y=by, x='count', hue=col, orient='h', data=df, estimator=np.sum)
-        # a = df.pipe(table, by, col)
-        # a = a.div(a.sum(axis=1) if prop else 1, axis=0)
-    elif not (by or val):
-        df['count'] = 1. / (len(df) if prop else 1)
-        sns.barplot(y=col, x='count', orient='h', data=df, estimator=np.sum)
-        #a = df[col].value_counts()
-        #a = a.div(a.sum() if prop else 1)
+    a = []
+    a.append(np.full((size + remainder, 1), 1))
+
+    for i in range(2, n+1):
+        a.append(np.full((size, 1), i))
+
+    return pd.DataFrame(np.append(a[0], a[1:]))
+
+def get_num_hist_bins(ax, range=None):
+    '''
+    Helper function for histograms to get just the right range and number of bins
+    so that the bar edges line up with the x-axis tick marks.
+    '''
+
+    ticks = ax.get_xticks()
+
+    if range is None:
+        range = ticks[1], ticks[-2]
+
+    total_length = range[1] - range[0]
+    bin_size = ticks[1] - ticks[0]
+    bins = int(total_length / bin_size)
+    return range, bins
+
+def barplot(df, col, by=None, prop=False):
+    '''
+    Create a single or grouped bar plot for a categorical variable.
+
+    ex) df.pipe(barplot, col='HP', by='Type', prop=True)
+    '''
+
+    if prop:
+        estimator = lambda x: len(x) / float(len(df))
     else:
-        raise Exception, "Invalid combination of arguments."
+        estimator = lambda x: len(x)
 
-    # if return_obj:
-    #     return a
-    # else:
-    #     a.plot.barh()
-    #     plt.gca().invert_yaxis()
-    #     plt.legend(title=col, loc=(1, 0))
+    if by:
+        sns.barplot(x=by, y=col, hue=by, data=df, estimator=estimator, orient='h')
+    else:
+        sns.barplot(x=col, y=col, data=df, estimator=estimator, orient='h')
 
-def boxplot(df, col, by, hue=None, orient='h'):
+    plt.xlabel('')
+    plt.legend(title=by, loc=(1, 0))
+
+def boxplot(df, col, by):
     '''
-    Plot a grouped box plot for a continuous column.
+    Create a grouped box plot for a continuous variable.
 
-    ex) df.pipe(boxplot, by=cat, col=col)
+    ex) df.pipe(boxplot, col='HP', by='Type')
     '''
 
     order = df.groupby(by)[col].median().sort_values().index
+    sns.boxplot(x=col, y=by, data=df, order=order, orient='h')
 
-    if orient == 'h':
-        x, y = col, by
-    elif orient == 'v':
-        x, y = by, col
+def histogram(df, col, by=None, range=None, prop=False):
+    '''
+    Create a single or grouped histogram for a continuous variable.
 
-    if hue:
-        sns.boxplot(x, y, hue=hue, data=df, orient=orient, order=order)
+    ex) df.pipe(histogram, col='HP', by='Type', prop=True)
+    '''
+
+    fig, ax = plt.subplots()
+    df[col].hist(range=range, ax=ax)
+    range, bins = get_num_hist_bins(ax, range)
+    plt.clf()
+
+    if by:
+        for i, a in df.groupby(by)[col]:
+            if prop:
+                weights = np.ones_like(a) / float(len(a))
+            else:
+                weights = None
+
+            a.plot.hist(range=range, bins=bins, weights=weights, alpha=0.4, label=i)
+
     else:
-        sns.boxplot(x, y, data=df, orient=orient, order=order)
+        if prop:
+            weights = np.ones_like(df[col]) / float(len(df[col]))
+        else:
+            weights = None
+
+        df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
+###
 
 def heatmap(df, col=None, by=None, val=None, **kwargs):
     '''
@@ -91,31 +134,13 @@ def heatmap(df, col=None, by=None, val=None, **kwargs):
     else:
         raise Exception, "Invalid combination of arguments."
 
-def histogram(df, col, by=None, range=None, prop=False):
-    '''
-    Plot a histogram or a grouped histogram for a continuous column.
-
-    ex) df.pipe(histogram, col, prop=True)
-    '''
-
-    df[col].hist(range=range)
-    ticks = plt.xticks()[0]
-    range = ticks[1], ticks[-2]
-    total_length = range[1] - range[0]
-    bin_size = ticks[1] - ticks[0]
-    bins = int(total_length / bin_size)
+def facet_hist(df, col, by=None, range=None, prop=False):
+    g = df.pipe(facet, row=None, col=by, col_wrap=3)
+    g.map(plt.hist, col, range=range)
+    rng, bins = get_num_bins(g.axes.flat[0], range)
     plt.clf()
-
-    if by:
-        for i, a in df.groupby(by)[col]:
-            weights = np.ones_like(a) / float(len(a) if prop else 1)
-            a.plot.hist(range=range, bins=bins, weights=weights, alpha=0.4,
-                        label=i)
-        plt.legend(title=by, loc=(1, 0))
-
-    else:
-        weights = np.ones_like(df[col]) / float(len(df[col]) if prop else 1)
-        df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
+    g = df.pipe(facet, row=None, col=by, col_wrap=3)
+    g.map(plt.hist, col, range=rng, bins=bins, alpha=0.4)
 
 def distplot(df, col, by=None):
     '''
@@ -201,15 +226,16 @@ def facet_histogram(df, row, val, col=None):
     ex) df.pipe(facet_histogram, cat, [col1, col2])
     '''
 
-    if col:
-        df.pipe(facet, row, col).map(plt.hist, val)
-    elif isinstance(val, list):
-        a = df.melt(row, val)
-        a.pipe(facet, row, 'variable').map(plt.hist, 'value')
-    elif isinstance(val, str):
-        df.pipe(facet, None, row).map(plt.hist, val)
-    else:
-        raise Exception, 'Invalid combination of arguments.'
+    df.pipe(facet, row, col).map(plt.hist, val)
+
+def generate_boxplots(df, by, folder_name, default_dir='/Users/alexhuang/'):
+    directory = default_dir + folder_name + '/'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    for i, col in enumerate(df.columns.difference([by])):
+        sns.boxplot(df[by], df[col])
+        plt.savefig(directory + '%s.png' % i)
+        plt.close()
 #####
 
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
@@ -293,11 +319,11 @@ def plot_confusion_matrix(model, X, y, threshold=0.5, norm_axis=1, **kwargs):
     plt.title('Predicted')
     return a
 
-def plot_roc_curve(df, model, target):
-    X = df.drop(target, 1)
-    y = df[target]
+def plot_roc_curve(model, X, y):
+    # X = df.drop(target, 1)
+    # y = df[target]
 
-    model_name = _get_model_name(model)
+    #model_name = _get_model_name(model)
 
     try:
         prediction = model.predict_proba(X)[:, 1]
