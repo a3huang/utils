@@ -39,10 +39,28 @@ def dummy_categorical(df, n):
 
     return pd.DataFrame(np.append(a[0], a[1:]))
 
-def get_num_hist_bins(ax, range=None):
+def dummy_continuous(df, loc=0, scale=1):
     '''
-    Helper function for histograms to get just the right range and number of bins
-    so that the bar edges line up with the x-axis tick marks.
+    Create a continuous column drawn from a normal distribution for testing purposes.
+
+    ex) df['dummy'] = df.pipe(dummy_continuous)
+    '''
+
+    return pd.DataFrame(np.random.normal(loc=loc, scale=scale, size=df.shape[0]))
+
+def facet(df, row, col, **kwargs):
+    '''
+    Convenience function for creating seaborn facet grids.
+
+    ex) df.pipe(facet, row='Type 1', col='Type 2').map(plt.scatter, 'Attack', 'Defense')
+    '''
+
+    return sns.FacetGrid(df, row=row, col=col, **kwargs)
+
+def nice_hist_params(ax, range=None):
+    '''
+    Helper function for matplotlib histograms to get the right range and number
+    of bins so that the bar edges line up nicely with the x-axis tick marks.
     '''
 
     ticks = ax.get_xticks()
@@ -57,9 +75,10 @@ def get_num_hist_bins(ax, range=None):
 
 def barplot(df, col, by=None, prop=False):
     '''
-    Create a single or grouped bar plot for a categorical variable.
+    Create a bar plot for a categorical variable. Group by an optional 2nd
+    categorical variable for a grouped bar plot.
 
-    ex) df.pipe(barplot, col='HP', by='Type', prop=True)
+    ex) df.pipe(bar, col='HP', by='Type')
     '''
 
     if prop:
@@ -75,36 +94,32 @@ def barplot(df, col, by=None, prop=False):
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
 
-def boxplot(df, col, by):
+def boxplot(df, col, by, sort_median=False):
     '''
     Create a grouped box plot for a continuous variable.
 
-    ex) df.pipe(boxplot, col='HP', by='Type')
+    ex) df.pipe(box, col='HP', by='Type')
     '''
 
-    order = df.groupby(by)[col].median().sort_values().index
+    if sort_median:
+        order = df.groupby(by)[col].median().sort_values().index
+    else:
+        order = None
+
     sns.boxplot(x=col, y=by, data=df, order=order, orient='h')
 
-def histogram(df, col, by=None, range=None, prop=False):
+def distplot(df, col, by=None, prop=False, range=None):
     '''
-    Create a single or grouped histogram for a continuous variable.
+    Create a histogram for a continuous variable. Group by an optional 2nd
+    categorical variable and for a grouped density plot.
 
-    ex) df.pipe(histogram, col='HP', by='Type', prop=True)
+    ex) df.pipe(hist, col='HP', by='Type')
     '''
-
-    fig, ax = plt.subplots()
-    df[col].hist(range=range, ax=ax)
-    range, bins = get_num_hist_bins(ax, range)
-    plt.clf()
 
     if by:
-        for i, a in df.groupby(by)[col]:
-            if prop:
-                weights = np.ones_like(a) / float(len(a))
-            else:
-                weights = None
-
-            a.plot.hist(range=range, bins=bins, weights=weights, alpha=0.4, label=i)
+        df.groupby(by)[col].plot(kind='density')
+        plt.xlim(range)
+        plt.legend(title=by, loc=(1, 0))
 
     else:
         if prop:
@@ -112,74 +127,55 @@ def histogram(df, col, by=None, range=None, prop=False):
         else:
             weights = None
 
+        fig, ax = plt.subplots()
+        df[col].hist(range=range, ax=ax)
+        range, bins = nice_hist_params(ax, range)
+        plt.clf()
+
         df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
-###
 
-def heatmap(df, col=None, by=None, val=None, **kwargs):
+def heatplot(df, x, y, z=None):
     '''
-    Plot a heatmap to compare two categorical columns.
-    Plot an interaction heatmap between two predictor columns and a target column.
-    Plot a heatmap of a table of values.
+    Create a heatmap between 2 categorical variables. Calculate the mean for an
+    optional 3rd continuous variable.
 
-    ex) df.pipe(heatmap, col, by)
-    ex) df.iloc[:, 4:10].corr().pipe(heat)
+    ex) df.pipe(heat, x='Type 1', y='Type 2', z='Attack')
     '''
 
-    if col and by and val:
-        sns.heatmap(df.pipe(table, col, by, val), annot=True, fmt='.2f', **kwargs)
-    elif col and by:
-        sns.heatmap(df.pipe(table, col, by), annot=True, fmt='.2f', **kwargs)
-    elif not (col or by or val):
-        sns.heatmap(df, annot=True, fmt='.2f', **kwargs)
+    if z:
+        sns.heatmap(df.pipe(table, x, y), annot=True, fmt='.2f')
     else:
-        raise Exception, "Invalid combination of arguments."
+        sns.heatmap(df.pipe(table, x, y, z), annot=True, fmt='.2f')
 
-def facet_hist(df, col, by=None, range=None, prop=False):
-    g = df.pipe(facet, row=None, col=by, col_wrap=3)
-    g.map(plt.hist, col, range=range)
-    rng, bins = get_num_bins(g.axes.flat[0], range)
-    plt.clf()
-    g = df.pipe(facet, row=None, col=by, col_wrap=3)
-    g.map(plt.hist, col, range=rng, bins=bins, alpha=0.4)
-
-def distplot(df, col, by=None):
+def scatplot(df, x, y, by=None):
     '''
-    Plot a density plot or a grouped density plot for a continuous column.
+    Create a scatter plot for 2 continuous variables. Group by an optional 3rd
+    categorical variable.
 
-    ex) df.pipe(distplot, col)
+    ex) df.pipe(scat, x='Attack', y='Defense', by='Generation')
     '''
+
+    sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
 
     if by:
-        df.groupby(by)[col].plot(kind='density')
         plt.legend(title=by, loc=(1, 0))
 
+def interactplot(df, col, by, val, heat=False):
+    '''
+    Create an interaction lineplot or heatmap between 2 predictor variables and
+    a 3rd target variable.
+
+    ex) df.pipe(interactions, col='Type 1', by='Type 2', val='Attack')
+    '''
+
+    a = df.pipe(table, col, by, val)
+
+    if heat:
+        sns.heatmap(a, annot=True, fmt='.2f')
     else:
-        df[col].plot(kind='density')
-
-def lineplot(df, col, by, val):
-    '''
-    Plot an interaction lineplot between two predictor columns and a target column.
-
-    ex) df.pipe(lineplot, col1, col2, target)
-    '''
-
-    df.pipe(table, col, by, val).plot()
-    plt.legend(title=by, loc=(1, 0))
-
-def scatterplot(df, x, y, by=None):
-    '''
-    Plot a scatter plot for 2 continuous variables. Group by an optional 3rd variable
-    using color.
-
-    ex) df.pipe(scatterplot, x, y, by=target)
-    '''
-
-    if by:
-        sns.lmplot(x, y, hue=by, ci=False, data=df)
-        plt.legend(loc=(1, 0))
-
-    else:
-        sns.lmplot(x, y, data=df, ci=False)
+        a.plot()
+        plt.legend(title=by, loc=(1, 0))
+###
 
 def tsplot(df, date, by=None, val=None, freq='M', kind='line'):
     '''
@@ -208,14 +204,6 @@ def tsboxplot(df, date, col, freq='M'):
     '''
 
     sns.boxplot(x=date, y=col, data=df.set_index(date).to_period(freq).reset_index())
-
-def facet(df, row, col, **kwargs):
-    '''
-    Convenience function to create facet grid.
-
-    ex) df.pipe(facet, 'Generation', 'Legendary').map(plt.scatter, 'Attack', 'Defense')
-    '''
-    return sns.FacetGrid(df, row=row, col=col, **kwargs)
 
 def facet_histogram(df, row, val, col=None):
     # how to add prop to histograms?
