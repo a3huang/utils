@@ -23,7 +23,7 @@ import os
 #####
 def dummy_categorical(df, n):
     '''
-    Create a categorical column numbered from 1 to n for testing purposes.
+    Create a categorical column with labels 1 to n for testing purposes.
 
     ex) df['dummy'] = df.pipe(dummy_categorical, 5)
     '''
@@ -41,7 +41,7 @@ def dummy_categorical(df, n):
 
 def dummy_continuous(df, loc=0, scale=1):
     '''
-    Create a continuous column drawn from a normal distribution for testing purposes.
+    Create a continuous column from a normal distribution for testing purposes.
 
     ex) df['dummy'] = df.pipe(dummy_continuous)
     '''
@@ -73,7 +73,7 @@ def nice_hist_params(ax, range=None):
     bins = int(total_length / bin_size)
     return range, bins
 
-def barplot(df, col, by=None, prop=False):
+def barplot(df, col, by=None, kind=None, prop=False):
     '''
     Create a bar plot for a categorical variable. Group by an optional 2nd
     categorical variable for a grouped bar plot.
@@ -81,15 +81,33 @@ def barplot(df, col, by=None, prop=False):
     ex) df.pipe(bar, col='HP', by='Type')
     '''
 
-    if prop:
-        estimator = lambda x: len(x) / float(len(df))
-    else:
-        estimator = lambda x: len(x)
-
     if by:
-        sns.barplot(x=by, y=col, hue=by, data=df, estimator=estimator, orient='h')
+        if prop:
+            normalize = 'index'
+        else:
+            normalize = False
+
+        data = df.pipe(table, col, by, normalize=normalize).unstack().reset_index()
+
+        if kind == 'facet':
+            g = sns.factorplot(x=0, y=col, col=by, data=data, kind='bar', orient='h')
+            g.set_axis_labels('', col)
+
+        elif kind == 'stack':
+            values = data[by].unique()
+            colors = sns.color_palette()
+            for i in reversed(range(1, len(values)+1)):
+                layer = data[data[by].isin(values[:i])]
+                sns.barplot(x=0, y=col, data=layer, estimator=np.sum, ci=False,
+                            orient='h', color=colors[i-1])
+
+        else:
+            sns.barplot(x=0, y=col, hue=by, data=data, orient='h')
+
     else:
-        sns.barplot(x=col, y=col, data=df, estimator=estimator, orient='h')
+        data = df[col].value_counts(normalize=prop).reset_index()
+        sns.barplot(x=col, y='index', data=data, orient='h')
+        plt.ylabel(col)
 
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
@@ -134,7 +152,7 @@ def distplot(df, col, by=None, prop=False, range=None):
 
         df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
 
-def heatplot(df, x, y, z=None):
+def heatplot(df, x, y, z=None, normalize=False):
     '''
     Create a heatmap between 2 categorical variables. Calculate the mean for an
     optional 3rd continuous variable.
@@ -143,9 +161,9 @@ def heatplot(df, x, y, z=None):
     '''
 
     if z:
-        sns.heatmap(df.pipe(table, x, y), annot=True, fmt='.2f')
-    else:
         sns.heatmap(df.pipe(table, x, y, z), annot=True, fmt='.2f')
+    else:
+        sns.heatmap(df.pipe(table, x, y, normalize=normalize), annot=True, fmt='.2f')
 
 def scatplot(df, x, y, by=None):
     '''
