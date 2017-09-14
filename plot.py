@@ -60,27 +60,6 @@ def facet(df, row, col, **kwargs):
     return sns.FacetGrid(df, row=row, col=col, **kwargs)
 
 #
-def nice_range_bin(ax, range=None):
-    '''
-    Helper function for matplotlib histograms to find the right range and number
-    of bins so that the bar edges will line up nicely with the x-axis tick marks.
-
-    ex) fig, ax = plt.subplots()
-        ax.hist(a)
-        range, bins = nice_range_bin(ax)
-    '''
-
-    ticks = ax.get_xticks()
-
-    if range is None:
-        range = ticks[1], ticks[-2]
-
-    total_length = range[1] - range[0]
-    bin_size = ticks[1] - ticks[0]
-    bins = int(total_length / bin_size)
-    return range, bins
-
-#
 def ceil_with_base(x, base):
     '''
     Take the ceiling of a number with respect to any base.
@@ -126,18 +105,101 @@ def nice_round(x):
         return round_with_base(x, base=5*10**(power-1))
 
 #
-def nice_hist(a):
+def truncate(n):
+    '''
+    Truncates a decimal to its first nonzero digit.
+
+    ex) truncate(0.0345) -> 0.03
+    '''
+
+    if n == 0:
+        return 0
+    sign = -1 if n < 0 else 1
+    scale = int(-np.floor(np.log10(abs(n))))
+    if scale <= 0:
+        scale = 1
+    factor = 10**scale
+    return sign * np.floor(abs(n) * factor ) / factor
+
+#
+def nice_range_bin(ax, range=None):
+    '''
+    Helper function for matplotlib histograms to find the right range and number
+    of bins so that the bar edges will line up nicely with existing x-axis tick
+    marks.
+
+    ex) fig, ax = plt.subplots()
+        df[col].plot.hist(ax=ax)
+        range, bins = nice_range_bin(ax)
+    '''
+
+    ticks = ax.get_xticks()
+
+    if range is None:
+        range = ticks[1], ticks[-2]
+
+    total_length = range[1] - range[0]
+    bin_size = ticks[1] - ticks[0]
+    bins = int(total_length / bin_size)
+    return range, bins
+
+#
+def nice_hist(df, col, range=None, prop=False):
+    '''
+    Creates a "nice" histogram by drawing a default histogram first and then
+    adjusting the bin edges so that they line up with the existing x-axis
+    tick marks.
+
+    Note: Unfortunately does not play nicely with seaborn's FacetGrid.
+    '''
+
+    fig, ax = plt.subplots()
+    df[col].plot.hist(range=range, ax=ax)
+    range, bins = nice_range_bin(ax, range)
+    plt.clf()
+
+    if prop:
+        weights = np.ones_like(df[col]) / float(len(df[col]))
+    else:
+        weights = None
+
+    df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
+
+#
+def nice_hist2(a, bins=10, **kwargs):
     '''
     Creates a "nice" histogram by adjusting both the bin edges and the x-axis tick
     marks so that they line up nicely.
 
+    Note: Unfortunately does not play nicely with seaborn's FacetGrid.
     '''
 
-    _, edges = np.histogram(a)
-    width = nice_round(edges[1] - edges[0])
-    new_edges = np.unique([round_with_base(i, width) for i in edges])
-    plt.hist(a, range=(new_edges[0], new_edges[-1]), bins=len(new_edges)-1)
+    heights, edges = np.histogram(a)
+    width = (edges[-1] - edges[0]) / bins
+
+    if width < 1:
+        width = truncate(width)
+    else:
+        width = nice_round(width)
+
+    new_edges = [round_with_base(edges[0], width) + i*width for i in range(len(edges))]
+    plt.hist(a, bins=new_edges, **kwargs)
     plt.xticks(new_edges)
+
+#
+def prop_hist(a, prop=False, **kwargs):
+    '''
+    Creates a histogram where each bar displays the proportion of observations
+    in each bin rather than their counts.
+
+    '''
+
+    if prop:
+        weights = np.ones_like(a) / float(len(a))
+    else:
+        weights = None
+
+    plt.hist(a, weights=weights, **kwargs)
 
 #
 def barplot(df, col, by=None, kind=None, prop=False):
@@ -179,9 +241,11 @@ def barplot(df, col, by=None, kind=None, prop=False):
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
 
-def boxplot(df, col, by, sort_median=False):
+#
+def boxplot(df, col, by, facet_by=None, sort_median=False):
     '''
-    Create a grouped box plot for a continuous variable.
+    Create a grouped box plot for a continuous variable. Facet by an optional
+    3rd categorical variable.
 
     ex) df.pipe(box, col='HP', by='Type')
     '''
@@ -191,12 +255,17 @@ def boxplot(df, col, by, sort_median=False):
     else:
         order = None
 
-    sns.boxplot(x=col, y=by, data=df, order=order, orient='h')
+    if facet_by:
+        g = sns.FacetGrid(df, col=facet_by)
+        g.map(sns.boxplot, by, col, order=order)
+    else:
+        sns.boxplot(x=col, y=by, data=df, order=order, orient='h')
 
-def distplot(df, col, by=None, prop=False, range=None, facet=False):
+#
+def distplot(df, col, by=None, prop=False, facet=False, range=None):
     '''
     Create a histogram for a continuous variable. Group by an optional 2nd
-    categorical variable and for a grouped density plot.
+    categorical variable for a grouped density plot.
 
     ex) df.pipe(hist, col='HP', by='Type')
     '''
@@ -204,29 +273,22 @@ def distplot(df, col, by=None, prop=False, range=None, facet=False):
     if by:
         if facet:
             g = sns.FacetGrid(df, col=by)
-            g.map(plt.hist, col, range=range)
-            range, bins = nice_hist_params(g.axes.flat[0], range)
+            g.map(prop_hist, col, range=range)
+            r, b = nice_range_bin(g.axes.flat[0], range)
             plt.clf()
+
             g = sns.FacetGrid(df, col=by, col_wrap=3)
-            g.map(plt.hist, col, range=range, bins=bins)
+            g.map(prop_hist, col, prop=prop, range=r, bins=b, alpha=0.4)
         else:
-            df.groupby(by)[col].plot(kind='density')
+            for group, column in df.groupby(by)[col]:
+                sns.kdeplot(column, label=group)
             plt.xlim(range)
             plt.legend(title=by, loc=(1, 0))
 
     else:
-        if prop:
-            weights = np.ones_like(df[col]) / float(len(df[col]))
-        else:
-            weights = None
+        nice_hist(df, col, prop=prop, range=range)
 
-        fig, ax = plt.subplots()
-        df[col].hist(range=range, ax=ax)
-        range, bins = nice_range_bin(ax, range)
-        plt.clf()
-
-        df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
-
+#
 def heatplot(df, x, y, z=None, normalize=False):
     '''
     Create a heatmap between 2 categorical variables. Calculate the mean for an
@@ -240,7 +302,8 @@ def heatplot(df, x, y, z=None, normalize=False):
     else:
         sns.heatmap(df.pipe(table, x, y, normalize=normalize), annot=True, fmt='.2f')
 
-def scatplot(df, x, y, by=None):
+#
+def scatplot(df, x, y, by=None, facet=False):
     '''
     Create a scatter plot for 2 continuous variables. Group by an optional 3rd
     categorical variable.
@@ -248,10 +311,16 @@ def scatplot(df, x, y, by=None):
     ex) df.pipe(scat, x='Attack', y='Defense', by='Generation')
     '''
 
-    sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
-
     if by:
-        plt.legend(title=by, loc=(1, 0))
+        if facet:
+            g = sns.FacetGrid(df, col=by)
+            g.map(sns.regplot, x, y, fit_reg=False, ci=False)
+        else:
+            sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
+            plt.legend(title=by, loc=(1, 0))
+    else:
+        sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
+######
 
 def interactplot(df, col, by, val, heat=False):
     '''
@@ -268,7 +337,6 @@ def interactplot(df, col, by, val, heat=False):
     else:
         a.plot()
         plt.legend(title=by, loc=(1, 0))
-###
 
 def tsplot(df, date, by=None, val=None, freq='M', kind='line'):
     '''
@@ -297,17 +365,6 @@ def tsboxplot(df, date, col, freq='M'):
     '''
 
     sns.boxplot(x=date, y=col, data=df.set_index(date).to_period(freq).reset_index())
-
-def facet_histogram(df, row, val, col=None):
-    # how to add prop to histograms?
-    '''
-    Convenience function to facet either by 2 categorical variables or 2
-    continuous variables.
-
-    ex) df.pipe(facet_histogram, cat, [col1, col2])
-    '''
-
-    df.pipe(facet, row, col).map(plt.hist, val)
 
 def generate_boxplots(df, by, folder_name, default_dir='/Users/alexhuang/'):
     directory = default_dir + folder_name + '/'
