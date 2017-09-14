@@ -20,7 +20,7 @@ from utils.data import table, rename
 
 import os
 
-#####
+#
 def dummy_categorical(df, n):
     '''
     Create a categorical column with labels 1 to n for testing purposes.
@@ -39,6 +39,7 @@ def dummy_categorical(df, n):
 
     return pd.DataFrame(np.append(a[0], a[1:]))
 
+#
 def dummy_continuous(df, loc=0, scale=1):
     '''
     Create a continuous column from a normal distribution for testing purposes.
@@ -48,6 +49,7 @@ def dummy_continuous(df, loc=0, scale=1):
 
     return pd.DataFrame(np.random.normal(loc=loc, scale=scale, size=df.shape[0]))
 
+#
 def facet(df, row, col, **kwargs):
     '''
     Convenience function for creating seaborn facet grids.
@@ -57,10 +59,15 @@ def facet(df, row, col, **kwargs):
 
     return sns.FacetGrid(df, row=row, col=col, **kwargs)
 
-def nice_hist_params(ax, range=None):
+#
+def nice_range_bin(ax, range=None):
     '''
-    Helper function for matplotlib histograms to get the right range and number
-    of bins so that the bar edges line up nicely with the x-axis tick marks.
+    Helper function for matplotlib histograms to find the right range and number
+    of bins so that the bar edges will line up nicely with the x-axis tick marks.
+
+    ex) fig, ax = plt.subplots()
+        ax.hist(a)
+        range, bins = nice_range_bin(ax)
     '''
 
     ticks = ax.get_xticks()
@@ -73,6 +80,66 @@ def nice_hist_params(ax, range=None):
     bins = int(total_length / bin_size)
     return range, bins
 
+#
+def ceil_with_base(x, base):
+    '''
+    Take the ceiling of a number with respect to any base.
+
+    ex) ceil_with_base(0.03, 0.05) -> 0.05
+    ex) ceil_with_base(0.02, 0.05) -> 0.05
+    '''
+
+    return base * np.ceil(float(x) / base)
+
+#
+def round_with_base(x, base):
+    '''
+    Round a number with respect to any base.
+
+    ex) round_with_base(0.03, 0.05) -> 0.05
+    ex) round_with_base(0.02, 0.05) -> 0
+    '''
+
+    return base * np.round(float(x) / base)
+
+#
+def nice_round(x):
+    '''
+    Round a number "nicely" to the nearest denomination of 5 or 10. Numbers less
+    than 1 will be always be rounded upwards. Numbers greater than 1 may be rounded
+    upwards or downwards.
+
+    ex) nice_round(0.03) -> 0.05
+    ex) nice_round(0.02) -> 0.05
+    ex) nice_round(12) -> 10
+    ex) nice_round(14) -> 15
+    ex) nice_round(7) -> 7
+    ex) nice_round(7.2) -> 7
+    '''
+
+    power = np.ceil(np.abs(np.log10(x))) - 1
+
+    if x < 1:
+        return ceil_with_base(x, base=5*10**-(power+1))
+
+    else:
+        return round_with_base(x, base=5*10**(power-1))
+
+#
+def nice_hist(a):
+    '''
+    Creates a "nice" histogram by adjusting both the bin edges and the x-axis tick
+    marks so that they line up nicely.
+
+    '''
+
+    _, edges = np.histogram(a)
+    width = nice_round(edges[1] - edges[0])
+    new_edges = np.unique([round_with_base(i, width) for i in edges])
+    plt.hist(a, range=(new_edges[0], new_edges[-1]), bins=len(new_edges)-1)
+    plt.xticks(new_edges)
+
+#
 def barplot(df, col, by=None, kind=None, prop=False):
     '''
     Create a bar plot for a categorical variable. Group by an optional 2nd
@@ -126,7 +193,7 @@ def boxplot(df, col, by, sort_median=False):
 
     sns.boxplot(x=col, y=by, data=df, order=order, orient='h')
 
-def distplot(df, col, by=None, prop=False, range=None):
+def distplot(df, col, by=None, prop=False, range=None, facet=False):
     '''
     Create a histogram for a continuous variable. Group by an optional 2nd
     categorical variable and for a grouped density plot.
@@ -135,9 +202,17 @@ def distplot(df, col, by=None, prop=False, range=None):
     '''
 
     if by:
-        df.groupby(by)[col].plot(kind='density')
-        plt.xlim(range)
-        plt.legend(title=by, loc=(1, 0))
+        if facet:
+            g = sns.FacetGrid(df, col=by)
+            g.map(plt.hist, col, range=range)
+            range, bins = nice_hist_params(g.axes.flat[0], range)
+            plt.clf()
+            g = sns.FacetGrid(df, col=by, col_wrap=3)
+            g.map(plt.hist, col, range=range, bins=bins)
+        else:
+            df.groupby(by)[col].plot(kind='density')
+            plt.xlim(range)
+            plt.legend(title=by, loc=(1, 0))
 
     else:
         if prop:
@@ -147,7 +222,7 @@ def distplot(df, col, by=None, prop=False, range=None):
 
         fig, ax = plt.subplots()
         df[col].hist(range=range, ax=ax)
-        range, bins = nice_hist_params(ax, range)
+        range, bins = nice_range_bin(ax, range)
         plt.clf()
 
         df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
