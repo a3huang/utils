@@ -105,21 +105,21 @@ def nice_round(x):
         return round_with_base(x, base=5*10**(power-1))
 
 #
-def truncate(n):
+def truncate(x):
     '''
     Truncates a decimal to its first nonzero digit.
 
     ex) truncate(0.0345) -> 0.03
     '''
 
-    if n == 0:
+    if x == 0:
         return 0
-    sign = -1 if n < 0 else 1
-    scale = int(-np.floor(np.log10(abs(n))))
+    sign = -1 if x < 0 else 1
+    scale = int(-np.floor(np.log10(abs(x))))
     if scale <= 0:
         scale = 1
     factor = 10**scale
-    return sign * np.floor(abs(n) * factor ) / factor
+    return sign * np.floor(abs(x) * factor) / factor
 
 #
 def nice_range_bin(ax, range=None):
@@ -144,13 +144,30 @@ def nice_range_bin(ax, range=None):
     return range, bins
 
 #
+def take(iterator, n):
+    '''
+    Return the nth item in an iterator.
+
+    ex) take(df.groupby('Generation'), 2)
+    '''
+
+    for i, a in enumerate(iterator):
+        if i != n:
+            continue
+        else:
+            return a
+
+#
 def nice_hist(df, col, range=None, prop=False):
     '''
-    Creates a "nice" histogram by drawing a default histogram first and then
+    Creates a "nice" histogram by drawing the default histogram first and then
     adjusting the bin edges so that they line up with the existing x-axis
     tick marks.
 
-    Note: Unfortunately does not play nicely with seaborn's FacetGrid.
+    This function takes advantage of the fact that matplotlib's
+    plt.hist already comes up with "nice" values for the x-axis tick marks.
+
+    Note: Does not play nicely with seaborn's FacetGrid.
     '''
 
     fig, ax = plt.subplots()
@@ -171,7 +188,11 @@ def nice_hist2(a, bins=10, **kwargs):
     Creates a "nice" histogram by adjusting both the bin edges and the x-axis tick
     marks so that they line up nicely.
 
-    Note: Unfortunately does not play nicely with seaborn's FacetGrid.
+    Unlike nice_hist, this function uses custom functions to determine "nice"
+    locations for the x-axis tick marks. This leads to tick values that are not
+    as nice as the ones matplotlib's plt.hist gives.
+
+    Note: Does not play nicely with seaborn's FacetGrid.
     '''
 
     heights, edges = np.histogram(a)
@@ -191,7 +212,6 @@ def prop_hist(a, prop=False, **kwargs):
     '''
     Creates a histogram where each bar displays the proportion of observations
     in each bin rather than their counts.
-
     '''
 
     if prop:
@@ -205,9 +225,9 @@ def prop_hist(a, prop=False, **kwargs):
 def barplot(df, col, by=None, kind=None, prop=False):
     '''
     Create a bar plot for a categorical variable. Group by an optional 2nd
-    categorical variable for a grouped bar plot.
+    categorical variable.
 
-    ex) df.pipe(bar, col='HP', by='Type')
+    ex) df.pipe(barplot, col='HP', by='Type')
     '''
 
     if by:
@@ -247,7 +267,7 @@ def boxplot(df, col, by, facet_by=None, sort_median=False):
     Create a grouped box plot for a continuous variable. Facet by an optional
     3rd categorical variable.
 
-    ex) df.pipe(box, col='HP', by='Type')
+    ex) df.pipe(boxplot, col='HP', by='Type')
     '''
 
     if sort_median:
@@ -265,9 +285,9 @@ def boxplot(df, col, by, facet_by=None, sort_median=False):
 def distplot(df, col, by=None, prop=False, facet=False, range=None):
     '''
     Create a histogram for a continuous variable. Group by an optional 2nd
-    categorical variable for a grouped density plot.
+    categorical variable.
 
-    ex) df.pipe(hist, col='HP', by='Type')
+    ex) df.pipe(distplot, col='HP', by='Type')
     '''
 
     if by:
@@ -294,7 +314,7 @@ def heatplot(df, x, y, z=None, normalize=False):
     Create a heatmap between 2 categorical variables. Calculate the mean for an
     optional 3rd continuous variable.
 
-    ex) df.pipe(heat, x='Type 1', y='Type 2', z='Attack')
+    ex) df.pipe(heatplot, x='Type 1', y='Type 2', z='Attack')
     '''
 
     if z:
@@ -308,7 +328,7 @@ def scatplot(df, x, y, by=None, facet=False):
     Create a scatter plot for 2 continuous variables. Group by an optional 3rd
     categorical variable.
 
-    ex) df.pipe(scat, x='Attack', y='Defense', by='Generation')
+    ex) df.pipe(scatplot, x='Attack', y='Defense', by='Generation')
     '''
 
     if by:
@@ -320,14 +340,14 @@ def scatplot(df, x, y, by=None, facet=False):
             plt.legend(title=by, loc=(1, 0))
     else:
         sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
-######
 
+#
 def interactplot(df, col, by, val, heat=False):
     '''
     Create an interaction lineplot or heatmap between 2 predictor variables and
     a 3rd target variable.
 
-    ex) df.pipe(interactions, col='Type 1', by='Type 2', val='Attack')
+    ex) df.pipe(interactplot, col='Type 1', by='Type 2', val='Attack')
     '''
 
     a = df.pipe(table, col, by, val)
@@ -338,43 +358,73 @@ def interactplot(df, col, by, val, heat=False):
         a.plot()
         plt.legend(title=by, loc=(1, 0))
 
-def tsplot(df, date, by=None, val=None, freq='M', kind='line'):
+#
+def tsplot(df, date, by=None, val=None, freq='M', area=False):
     '''
-    Plot a time series.
+    Create a time series plot of counts for a date variable or of mean values
+    for a continuous variable. Group by an optional 3rd categorical variable.
 
-    ex) df.pipe(tsplot, date, by=col)
+    ex) df.pipe(tsplot, date='date', by='Item')
     '''
 
-    if kind not in ['area', 'bar', 'line']:
-        raise Exception, 'Invalid plot type'
+    if area:
+        kind = 'area'
+    else:
+        kind = 'line'
 
     if by and val:
-        df.set_index('date').groupby(by).resample(freq)[val].mean().unstack(by).plot(kind=kind)
+        df.groupby([pd.Grouper(key=date, freq=freq), by])[val].mean().unstack(by).plot(kind=kind)
     elif by:
-        df.set_index('date').groupby(by).resample(freq).size().unstack(by).plot(kind=kind)
+        df.groupby([pd.Grouper(key=date, freq=freq), by]).size().unstack(by).plot(kind=kind)
     elif val:
-        df.set_index('date').resample(freq)[val].mean().plot(kind=kind)
+        df.groupby(pd.Grouper(key=date, freq=freq))[val].mean().plot(kind=kind)
     else:
-        df.set_index('date').resample(freq).size().plot(kind=kind)
+        df.groupby(pd.Grouper(key=date, freq=freq)).size().plot(kind=kind)
 
+    if by:
+        plt.legend(title=by, loc=(1, 0))
+
+#
 def tsboxplot(df, date, col, freq='M'):
     '''
-    Plot a boxplot of a continuous column for each aggregated time window.
+    Create a time series boxplot for a continuous variable.
 
-    ex) df.pipe(tsboxplot, date, col=col)
+    ex) df.pipe(tsboxplot, date='date', col='Amount')
     '''
 
-    sns.boxplot(x=date, y=col, data=df.set_index(date).to_period(freq).reset_index())
+    groups = df.groupby(pd.Grouper(key=date, freq=freq))
 
-def generate_boxplots(df, by, folder_name, default_dir='/Users/alexhuang/'):
+    columns = []
+    for i, g in groups:
+        a = pd.DataFrame(g[col]).reset_index(drop=True).rename(columns={col: i})
+        columns.append(a)
+
+    data = pd.concat(columns, axis=1)
+    sns.boxplot(data=data, orient='h')
+    plt.xlabel(col)
+######
+
+def genboxplot(df, by, folder_name, default_dir='/Users/alexhuang/'):
+    '''
+    Generate boxplots for each column grouped by a single categorical variable
+    and save them to a folder.
+
+    ex) df.pipe(genboxplot, by='Legendary', folder_name='pokemon_stats')
+    '''
+
     directory = default_dir + folder_name + '/'
     if not os.path.exists(directory):
         os.makedirs(directory)
+
     for i, col in enumerate(df.columns.difference([by])):
-        sns.boxplot(df[by], df[col])
+        sns.boxplot(df[col], df[by], orient='h')
         plt.savefig(directory + '%s.png' % i)
         plt.close()
-#####
+
+def gendistplot(df, folder_name, default_dir='/Users/alexhuang/'):
+    pass
+def genbarplot(df, folder_name, default_dir='/Users/alexhuang/'):
+    pass
 
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
     df = df.copy()
