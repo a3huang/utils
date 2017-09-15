@@ -337,12 +337,16 @@ def timeseries(df, datecol, user_col, freq, aggfunc):
     a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
     return a.reset_index()
 
-def get_feature_scores(col_names, scores, top=None):
+def get_feature_scores(columns, scores, sort_abs=False, top=None):
     '''
     ex) get_feature_scores(X_train.columns, model.feature_importances_)
     '''
 
-    df = pd.DataFrame(sorted(zip(col_names, scores), key=lambda x: x[1], reverse=True))
+    df = pd.DataFrame(zip(columns, scores))
+
+    if sort_abs:
+        df['abs'] = np.abs(df[1])
+        df = df.sort_values(by='abs', ascending=False).drop('abs', 1)
 
     if top:
         return df[:top]
