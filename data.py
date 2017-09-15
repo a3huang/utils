@@ -138,7 +138,9 @@ def dummy(a):
     ex) df.pipe(cbind, df[col].pipe(dummy))
     '''
 
-    return pd.get_dummies(a)
+    df = pd.get_dummies(a)
+    df.columns = [str(i) for i in df.columns]
+    return df
 
 def undummy(a):
     '''
@@ -183,7 +185,7 @@ def timeunit(a, unit):
 
     return getattr(a.dt, unit)
 
-def cbind(df, obj, **kwargs):
+def cbind2(df, obj, **kwargs):
     '''
     Append a column or dataframe to an existing dataframe as new columns.
 
@@ -192,6 +194,9 @@ def cbind(df, obj, **kwargs):
 
     objects = [df.reset_index(drop=True), pd.DataFrame(obj).reset_index(drop=True)]
     return pd.concat(objects, axis=1, **kwargs)
+
+def cbind(dfs):
+    return pd.concat([pd.DataFrame(df).reset_index(drop=True) for df in dfs], axis=1)
 
 def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=np.mean, **kwargs):
     '''
@@ -213,6 +218,9 @@ def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=n
         return pd.crosstab(df[row_var], df[col_var], **kwargs)
     else:
         return pd.crosstab(df[row_var], df[col_var], df[val_var], aggfunc=agg_func, **kwargs)
+
+    # df['dummy'] = 0
+    # pd.crosstab(df[row_var], df['dummy'])
 
 def merge(df, df_list, on, how, **kwargs):
     '''
@@ -329,11 +337,17 @@ def timeseries(df, datecol, user_col, freq, aggfunc):
     a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
     return a.reset_index()
 
-def get_feature_scores(col_names, scores, top=5):
+def get_feature_scores(col_names, scores, top=None):
     '''
     ex) get_feature_scores(X_train.columns, model.feature_importances_)
     '''
-    return pd.DataFrame(sorted(zip(col_names, scores), key=lambda x: x[1], reverse=True)[:top])
+
+    df = pd.DataFrame(sorted(zip(col_names, scores), key=lambda x: x[1], reverse=True))
+
+    if top:
+        return df[:top]
+    else:
+        return df
 
 def interaction(df, col1, col2):
     '''
@@ -345,3 +359,38 @@ def interaction(df, col1, col2):
     formula = '%s:%s - 1' % (col1, col2)
     X = dmatrix(formula, df)
     return pd.DataFrame(X, columns=X.design_info.column_names)
+
+# how to combine these functions?
+# drop allows you to omit
+# cols_from -> loc[:, 'date':]
+# cols_to -> loc[:, :'date']
+# df[starts_with(df, 'a') + ends_with(df, 'e') + select(df, 4,5,6)]
+def starts_with(df, string, return_str=False):
+    cols = [i for i in df.columns if i.startswith(string)]
+    if return_str:
+        return cols
+    else:
+        return df[cols]
+
+def ends_with(df, string):
+    return df[[i for i in df.columns if i.endswith(string)]]
+
+def contains(df, string):
+    return df[[i for i in df.columns if string in i]]
+
+def select(df, *args):
+    # df.pipe(select, 1, 5, 'date')
+    columns = []
+
+    for i in args:
+        try:
+            columns.append(df.columns[int(i)])
+        except:
+            columns.append(i)
+
+    columns = list(set(columns))
+
+    return df[columns]
+
+def get_index(df, col_names):
+    return [df.columns.get_loc(i) for i in col_names]
