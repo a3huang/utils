@@ -268,6 +268,7 @@ def boxplot(df, col, by, facet_by=None, sort_median=False):
     3rd categorical variable.
 
     ex) df.pipe(boxplot, col='HP', by='Type')
+    ex) df.pipe(boxplot, col='Amount', by='Category', facet_by='Target')
     '''
 
     if sort_median:
@@ -328,7 +329,7 @@ def scatplot(df, x, y, by=None, facet=False):
     Create a scatter plot for 2 continuous variables. Group by an optional 3rd
     categorical variable.
 
-    ex) df.pipe(scatplot, x='Attack', y='Defense', by='Generation')
+    ex) df.pipe(scatplot, x='Attack', y='Defense', by='Legendary')
     '''
 
     if by:
@@ -364,7 +365,7 @@ def tsplot(df, date, by=None, val=None, freq='M', area=False):
     Create a time series plot of counts for a date variable or of mean values
     for a continuous variable. Group by an optional 3rd categorical variable.
 
-    ex) df.pipe(tsplot, date='date', by='Item')
+    ex) df.pipe(tsplot, date='date', by='Category')
     '''
 
     if area:
@@ -409,12 +410,15 @@ def genboxplot(df, by, folder_name, default_dir='/Users/alexhuang/'):
     Generate boxplots for each column grouped by a single categorical variable
     and save them to a folder.
 
-    ex) df.pipe(genboxplot, by='Legendary', folder_name='pokemon_stats')
+    ex) df.pipe(genboxplot, by='Target', folder_name='plots')
     '''
 
     directory = default_dir + folder_name + '/'
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+    df = df.copy()
+    df = df.select_dtypes(include=[np.number])
 
     for i, col in enumerate(df.columns.difference([by])):
         sns.boxplot(df[col], df[by], orient='h')
@@ -422,7 +426,18 @@ def genboxplot(df, by, folder_name, default_dir='/Users/alexhuang/'):
         plt.close()
 
 def gendistplot(df, folder_name, default_dir='/Users/alexhuang/'):
-    pass
+    directory = default_dir + folder_name + '/'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    df = df.copy()
+    df = df.select_dtypes(include=[np.number])
+
+    for i, col in enumerate(df.columns.difference([by])):
+        nice_hist(df, col)
+        plt.savefig(directory + '%s.png' % i)
+        plt.close()
+
 def genbarplot(df, folder_name, default_dir='/Users/alexhuang/'):
     pass
 
