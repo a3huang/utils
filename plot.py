@@ -403,11 +403,11 @@ def tsboxplot(df, date, col, freq='M'):
     data = pd.concat(columns, axis=1)
     sns.boxplot(data=data, orient='h')
     plt.xlabel(col)
-######
 
+#
 def genboxplot(df, by, folder_name, default_dir='/Users/alexhuang/'):
     '''
-    Generate boxplots for each column grouped by a single categorical variable
+    Generate boxplots for each column grouped by a fixed categorical variable
     and save them to a folder.
 
     ex) df.pipe(genboxplot, by='Target', folder_name='plots')
@@ -422,24 +422,12 @@ def genboxplot(df, by, folder_name, default_dir='/Users/alexhuang/'):
 
     for i, col in enumerate(df.columns.difference([by])):
         sns.boxplot(df[col], df[by], orient='h')
+        plt.xlabel('')
+        plt.title(col)
         plt.savefig(directory + '%s.png' % i)
         plt.close()
-
-def gendistplot(df, folder_name, default_dir='/Users/alexhuang/'):
-    directory = default_dir + folder_name + '/'
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    df = df.copy()
-    df = df.select_dtypes(include=[np.number])
-
-    for i, col in enumerate(df.columns.difference([by])):
-        nice_hist(df, col)
-        plt.savefig(directory + '%s.png' % i)
-        plt.close()
-
-def genbarplot(df, folder_name, default_dir='/Users/alexhuang/'):
-    pass
+        print 'Saved Plot: %s' % col
+######
 
 def plot_pca(df, cat, pca_model=None, sample_size=1000, **kwargs):
     df = df.copy()
@@ -472,9 +460,9 @@ def plot_clusters(df, cluster_model=None, pca_model=None, sample_size=1000, **kw
     plot_pca(df, 'cluster', pca_model, sample_size=None, **kwargs)
     return df
 
-def plot_decision_tree(df, target, filename, **kwargs):
-    X = df[df.columns.difference([target])]
-    y = df[target]
+def plot_decision_tree(df, X, y, filename, **kwargs):
+    #X = df[df.columns.difference([target])]
+    #y = df[target]
 
     model = tree.DecisionTreeClassifier(**kwargs)
     model.fit(X, y)
