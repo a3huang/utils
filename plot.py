@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+heat mapimport matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
@@ -17,10 +17,6 @@ import subprocess
 
 from utils.data import *
 
-# remove later?
-from rpy2.robjects import pandas2ri, r
-
-#
 def dummy_categorical(df, n):
     '''
     Creates a categorical column with labels 1 to n for testing purposes.
@@ -39,7 +35,6 @@ def dummy_categorical(df, n):
 
     return pd.DataFrame(np.append(a[0], a[1:]))
 
-#
 def dummy_continuous(df, loc=0, scale=1):
     '''
     Creates a continuous column from a normal distribution for testing purposes.
@@ -49,7 +44,6 @@ def dummy_continuous(df, loc=0, scale=1):
 
     return pd.DataFrame(np.random.normal(loc=loc, scale=scale, size=df.shape[0]))
 
-#
 def facet(df, row, col, **kwargs):
     '''
     Convenience function for creating seaborn facet grids.
@@ -59,7 +53,6 @@ def facet(df, row, col, **kwargs):
 
     return sns.FacetGrid(df, row=row, col=col, **kwargs)
 
-#
 def ceil_with_base(x, base):
     '''
     Takes the ceiling of a number with respect to any base.
@@ -70,7 +63,6 @@ def ceil_with_base(x, base):
 
     return base * np.ceil(float(x) / base)
 
-#
 def round_with_base(x, base):
     '''
     Rounds a number with respect to any base.
@@ -81,7 +73,6 @@ def round_with_base(x, base):
 
     return base * np.round(float(x) / base)
 
-#
 def nice_round(x):
     '''
     Rounds a number "nicely" to the nearest denomination of 5 or 10. Numbers less
@@ -104,7 +95,6 @@ def nice_round(x):
     else:
         return round_with_base(x, base=5*10**(power-1))
 
-#
 def truncate(x):
     '''
     Truncates a decimal to its first nonzero digit.
@@ -121,7 +111,6 @@ def truncate(x):
     factor = 10**scale
     return sign * np.floor(abs(x) * factor) / factor
 
-#
 def nice_range_bin(ax, range=None):
     '''
     Helper function for matplotlib histograms to find the right range and number
@@ -143,7 +132,6 @@ def nice_range_bin(ax, range=None):
     bins = int(total_length / bin_size)
     return range, bins
 
-#
 def take(iterator, n):
     '''
     Returns the nth item in an iterator.
@@ -157,7 +145,6 @@ def take(iterator, n):
         else:
             return a
 
-#
 def nice_hist(df, col, range=None, prop=False):
     '''
     Creates a "nice" histogram by drawing the default histogram first and then
@@ -182,7 +169,6 @@ def nice_hist(df, col, range=None, prop=False):
 
     df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
 
-#
 def nice_hist2(a, bins=10, **kwargs):
     '''
     Creates a "nice" histogram by adjusting both the bin edges and the x-axis tick
@@ -207,7 +193,6 @@ def nice_hist2(a, bins=10, **kwargs):
     plt.hist(a, bins=new_edges, **kwargs)
     plt.xticks(new_edges)
 
-#
 def prop_hist(a, prop=False, **kwargs):
     '''
     Creates a histogram where each bar displays the proportion of observations
@@ -221,7 +206,6 @@ def prop_hist(a, prop=False, **kwargs):
 
     plt.hist(a, weights=weights, **kwargs)
 
-#
 def barplot(df, col, by=None, kind=None, prop=False):
     '''
     Creates a bar plot for a categorical variable. Group by an optional 2nd
@@ -261,7 +245,6 @@ def barplot(df, col, by=None, kind=None, prop=False):
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
 
-#
 def boxplot(df, col, by, facet_by=None, sort_median=False):
     '''
     Creates a grouped box plot for a continuous variable. Facet by an optional
@@ -282,7 +265,6 @@ def boxplot(df, col, by, facet_by=None, sort_median=False):
     else:
         sns.boxplot(x=col, y=by, data=df, order=order, orient='h')
 
-#
 def distplot(df, col, by=None, prop=False, facet=False, range=None):
     '''
     Creates a histogram for a continuous variable. Group by an optional 2nd
@@ -309,10 +291,9 @@ def distplot(df, col, by=None, prop=False, facet=False, range=None):
     else:
         nice_hist(df, col, prop=prop, range=range)
 
-#
 def heatplot(df, x, y, z=None, normalize=False):
     '''
-    Creates a heatmap between 2 categorical variables. Calculate the mean for an
+    Creates a heat map between 2 categorical variables. Calculate the mean for an
     optional 3rd continuous variable.
 
     ex) df.pipe(heatplot, x='Type 1', y='Type 2', z='Attack')
@@ -323,7 +304,6 @@ def heatplot(df, x, y, z=None, normalize=False):
     else:
         sns.heatmap(df.pipe(table, x, y, normalize=normalize), annot=True, fmt='.2f')
 
-#
 def scatplot(df, x, y, by=None, facet=False):
     '''
     Creates a scatter plot for 2 continuous variables. Group by an optional 3rd
@@ -342,24 +322,6 @@ def scatplot(df, x, y, by=None, facet=False):
     else:
         sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
 
-#
-def interactplot(df, col, by, val, heat=False):
-    '''
-    Creates an interaction lineplot or heatmap between 2 predictor variables and
-    a 3rd target variable.
-
-    ex) df.pipe(interactplot, col='Type 1', by='Type 2', val='Attack')
-    '''
-
-    a = df.pipe(table, col, by, val)
-
-    if heat:
-        sns.heatmap(a, annot=True, fmt='.2f')
-    else:
-        a.plot()
-        plt.legend(title=by, loc=(1, 0))
-
-#
 def tsplot(df, date, by=None, val=None, freq='M', area=False):
     '''
     Creates a time series plot of counts for a date variable or of mean values
@@ -385,10 +347,9 @@ def tsplot(df, date, by=None, val=None, freq='M', area=False):
     if by:
         plt.legend(title=by, loc=(1, 0))
 
-#
 def tsboxplot(df, date, col, freq='M'):
     '''
-    Creates a time series boxplot for a continuous variable.
+    Creates a time series box plot for a continuous variable.
 
     ex) df.pipe(tsboxplot, date='date', col='Amount')
     '''
@@ -404,13 +365,12 @@ def tsboxplot(df, date, col, freq='M'):
     sns.boxplot(data=data, orient='h')
     plt.xlabel(col)
 
-#
-def genboxplot(df, by, folder_name, default_dir='/Users/alexhuang/'):
+def generate_boxplots(df, by, folder_name, default_dir='/Users/alexhuang/'):
     '''
-    Generates boxplots for each column grouped by a fixed categorical variable
-    and save them to a folder.
+    Generates and saves box plots for each column grouped by a fixed categorical
+    variable.
 
-    ex) df.pipe(genboxplot, by='Target', folder_name='plots')
+    ex) df.pipe(generate_boxplots, by='Target', folder_name='plots')
     '''
 
     directory = default_dir + folder_name + '/'
@@ -428,13 +388,28 @@ def genboxplot(df, by, folder_name, default_dir='/Users/alexhuang/'):
         plt.close()
         print 'Saved Plot: %s' % col
 
-#
-def pcaplot(df, by, method=None, sample_size=None):
+def plot_interaction(df, col, by, val, heat=False):
     '''
-    Creates a 2-D scatterplot of the entire dataset grouped by a categorical
-    variable. Uses PCA method by default for dimensionality reduction.
+    Creates an interaction line plot or heat map between 2 predictor variables and
+    a 3rd target variable.
 
-    ex) df.pipe(pcaplot, by='Legendary')
+    ex) df.pipe(plot_interaction, col='Type 1', by='Type 2', val='Attack')
+    '''
+
+    a = df.pipe(table, col, by, val)
+
+    if heat:
+        sns.heatmap(a, annot=True, fmt='.2f')
+    else:
+        a.plot()
+        plt.legend(title=by, loc=(1, 0))
+
+def plot_embeddings(df, by, method=None, sample_size=None):
+    '''
+    Creates a 2-D embedding scatter plot of the entire dataset grouped by a
+    categorical variable. Uses PCA method by default for dimensionality reduction.
+
+    ex) df.pipe(plot_embeddings, by='Legendary')
     '''
 
     df = df.copy()
@@ -452,11 +427,10 @@ def pcaplot(df, by, method=None, sample_size=None):
     df['PCA 2'] = pipeline.fit_transform(X)[:, 1]
     df.pipe(scatplot, x='PCA 1', y='PCA 2', by=by)
 
-#
 def plot_f1_scores(model, X, y):
     '''
     For each threshold value, calculates the mean 5-fold CV f1 score. Creates
-    a lineplot of the threshold values vs. the f1 scores.
+    a line plot of the threshold values vs. the f1 scores.
 
     ex) plot_f1_scores(model, X_train, y_train)
     '''
@@ -476,10 +450,9 @@ def plot_f1_scores(model, X, y):
 
     plt.plot(np.linspace(.1, 1, 10), cv_scores)
 
-#
 def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False):
     '''
-    Creates a heatmap of the confusion matrix for the given model and data.
+    Creates a heat map of the confusion matrix for the given model and data.
 
     ex) plot_confusion_matrix(model, X_test, y_test, normalize='index')
     '''
@@ -500,10 +473,9 @@ def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False):
     plt.ylabel('True')
     plt.title('Predicted')
 
-#
 def plot_roc_curves(model, X, y):
     '''
-    Creates a lineplot of the roc curve for the given model and data.
+    Creates a line plot of the roc curve for the given model and data.
 
     ex) plot_roc_curves(model, X_test, y_test)
     '''
@@ -519,12 +491,11 @@ def plot_roc_curves(model, X, y):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
 
-#
 def plot_learning_curves(model, X, y):
     '''
     For each sample size, splits the given data into 5 CV train test pairs.
     Calulates the mean CV score over the 5 training sets and the mean CV score
-    over the 5 validation sets. Creates a lineplot of the sample sizes vs.
+    over the 5 validation sets. Creates a line plot of the sample sizes vs.
     the mean CV train set scores and the mean CV validation set scores.
 
     ex) plot_learning_curves(model, X_train, y_train)
@@ -538,8 +509,7 @@ def plot_learning_curves(model, X, y):
     plt.ylabel('Performance')
     plt.legend(loc=(1, 0))
 
-#
-def plot_decision_tree(X, y, filename, default_dir='/Users/alexhuang/',
+def plot_decision_tree(X, y, file_name, default_dir='/Users/alexhuang/',
                        max_depth=10, min_samples_leaf=100, **kwargs):
     '''
     Generates and saves a graphviz plot of a decision tree to a file and
@@ -548,7 +518,7 @@ def plot_decision_tree(X, y, filename, default_dir='/Users/alexhuang/',
     ex) plot_decision_tree(X, y, 'tree')
     '''
 
-    filename = default_dir + filename
+    file_name = default_dir + file_name
 
     model = DecisionTreeClassifier(max_depth=max_depth,
                                    min_samples_leaf=min_samples_leaf,
@@ -562,19 +532,5 @@ def plot_decision_tree(X, y, filename, default_dir='/Users/alexhuang/',
                                class_names=y.astype(str).unique())
 
     graph = graphviz.Source(dot_data)
-    graph.render(filename)
-    subprocess.call(('open', filename + '.pdf'))
-######
-
-def loess(df, col1, col2):
-    pandas2ri.activate()
-    dfr = pandas2ri.py2ri(df)
-
-    a = r.loess('%s ~ %s' % (col2.replace('/', '.'), col1.replace('/', '.')), data=dfr)
-
-    x = pd.DataFrame(np.array(a.rx2('x')))
-    y = pd.DataFrame(np.array(a.rx2('fitted')))
-
-    x_sorted = x.sort_values(by=0).index
-
-    return x.loc[x_sorted], y.loc[x_sorted]
+    graph.render(file_name)
+    subprocess.call(('open', file_name + '.pdf'))
