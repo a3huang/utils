@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from lime.lime_tabular import LimeTabularExplainer
 from sklearn.decomposition import PCA
 from sklearn.metrics import confusion_matrix, roc_curve, f1_score
 from sklearn.model_selection import learning_curve, StratifiedKFold
@@ -52,6 +53,16 @@ def facet(df, row, col, **kwargs):
     '''
 
     return sns.FacetGrid(df, row=row, col=col, **kwargs)
+
+def create_explainer(model, X):
+    '''
+    Convenience function for creating a LIME explainer object.
+
+    ex) create_explainer(model, X_train)
+    '''
+
+    explainer = LimeTabularExplainer(X.values, feature_names=X.columns.values)
+    return explainer
 
 def ceil_with_base(x, base):
     '''
@@ -534,3 +545,24 @@ def plot_decision_tree(X, y, file_name, default_dir='/Users/alexhuang/',
     graph = graphviz.Source(dot_data)
     graph.render(file_name)
     subprocess.call(('open', file_name + '.pdf'))
+
+def plot_explanations(explainer, model, X, i=None):
+    '''
+    Creates a bar plot of the top feature effects via LIME for a given row in
+    the data. If no row number is specified, the function will pick one of the
+    rows at random.
+
+    ex) plot_explanations(explainer, model, X_test)
+    '''
+
+    if i is None:
+        i = np.random.randint(0, X.shape[0])
+
+    explanation = explainer.explain_instance(X.values[i], model.predict_proba)
+
+    a = pd.DataFrame(explanation.as_list()).sort_index(ascending=False).set_index(0)
+    colors = ''.join(['g' if i >= 0 else 'r' for i in a[1]])
+
+    a.plot.barh(color=colors)
+    plt.legend().remove()
+    plt.ylabel('')
