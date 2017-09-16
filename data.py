@@ -398,3 +398,42 @@ def select(df, *args):
 
 def get_index(df, col_names):
     return [df.columns.get_loc(i) for i in col_names]
+
+def get_scoring_table(scores):
+    scores.columns = ['scores', 'target']
+    scores = scores.sort_values(by='scores', ascending=False).reset_index(drop=True)
+    scores['Decile'] = pd.qcut(scores.index, 10, labels=False) + 1
+
+    df = scores.groupby('Decile')['scores'].agg([min, max])
+    df['obs'] = scores.groupby('Decile').size()
+    df['comp'] = df['obs']/float(len(scores))
+    df['cum'] = df['comp'].cumsum()
+    df['obs_0'] = scores[scores['target'] == 0].groupby('Decile').size()
+    df['comp_0'] = df['obs_0'] / float(len(scores[scores['target'] == 0]))
+    df['cum_0'] = df['comp_0'].cumsum()
+    df['obs_1'] = scores[scores['target'] == 1].groupby('Decile').size()
+    df['comp_1'] = df['obs_1'] / float(len(scores[scores['target'] == 1]))
+    df['cum_1'] = df['comp_1'].cumsum()
+    df['KS'] = df['cum_1'] - df['cum_0']
+    df['rate'] = df['obs_1']/df['obs']
+    df['index'] = df['rate'] / (len(scores[scores['target'] == 1])/float(len(scores))) * 100
+    df = df.round(2)
+
+    top_columns = ['scores']*2 + ['Population Metrics']*3 + ['Non-Target Metrics']*3 + \
+                  ['Target Metrics']*3 + ['Validation Metrics']*3
+    bottom_columns = ['Min Score', 'Max Score', 'Count', 'Composition', 'Cumulative', 'Count',
+                      'Composition', 'Cumulative', 'Count', 'Composition', 'Cumulative', 'K-S',
+                      'Cancel Rate', 'Cancel Index']
+    df.columns = pd.MultiIndex.from_tuples(zip(top_columns, bottom_columns))
+
+    return df
+
+def evaluate(model, X, y, feat_sets):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+
+    predictions = []
+    for cols in feat_sets:
+        model.fit(X_train[cols], y_train)
+        predictions.append(model.predict_proba(X_test[cols])[:, 1])
+
+    return predictions, y_test
