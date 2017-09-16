@@ -137,7 +137,7 @@ def truncate(x):
 
 def take(iterator, n):
     '''
-    Returns the nth item in an iterator.
+    Returns the nth item from an iterator.
 
     ex) take(df.groupby('Generation'), 2)
     '''
