@@ -10,12 +10,14 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 
+import graphviz
 import os
 import pydotplus
 import subprocess
 
+from utils.data import *
+
 # remove later?
-from utils.data import table, rename
 from rpy2.robjects import pandas2ri, r
 
 #
@@ -535,20 +537,34 @@ def plot_learning_curves(model, X, y):
     plt.xlabel('Sample Size')
     plt.ylabel('Performance')
     plt.legend(loc=(1, 0))
-######
 
-def plot_decision_tree(df, X, y, filename, **kwargs):
-    #X = df[df.columns.difference([target])]
-    #y = df[target]
+#
+def plot_decision_tree(X, y, filename, default_dir='/Users/alexhuang/',
+                       max_depth=10, min_samples_leaf=100, **kwargs):
+    '''
+    Generates and saves a graphviz plot of a decision tree to a file and
+    automatically opens the file for convenience.
 
-    model = DecisionTreeClassifier(**kwargs)
+    ex) plot_decision_tree(X, y, 'tree')
+    '''
+
+    filename = default_dir + filename
+
+    model = DecisionTreeClassifier(max_depth=max_depth,
+                                   min_samples_leaf=min_samples_leaf,
+                                   **kwargs)
     model.fit(X, y)
-    dot_data = export_graphviz(model, out_file=None, feature_names=X.columns,
-                               filled=True, class_names=y.astype(str).unique())
-    graph = pydotplus.graph_from_dot_data(dot_data)
-    graph.write_pdf(filename)
-    subprocess.call(('open', filename))
-    return model
+
+    dot_data = export_graphviz(model,
+                               out_file=None,
+                               feature_names=X.columns,
+                               filled=True, rounded=True,
+                               class_names=y.astype(str).unique())
+
+    graph = graphviz.Source(dot_data)
+    graph.render(filename)
+    subprocess.call(('open', filename + '.pdf'))
+######
 
 def loess(df, col1, col2):
     pandas2ri.activate()
@@ -562,20 +578,3 @@ def loess(df, col1, col2):
     x_sorted = x.sort_values(by=0).index
 
     return x.loc[x_sorted], y.loc[x_sorted]
-
-def compare_feature_sets_boot(a, b, col):
-    a['data'] = 1
-    b['data'] = 2
-
-    c = pd.concat([a, b])[[col, 'data']]
-    c.columns = ['Score_%s' % i for i in range(1, len(c.columns))] + ['data']
-
-    sns.boxplot(y='variable', x='value', hue='data', data=c.melt('data'), orient='h')
-    plt.legend(loc=(1,.5))
-
-def compare_feature_sets_bar(a, b, col):
-    a['data'] = 1
-    b['data'] = 2
-
-    pd.concat([a, b], axis=1)[[col]].plot.bar()
-    plt.legend(loc=(1,.5))
