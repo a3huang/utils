@@ -447,9 +447,10 @@ def plot_embeddings(df, by, method=None, sample_size=None):
         df = df.sample(sample_size)
 
     X = df.drop(by, 1)
-    df['PCA 1'] = pipeline.fit_transform(X)[:, 0]
-    df['PCA 2'] = pipeline.fit_transform(X)[:, 1]
-    df.pipe(scatplot, x='PCA 1', y='PCA 2', by=by)
+    df['pca1'] = pipeline.fit_transform(X)[:, 0]
+    df['pca2'] = pipeline.fit_transform(X)[:, 1]
+
+    df.pipe(scatplot, x='pca1', y='pca2', by=by)
 
 def plot_f1_scores(model, X, y):
     '''
@@ -470,7 +471,7 @@ def plot_f1_scores(model, X, y):
             pred = model.predict_proba(X.values[test])[:, 1] > threshold
             inner_cv_scores.append(f1_score(true, pred))
 
-        cv.scores.append(np.mean(inner_cv_scores))
+        cv_scores.append(np.mean(inner_cv_scores))
 
     plt.plot(np.linspace(.1, 1, 10), cv_scores)
 
