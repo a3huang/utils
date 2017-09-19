@@ -2,8 +2,97 @@ from datetime import datetime
 from pandas.tseries.offsets import *
 from patsy import dmatrix
 
+from sklearn.model_selection import train_test_split
+
 import numpy as np
 import pandas as pd
+
+def disjoint_intervals(start, end, step=2):
+    '''
+    Create 2-tuples of integers where each end point is equal to the next
+    start point. Can be used to represent disjoint time intervals.
+
+    ex) disjoint_intervals(0, 6, 2) -> [(0, 2), (2, 4), (4, 6)]
+    ex) disjoint_intervals(0, 6, 3) -> [(0, 3), (3, 6)]
+    '''
+
+    return zip(range(start, end+step, step), range(start+step, end+step, step))
+
+def qcut(a, q=10):
+    '''
+    Cut a continuous variable into quantiles with the smallest quantile equal
+    to 1. Unlike pd.cut, allows for repeated bin edges.
+
+    ex) df['HP'].pipe(qcut)
+    '''
+
+    a = a.sort_values().reset_index().reset_index()
+    a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
+    return a.set_index('index').sort_index().reset_index()['quantile']
+
+def top(a, n):
+    '''
+    Keep the top n most common levels of a categorical variable and label the
+    rest as 'other'.
+
+    ex) df['Type'].pipe(top, 5)
+    '''
+
+    counts = a.fillna('missing').value_counts()
+    top = counts.iloc[:n].index
+    return a.apply(lambda x: x if x in top else 'other')
+
+def dummy(a):
+    '''
+    Turn a categorical variable into indicator variables for each level.
+
+    ex) df['Type'].pipe(dummy)
+    '''
+
+    df = pd.get_dummies(a)
+    df.columns = [str(i) for i in df.columns]
+    return df
+
+def undummy(a):
+    '''
+    Turn a set of dummy indicator variables back into a categorical variable.
+
+    ex) df[['earth', 'air', 'fire', 'water']].pipe(undummy)
+    '''
+
+    return a.apply(lambda x: x.idxmax(), axis=1)
+
+def time_unit(a, unit):
+    '''
+    Extract the value of a date variable with respect to a given time unit.
+
+    ex) df['date'].pipe(time_unit, 'weekday')
+    '''
+
+    return getattr(a.dt, unit)
+
+def cbind(df_list):
+    '''
+    Horizontally concatenate a list of columns or dataframes together without
+    worrying about indices.
+
+    ex) cbind([X, y, model.predict(X)])
+    '''
+
+    return pd.concat([pd.DataFrame(df).reset_index(drop=True) for df in df_list], axis=1)
+
+def merge(df_list, on, how, **kwargs):
+    '''
+    Merge a list of dataframes together.
+
+    ex) merge([df1, df2, df3], on='user_id', how='left')
+    '''
+
+    df = df_list[0]
+    for df_i in df_list[1:]:
+        df = df.merge(df_i, on=on, how=how, **kwargs)
+    return df
+######
 
 def mark_nth_week(df):
     df = df.copy()
@@ -70,18 +159,6 @@ def get_ts_sum(df, start, end, col, name):
 #     return parsed
 
 #####
-def disjoint_intervals(start, end, step=2):
-    '''
-    Generate 2-tuples of integers where each end point is equal to the next
-    start point. Can be used to represent disjoint time intervals.
-
-    ex) disjoint_intervals(0, 6, 2) -> [(0, 2), (2, 4), (4, 6)]
-    ex) disjoint_intervals(0, 6, 3) -> [(0, 3), (3, 6)]
-    '''
-
-    return zip(range(start, end+step, step), range(start+step, end+step, step))
-#$
-
 # split into cut_width and cut_num?
 def cut(a, bin_width=None, bin_range=None, num_bins=None):
     '''
@@ -107,51 +184,6 @@ def cut(a, bin_width=None, bin_range=None, num_bins=None):
     bin_edges = [min_edge + bin_width * i for i in range(num_bins + 1)]
     return pd.cut(a, bins=bin_edges, include_lowest=True)
 
-def qcut(a, q=10):
-    '''
-    Cut a series into quantiles with the smallest quantile equal to 1.
-
-    ex) df[col].pipe(qcut)
-    '''
-
-    a = a.sort_values().reset_index().reset_index()
-    a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
-    return a.set_index('index').sort_index().reset_index()['quantile']
-
-def top(a, n):
-    '''
-    Keep the n most common levels of a categorical variable and label the rest as 'other'.
-
-    ex) df[cat].pipe(top, 5)
-    ex) df.assign(cat=lambda x: top(x[cat], 5))
-    '''
-
-    counts = a.fillna('missing').value_counts()
-    top = counts.iloc[:n].index
-    return a.apply(lambda x: x if x in top else 'other')
-
-def dummy(a):
-    '''
-    Turn a categorical variable into dummy indicator variables.
-
-    ex) df[col].apply(dummy)
-    ex) df.pipe(cbind, df[col].pipe(dummy))
-    '''
-
-    df = pd.get_dummies(a)
-    df.columns = [str(i) for i in df.columns]
-    return df
-
-def undummy(a):
-    '''
-    Turn dummy indicator variables back into a categorical variable.
-
-    ex) df[cols].apply(undummy)
-    ex) df.pipe(cbind, df.iloc[:, 5:10].pipe(undummy))
-    '''
-
-    return a.apply(lambda x: x.idxmax(), axis=1)
-
 def reduce_cardinality(a, n):
     '''
     Reduce the number of unique values of a variable. For a categorical variable,
@@ -167,24 +199,6 @@ def reduce_cardinality(a, n):
     elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
         return cut(a, bin_width=n)
 
-def rates(a):
-    '''
-    Calculate proportions by dividing a series by its sum.
-
-    ex) df[col].value_counts().pipe(rates)
-    '''
-
-    return a / float(sum(a))
-
-def timeunit(a, unit):
-    '''
-    Calculate a given time unit of a time series.
-
-    ex) df[date].pipe(timeunit, 'weekday')
-    '''
-
-    return getattr(a.dt, unit)
-
 def cbind2(df, obj, **kwargs):
     '''
     Append a column or dataframe to an existing dataframe as new columns.
@@ -194,9 +208,6 @@ def cbind2(df, obj, **kwargs):
 
     objects = [df.reset_index(drop=True), pd.DataFrame(obj).reset_index(drop=True)]
     return pd.concat(objects, axis=1, **kwargs)
-
-def cbind(dfs):
-    return pd.concat([pd.DataFrame(df).reset_index(drop=True) for df in dfs], axis=1)
 
 def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=np.mean, **kwargs):
     '''
@@ -222,21 +233,7 @@ def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=n
     # df['dummy'] = 0
     # pd.crosstab(df[row_var], df['dummy'])
 
-def merge(df, df_list, on, how, **kwargs):
-    '''
-    Merge a list of dataframes with an existing dataframe.
-
-    ex) df.pipe(merge, [df1, df2, df3], on='user_id', how='left')
-    '''
-
-    df = df.copy()
-
-    for df_i in df_list:
-        df = df.merge(df_i, on=on, how=how, **kwargs)
-
-    return df
-
-def slice(df, f):
+def query(df, f):
     '''
     Slice a dataframe using complex boolean expressions without having to
     specify its name. Useful when method chaining.
@@ -437,3 +434,35 @@ def evaluate(model, X, y, feat_sets):
         predictions.append(model.predict_proba(X_test[cols])[:, 1])
 
     return predictions, y_test
+
+def mark_confusion_errors(model, X, y, threshold=0.5):
+    target = pd.DataFrame(y)
+    target.columns = ['target']
+
+    prediction = pd.DataFrame(model.predict_proba(X)[:, 1] > threshold, columns=['prediction'])
+
+    df = cbind([X, target, prediction])
+    df.loc[(df['prediction'] == 1) & (df['target'] == 0), 'error'] = 'FP'
+    df.loc[(df['prediction'] == 0) & (df['target'] == 1), 'error'] = 'FN'
+    df.loc[(df['prediction'] == df['target']), 'error'] = 'Correct'
+    df = df.fillna(0)
+    return df
+
+def top_corr(df, n=None):
+    df = df.corr()
+    df = df.where(np.triu(np.ones(df.shape).astype(np.bool))).stack().reset_index()
+    df.columns = ['Variable_1', 'Variable_2', 'Correlation']
+    df['abs'] = df['Correlation'].abs()
+
+    a = df.pipe(query, lambda x: x['Correlation'] != 1)
+
+    if n:
+        return a.sort_values(by='abs', ascending=False)[:n]
+    else:
+        return a.sort_values(by='abs', ascending=False)
+
+def query_set(df, f, column_name):
+    df = df.copy()
+    df.loc[f(df), column_name] = 1
+    df.loc[:, column_name] = df.loc[:, column_name].fillna(0)
+    return df
