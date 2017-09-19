@@ -425,7 +425,7 @@ def get_scoring_table(scores):
 
     return df
 
-def evaluate(model, X, y, feat_sets):
+def evaluate_featuresets(model, X, y, feat_sets):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
 
     predictions = []
@@ -434,6 +434,20 @@ def evaluate(model, X, y, feat_sets):
         predictions.append(model.predict_proba(X_test[cols])[:, 1])
 
     return predictions, y_test
+
+# change name to compare?
+def evaluate_datasets(model, pairs):
+    preds = []
+    truths = []
+    for X, y in pairs:
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+
+        model.fit(X_train, y_train)
+
+        preds.append(model.predict_proba(X_test)[:, 1])
+        truths.append(y_test)
+
+    return preds, truths
 
 def mark_confusion_errors(model, X, y, threshold=0.5):
     target = pd.DataFrame(y)
@@ -466,3 +480,15 @@ def query_set(df, f, column_name):
     df.loc[f(df), column_name] = 1
     df.loc[:, column_name] = df.loc[:, column_name].fillna(0)
     return df
+
+def cv_score(model, train):
+    cv = StratifiedKFold(n_splits=5, shuffle=True)
+    return cross_val_score(model, *train, cv=cv, scoring='roc_auc').mean()
+
+def tt_split(df, target):
+    X_train, X_test, y_train, y_test = train_test_split(df.drop(target, 1), df[target], test_size=0.3)
+    return (X_train, y_train), (X_test, y_test)
+
+def filter_users(df, f, user_id):
+    ids = df.pipe(query, f)[user_id].unique()
+    return df[df[user_id].isin(ids)]
