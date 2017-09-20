@@ -102,15 +102,41 @@ def merge(df_list, on, how, **kwargs):
         df = df.merge(df_i, on=on, how=how, **kwargs)
     return df
 
-def query(df, f):
+def filter(df, f):
     '''
-    Query a dataframe using complex boolean expressions without having to
-    specify its name. Useful when method chaining.
+    Filter rows of aa dataframe satisfying a complex boolean expression without
+    having to specify its name.
 
-    ex) df.pipe(slice, lambda x: x['date'] > '2017-01-01')
+    ex) df.pipe(filter, lambda x: x['date'] > '2017-01-01')
     '''
 
     return df[f(df)]
+
+def filter_i(df, f, name):
+    '''
+    Filter rows of a dataframe satisfying a complex boolean expression and
+    create an indicator variable equal to 1 when the condition is true and 0
+    otherwise.
+
+    ex) df.pipe(filter_i, lambda x: x['Attack'] > 200 , 'Strong')
+    '''
+
+    df = df.copy()
+    df.loc[f(df), name] = 1
+    df.loc[:, name] = df.loc[:, name].fillna(0)
+    return df
+
+def filter_u(df, f, user_id):
+    '''
+    Filter rows of a dataframe satisfying a complex boolean expression and
+    include rows belonging to the same user even if they do not satify the
+    condition.
+
+    ex) df.pipe(filter_u, lambda x: x['source'] == 'google', 'user_id')
+    '''
+
+    ids = df.pipe(query, f)[user_id].unique()
+    return df[df[user_id].isin(ids)]
 
 def count_missing(df):
     '''
@@ -407,20 +433,6 @@ def interaction(df, col1, col2):
     X = dmatrix(formula, df)
     return pd.DataFrame(X, columns=X.design_info.column_names)
 
-def select(df, *args):
-    # df.pipe(select, 1, 5, 'date')
-    columns = []
-
-    for i in args:
-        try:
-            columns.append(df.columns[int(i)])
-        except:
-            columns.append(i)
-
-    columns = list(set(columns))
-
-    return df[columns]
-
 def get_index(df, col_names):
     return [df.columns.get_loc(i) for i in col_names]
 
@@ -453,16 +465,6 @@ def get_scoring_table(scores):
 
     return df
 
-def evaluate_featuresets(model, X, y, feat_sets):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
-
-    predictions = []
-    for cols in feat_sets:
-        model.fit(X_train[cols], y_train)
-        predictions.append(model.predict_proba(X_test[cols])[:, 1])
-
-    return predictions, y_test
-
 def mark_confusion_errors(model, X, y, threshold=0.5):
     target = pd.DataFrame(y)
     target.columns = ['target']
@@ -489,32 +491,3 @@ def top_corr(df, n=None):
         return a[:n]
     else:
         return a
-
-def query_set(df, f, column_name):
-    df = df.copy()
-    df.loc[f(df), column_name] = 1
-    df.loc[:, column_name] = df.loc[:, column_name].fillna(0)
-    return df
-
-def cv_score(model, X, y, random_state=42):
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
-    return cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
-
-def data_split(df, target, test=True):
-    X = df.drop(target, 1)
-    y = df[target]
-
-    if test == True:
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
-        return (X_train, y_train), (X_test, y_test)
-    else:
-        return (X, y)
-
-def filter_users(df, f, user_id):
-    ids = df.pipe(query, f)[user_id].unique()
-    return df[df[user_id].isin(ids)]
-
-def fit_model(model, X, y):
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
-    model.fit(X_train, y_train)
-    return (model, X_test, y_test)
