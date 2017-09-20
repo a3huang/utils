@@ -428,12 +428,13 @@ def plot_interaction(df, col, by, val, heat=False):
         a.plot()
         plt.legend(title=by, loc=(1, 0))
 
-def plot_embeddings(df, by, method=None, sample_size=None):
+def plot_2d_projection(df, by, method=None, sample_size=None):
     '''
-    Creates a 2-D embedding scatter plot of the entire dataset grouped by a
-    categorical variable. Uses PCA method by default for dimensionality reduction.
+    Creates a scatter plot of the 2-D projection of the dataset. Groups by a
+    categorical variable using color. Uses PCA method by default for
+    dimensionality reduction.
 
-    ex) df.pipe(plot_embeddings, by='Legendary')
+    ex) df.pipe(plot_2d_projection, by='Legendary')
     '''
 
     df = df.copy()
