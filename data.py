@@ -3,6 +3,7 @@ from pandas.tseries.offsets import *
 from patsy import dmatrix
 
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.metrics import roc_auc_score, confusion_matrix, classification_report
 
 import numpy as np
 import pandas as pd
@@ -59,7 +60,7 @@ def qcut(a, q=10):
     a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
     return a.set_index('index').sort_index().reset_index()['quantile']
 
-def top(a, n):
+def top(a, n=None):
     '''
     Keep the top n most common levels of a categorical variable and label the
     rest as 'other'.
@@ -67,9 +68,12 @@ def top(a, n):
     ex) df['Type'].pipe(top, 5)
     '''
 
-    counts = a.fillna('missing').value_counts()
-    top = counts.iloc[:n].index
-    return a.apply(lambda x: x if x in top else 'other')
+    if n:
+        counts = a.fillna('missing').value_counts()
+        top = counts.iloc[:n].index
+        return a.apply(lambda x: x if x in top else 'other')
+    else:
+        return a
 
 def cbind(df_list):
     '''
@@ -166,6 +170,46 @@ def feature_scores(model, X, attr, sort_abs=False, top=None):
         return df[:top]
     else:
         return df
+
+def compare_datasets_test(model, datasets, target, omit=None, threshold=0.5, random_state=42):
+    '''
+    Compares the AUC, confusion matrix, and classification report (precision, recall,
+    f1 score) for a given model on a fixed test set of the data.
+
+    ex) compare_datasets_test(model, [df1, df2, df3, df4, df5], target='cancel',
+            omit=['user_id'], threshold=0.1)
+    '''
+
+    for df in datasets:
+        X = df.drop(omit + [target], 1)
+        y = df[target]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,
+            random_state=random_state)
+
+        model.fit(X_train, y_train)
+
+        pred = model.predict_proba(X_test)[:, 1]
+        true = y_test
+
+        print roc_auc_score(true, pred)
+        print confusion_matrix(true, pred > threshold)
+        print classification_report(true, pred > threshold)
+        print
+
+def compare_datasets_cv(model, datasets, target, omit=None, random_state=42):
+    '''
+    Compares mean 5-fold CV AUC for a given model.
+
+    ex) compare_datasets_cv(model, [df1, df2, df3, df4, df5], target='cancel',
+            omit=['user_id'])
+    '''
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+    for df in datasets:
+        X = df.drop(omit + [target], 1)
+        y = df[target]
+        print cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
 ######
 
 def mark_nth_week(df):
@@ -418,20 +462,6 @@ def evaluate_featuresets(model, X, y, feat_sets):
         predictions.append(model.predict_proba(X_test[cols])[:, 1])
 
     return predictions, y_test
-
-# change name to compare?
-def evaluate_datasets(model, pairs):
-    preds = []
-    truths = []
-    for X, y in pairs:
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
-
-        model.fit(X_train, y_train)
-
-        preds.append(model.predict_proba(X_test)[:, 1])
-        truths.append(y_test)
-
-    return preds, truths
 
 def mark_confusion_errors(model, X, y, threshold=0.5):
     target = pd.DataFrame(y)
