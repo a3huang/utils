@@ -79,7 +79,12 @@ def cbind(df_list):
     ex) cbind([X, y, model.predict(X)])
     '''
 
-    return pd.concat([pd.DataFrame(df).reset_index(drop=True) for df in df_list], axis=1)
+    df = pd.concat([pd.DataFrame(df).reset_index(drop=True) for df in df_list], axis=1)
+
+    if len(df.columns.value_counts().pipe(query, lambda x: x > 1)) > 0:
+        print '[WARNING]: May contain duplicate columns.'
+
+    return df
 
 def merge(df_list, on, how, **kwargs):
     '''
@@ -461,8 +466,8 @@ def query_set(df, f, column_name):
     df.loc[:, column_name] = df.loc[:, column_name].fillna(0)
     return df
 
-def cv_score(model, X, y):
-    cv = StratifiedKFold(n_splits=5, shuffle=True)
+def cv_score(model, X, y, random_state=42):
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
     return cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
 
 def data_split(df, target, test=True):
