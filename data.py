@@ -2,7 +2,7 @@ from datetime import datetime
 from pandas.tseries.offsets import *
 from patsy import dmatrix
 
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 
 import numpy as np
 import pandas as pd
@@ -17,30 +17,6 @@ def disjoint_intervals(start, end, step=2):
     '''
 
     return zip(range(start, end+step, step), range(start+step, end+step, step))
-
-def qcut(a, q=10):
-    '''
-    Cut a continuous variable into quantiles with the smallest quantile equal
-    to 1. Unlike pd.cut, allows for repeated bin edges.
-
-    ex) df['HP'].pipe(qcut)
-    '''
-
-    a = a.sort_values().reset_index().reset_index()
-    a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
-    return a.set_index('index').sort_index().reset_index()['quantile']
-
-def top(a, n):
-    '''
-    Keep the top n most common levels of a categorical variable and label the
-    rest as 'other'.
-
-    ex) df['Type'].pipe(top, 5)
-    '''
-
-    counts = a.fillna('missing').value_counts()
-    top = counts.iloc[:n].index
-    return a.apply(lambda x: x if x in top else 'other')
 
 def dummy(a):
     '''
@@ -71,6 +47,30 @@ def time_unit(a, unit):
 
     return getattr(a.dt, unit)
 
+def qcut(a, q=10):
+    '''
+    Cut a continuous variable into quantiles with the smallest quantile equal
+    to 1. Unlike pd.cut, allows for repeated bin edges.
+
+    ex) df['HP'].pipe(qcut)
+    '''
+
+    a = a.sort_values().reset_index().reset_index()
+    a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
+    return a.set_index('index').sort_index().reset_index()['quantile']
+
+def top(a, n):
+    '''
+    Keep the top n most common levels of a categorical variable and label the
+    rest as 'other'.
+
+    ex) df['Type'].pipe(top, 5)
+    '''
+
+    counts = a.fillna('missing').value_counts()
+    top = counts.iloc[:n].index
+    return a.apply(lambda x: x if x in top else 'other')
+
 def cbind(df_list):
     '''
     Horizontally concatenate a list of columns or dataframes together without
@@ -92,6 +92,75 @@ def merge(df_list, on, how, **kwargs):
     for df_i in df_list[1:]:
         df = df.merge(df_i, on=on, how=how, **kwargs)
     return df
+
+def query(df, f):
+    '''
+    Query a dataframe using complex boolean expressions without having to
+    specify its name. Useful when method chaining.
+
+    ex) df.pipe(slice, lambda x: x['date'] > '2017-01-01')
+    '''
+
+    return df[f(df)]
+
+def count_missing(df):
+    '''
+    Count the number of missing values in each column.
+
+    ex) df.pipe(count_missing).iloc[:5].sort_values().plot.barh()
+    '''
+
+    return df.shape[0] - df.describe().loc['count']
+
+def check_unique(df, col):
+    '''
+    Check if given column values are unique.
+
+    ex) df.pipe(check_unique, 'user_id')
+    '''
+
+    if len(df.groupby(col).size().value_counts()) > 1:
+        return False
+    else:
+        return True
+
+def show_duplicates(df, col):
+    '''
+    Show rows containing duplicate values of a given column.
+
+    ex) df.pipe(show_duplicates, 'user_id')
+    '''
+
+    counts = df.groupby(col).size()
+    duplicates = counts[counts > 1].index
+    return df[df[col].isin(duplicates)].sort_values(by=col)
+
+def feature_scores(model, X, attr, sort_abs=False, top=None):
+    '''
+    Calculate importance scores for each feature for a given model.
+
+    ex) feature_scores(rf, X_train, feature_importances_)
+    '''
+
+    if 'pipeline' in str(model.__class__):
+        model = model.steps[-1][1]
+
+    scores = getattr(model, attr)
+    if len(scores.shape) > 1:
+        scores = scores[0]
+
+    df = pd.DataFrame(zip(X.columns, scores))
+
+    if sort_abs:
+        df['abs'] = np.abs(df[1])
+        df = df.sort_values(by='abs', ascending=False).drop('abs', 1)
+    else:
+        df = df.sort_values(by=1, ascending=False)
+
+    if top:
+        return df[:top]
+    else:
+        return df
 ######
 
 def mark_nth_week(df):
@@ -158,7 +227,6 @@ def get_ts_sum(df, start, end, col, name):
 #
 #     return parsed
 
-#####
 # split into cut_width and cut_num?
 def cut(a, bin_width=None, bin_range=None, num_bins=None):
     '''
@@ -233,60 +301,6 @@ def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=n
     # df['dummy'] = 0
     # pd.crosstab(df[row_var], df['dummy'])
 
-def query(df, f):
-    '''
-    Slice a dataframe using complex boolean expressions without having to
-    specify its name. Useful when method chaining.
-
-    ex) df.pipe(slice, lambda x: x['date'] > '2017-01-01')
-    '''
-
-    return df[f(df)]
-
-def rename(df, name_list):
-    '''
-    Rename the columns of a dataframe without having to respecify old names.
-
-    ex) df.pipe(rename, ['col1', 'col2', 'col3'])
-    '''
-
-    df = df.copy()
-    df = pd.DataFrame(df, index=df.index)
-    df.columns = name_list
-    return df
-
-def check_unique(df, col):
-    '''
-    Check if column values are unique.
-
-    ex) df.pipe(check_unique, col)
-    '''
-
-    if len(df.groupby(col).size().value_counts()) > 1:
-        return False
-    else:
-        return True
-
-def show_duplicates(df, col):
-    '''
-    Show rows containing duplicate values of a given column.
-
-    ex) df.pipe(show_duplicates, col)
-    '''
-
-    counts = df.groupby(col).size()
-    duplicates = counts[counts > 1].index
-    return df[df[col].isin(duplicates)].sort_values(by=col)
-
-def count_missing(df):
-    '''
-    Count number of missing values in each column.
-
-    ex) df.pipe(count_missing).iloc[:5].sort_values().plot.barh()
-    '''
-
-    return df.shape[0] - df.describe().loc['count']
-
 def filter_time_window(df, left_offset, right_offset, frequency):
     '''
     Filter rows of a transactional dataframe with date lying within the specified time window.
@@ -301,7 +315,6 @@ def filter_time_window(df, left_offset, right_offset, frequency):
     df['right_bound'] = df.set_index('start').shift(periods=right_offset, freq=freq).index
     df = df.query('left_bound <= date < right_bound')
     return df
-#####
 
 # def mark_timestep(df, unit):
 #     '''
@@ -334,22 +347,6 @@ def timeseries(df, datecol, user_col, freq, aggfunc):
     a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
     return a.reset_index()
 
-def get_feature_scores(columns, scores, sort_abs=False, top=None):
-    '''
-    ex) get_feature_scores(X_train.columns, model.feature_importances_)
-    '''
-
-    df = pd.DataFrame(zip(columns, scores))
-
-    if sort_abs:
-        df['abs'] = np.abs(df[1])
-        df = df.sort_values(by='abs', ascending=False).drop('abs', 1)
-
-    if top:
-        return df[:top]
-    else:
-        return df
-
 def interaction(df, col1, col2):
     '''
     Create interaction terms between 2 variables.
@@ -360,24 +357,6 @@ def interaction(df, col1, col2):
     formula = '%s:%s - 1' % (col1, col2)
     X = dmatrix(formula, df)
     return pd.DataFrame(X, columns=X.design_info.column_names)
-
-# how to combine these functions?
-# drop allows you to omit
-# cols_from -> loc[:, 'date':]
-# cols_to -> loc[:, :'date']
-# df[starts_with(df, 'a') + ends_with(df, 'e') + select(df, 4,5,6)]
-def starts_with(df, string, return_str=False):
-    cols = [i for i in df.columns if i.startswith(string)]
-    if return_str:
-        return cols
-    else:
-        return df[cols]
-
-def ends_with(df, string):
-    return df[[i for i in df.columns if i.endswith(string)]]
-
-def contains(df, string):
-    return df[[i for i in df.columns if string in i]]
 
 def select(df, *args):
     # df.pipe(select, 1, 5, 'date')
@@ -469,11 +448,12 @@ def top_corr(df, n=None):
     df['abs'] = df['corr'].abs()
 
     a = df.pipe(query, lambda x: x['Correlation'] != 1)
+    a = a.sort_values(by='abs', ascending=False)
 
     if n:
-        return a.sort_values(by='abs', ascending=False)[:n]
+        return a[:n]
     else:
-        return a.sort_values(by='abs', ascending=False)
+        return a
 
 def query_set(df, f, column_name):
     df = df.copy()
@@ -481,9 +461,9 @@ def query_set(df, f, column_name):
     df.loc[:, column_name] = df.loc[:, column_name].fillna(0)
     return df
 
-def cv_score(model, train):
+def cv_score(model, X, y):
     cv = StratifiedKFold(n_splits=5, shuffle=True)
-    return cross_val_score(model, *train, cv=cv, scoring='roc_auc').mean()
+    return cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
 
 def data_split(df, target, test=True):
     X = df.drop(target, 1)
@@ -498,3 +478,8 @@ def data_split(df, target, test=True):
 def filter_users(df, f, user_id):
     ids = df.pipe(query, f)[user_id].unique()
     return df[df[user_id].isin(ids)]
+
+def fit_model(model, X, y):
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+    model.fit(X_train, y_train)
+    return (model, X_test, y_test)
