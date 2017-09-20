@@ -465,8 +465,8 @@ def mark_confusion_errors(model, X, y, threshold=0.5):
 def top_corr(df, n=None):
     df = df.corr()
     df = df.where(np.triu(np.ones(df.shape).astype(np.bool))).stack().reset_index()
-    df.columns = ['Variable_1', 'Variable_2', 'Correlation']
-    df['abs'] = df['Correlation'].abs()
+    df.columns = ['var1', 'var2', 'corr']
+    df['abs'] = df['corr'].abs()
 
     a = df.pipe(query, lambda x: x['Correlation'] != 1)
 
@@ -485,9 +485,15 @@ def cv_score(model, train):
     cv = StratifiedKFold(n_splits=5, shuffle=True)
     return cross_val_score(model, *train, cv=cv, scoring='roc_auc').mean()
 
-def tt_split(df, target):
-    X_train, X_test, y_train, y_test = train_test_split(df.drop(target, 1), df[target], test_size=0.3)
-    return (X_train, y_train), (X_test, y_test)
+def data_split(df, target, test=True):
+    X = df.drop(target, 1)
+    y = df[target]
+
+    if test == True:
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3)
+        return (X_train, y_train), (X_test, y_test)
+    else:
+        return (X, y)
 
 def filter_users(df, f, user_id):
     ids = df.pipe(query, f)[user_id].unique()
