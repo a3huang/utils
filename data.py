@@ -145,7 +145,7 @@ def count_missing(df):
     ex) df.pipe(count_missing).iloc[:5].sort_values().plot.barh()
     '''
 
-    return df.shape[0] - df.describe().loc['count']
+    return df.isnull().sum()
 
 def check_unique(df, col):
     '''
