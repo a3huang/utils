@@ -531,3 +531,11 @@ def plot_calibration_curve(model, X, y):
     plt.plot([0, 1], [0, 1], linestyle='--')
     plt.xlabel('Predicted Proportion')
     plt.ylabel('True Proportion')
+
+def undummy_set(df, columns, name):
+    a = cbind([df[df.columns.difference(columns)], df[columns].pipe(undummy)])
+    a = a.rename(columns={0: name})
+    return a
+
+def binarize(a):
+    return a.apply(lambda x: 1 if x > 0 else 0)

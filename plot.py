@@ -389,12 +389,12 @@ def tsboxplot(df, date, col, freq='M'):
     sns.boxplot(data=data, orient='h')
     plt.xlabel(col)
 
-def generate_boxplots(df, by, folder_name, default_dir='/Users/alexhuang/'):
+def generate_distributions(df, by, folder_name, default_dir='/Users/alexhuang/'):
     '''
-    Generates and saves box plots for each column grouped by a fixed categorical
-    variable.
+    Generates and saves box plots for each continuous variable and bar plots for
+    each categorical variable that grouped by a specified categorical variable.
 
-    ex) df.pipe(generate_boxplots, by='Target', folder_name='plots')
+    ex) df.pipe(generate_distributions, by='Target', folder_name='plots')
     '''
 
     directory = default_dir + folder_name + '/'
@@ -404,8 +404,16 @@ def generate_boxplots(df, by, folder_name, default_dir='/Users/alexhuang/'):
     df = df.copy()
     df = df.select_dtypes(include=[np.number])
 
-    for i, col in enumerate(df.drop(by, 1)):
-        sns.boxplot(df[col], df[by], orient='h')
+    for i, col in enumerate(df.drop(by, 1).select_dtypes(include=[np.number])):
+        df.pipe(boxplot, by=by, col=col)
+        plt.xlabel('')
+        plt.title(col)
+        plt.savefig(directory + '%s.png' % i)
+        plt.close()
+        print 'Saved Plot: %s' % col
+
+    for i, col in enumerate(df.drop(by, 1).select_dtypes(exclude=[np.number])):
+        df.pipe(barplot, by=by, col=col)
         plt.xlabel('')
         plt.title(col)
         plt.savefig(directory + '%s.png' % i)
