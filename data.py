@@ -8,6 +8,9 @@ from sklearn.metrics import roc_auc_score, confusion_matrix, classification_repo
 import numpy as np
 import pandas as pd
 
+from sklearn.calibration import CalibratedClassifierCV, calibration_curve
+import matplotlib.pyplot as plt
+
 def disjoint_intervals(start, end, step=2):
     '''
     Create 2-tuples of integers where each end point is equal to the next
@@ -85,7 +88,7 @@ def cbind(df_list):
 
     df = pd.concat([pd.DataFrame(df).reset_index(drop=True) for df in df_list], axis=1)
 
-    if len(df.columns.value_counts().pipe(query, lambda x: x > 1)) > 0:
+    if len(df.columns.value_counts().pipe(filter, lambda x: x > 1)) > 0:
         print '[WARNING]: May contain duplicate columns.'
 
     return df
@@ -491,3 +494,40 @@ def top_corr(df, n=None):
         return a[:n]
     else:
         return a
+
+def compare_roc_curves(model, datasets, target, omit=None, threshold=0.5, random_state=42):
+    '''
+    Compares the ROC curves for a given model on a fixed test set of the data.
+
+    ex) compare_roc_curves(model, [df1, df2, df3, df4, df5], target='cancel',
+            omit=['user_id'], threshold=0.1)
+    '''
+
+    for df in datasets:
+        X = df.drop(omit + [target], 1)
+        y = df[target]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,
+            random_state=random_state)
+
+        model.fit(X_train, y_train)
+
+        pred = model.predict_proba(X_test)[:, 1]
+        true = y_test
+
+        fpr, tpr, _ = roc_curve(true, pred)
+        plt.plot(fpr, tpr)
+
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+
+def missing_ind(a):
+    return a.isnull()
+
+def plot_calibration_curve(model, X, y):
+    fp, mv = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
+    plt.plot(mv, fp)
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('Predicted Proportion')
+    plt.ylabel('True Proportion')
