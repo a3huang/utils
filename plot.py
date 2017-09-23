@@ -401,14 +401,11 @@ def generate_distributions(df, by, folder_name, default_dir='/Users/alexhuang/')
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    df = df.copy()
-    df = df.select_dtypes(include=[np.number])
-
     for i, col in enumerate(df.drop(by, 1).select_dtypes(include=[np.number])):
         df.pipe(boxplot, by=by, col=col)
         plt.xlabel('')
         plt.title(col)
-        plt.savefig(directory + '%s.png' % i)
+        plt.savefig(directory + '%s.png' % i, bbox_inches="tight")
         plt.close()
         print 'Saved Plot: %s' % col
 
@@ -416,7 +413,7 @@ def generate_distributions(df, by, folder_name, default_dir='/Users/alexhuang/')
         df.pipe(barplot, by=by, col=col)
         plt.xlabel('')
         plt.title(col)
-        plt.savefig(directory + '%s.png' % i)
+        plt.savefig(directory + '%s.png' % i, bbox_inches="tight")
         plt.close()
         print 'Saved Plot: %s' % col
 
