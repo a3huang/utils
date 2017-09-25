@@ -8,9 +8,6 @@ from sklearn.metrics import roc_auc_score, confusion_matrix, classification_repo
 import numpy as np
 import pandas as pd
 
-from sklearn.calibration import CalibratedClassifierCV, calibration_curve
-import matplotlib.pyplot as plt
-
 def disjoint_intervals(start, end, step=2):
     '''
     Create 2-tuples of integers where each end point is equal to the next
@@ -200,10 +197,30 @@ def feature_scores(model, X, attr, sort_abs=False, top=None):
     else:
         return df
 
+def top_corr(df, n=None):
+    '''
+    Show the top correlated pairs of variables sorted by magnitude.
+
+    ex) df.pipe(top_corr, n=5)
+    '''
+
+    df = df.corr()
+    df = df.where(np.triu(np.ones(df.shape).astype(np.bool))).stack().reset_index()
+    df.columns = ['var1', 'var2', 'corr']
+    df['abs'] = df['corr'].abs()
+
+    a = df.pipe(filter, lambda x: abs(x['corr']) != 1)
+    a = a.sort_values(by='abs', ascending=False)
+
+    if n:
+        return a[:n]
+    else:
+        return a
+
 def compare_datasets_test(model, datasets, target, omit=None, threshold=0.5, random_state=42):
     '''
-    Compares the AUC, confusion matrix, and classification report (precision, recall,
-    f1 score) for a given model on a fixed test set of the data.
+    Compares the AUC, confusion matrix, and classification report (precision,
+    recall, f1 score) for a given model over several datasets.
 
     ex) compare_datasets_test(model, [df1, df2, df3, df4, df5], target='cancel',
             omit=['user_id'], threshold=0.1)
@@ -228,7 +245,7 @@ def compare_datasets_test(model, datasets, target, omit=None, threshold=0.5, ran
 
 def compare_datasets_cv(model, datasets, target, omit=None, random_state=42):
     '''
-    Compares mean 5-fold CV AUC for a given model.
+    Compares mean 5-fold CV AUC for a given model over several datasets.
 
     ex) compare_datasets_cv(model, [df1, df2, df3, df4, df5], target='cancel',
             omit=['user_id'])
@@ -238,6 +255,21 @@ def compare_datasets_cv(model, datasets, target, omit=None, random_state=42):
     for df in datasets:
         X = df.drop(omit + [target], 1)
         y = df[target]
+        print cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+
+def compare_models_cv(models, df, target, omit=None, random_state=42):
+    '''
+    Compares mean 5-fold CV AUC for a given dataset over several models.
+
+    ex) compare_models_cv([model1, model2, model3], df, target='cancel',
+            omit=['user_id'])
+    '''
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+    X = df.drop(omit + [target], 1)
+    y = df[target]
+
+    for model in models:
         print cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
 ######
 
@@ -481,20 +513,6 @@ def mark_confusion_errors(model, X, y, threshold=0.5):
     df = df.fillna(0)
     return df
 
-def top_corr(df, n=None):
-    df = df.corr()
-    df = df.where(np.triu(np.ones(df.shape).astype(np.bool))).stack().reset_index()
-    df.columns = ['var1', 'var2', 'corr']
-    df['abs'] = df['corr'].abs()
-
-    a = df.pipe(query, lambda x: x['Correlation'] != 1)
-    a = a.sort_values(by='abs', ascending=False)
-
-    if n:
-        return a[:n]
-    else:
-        return a
-
 def compare_roc_curves(model, datasets, target, omit=None, threshold=0.5, random_state=42):
     '''
     Compares the ROC curves for a given model on a fixed test set of the data.
@@ -524,13 +542,6 @@ def compare_roc_curves(model, datasets, target, omit=None, threshold=0.5, random
 
 def missing_ind(a):
     return a.isnull()
-
-def plot_calibration_curve(model, X, y):
-    fp, mv = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
-    plt.plot(mv, fp)
-    plt.plot([0, 1], [0, 1], linestyle='--')
-    plt.xlabel('Predicted Proportion')
-    plt.ylabel('True Proportion')
 
 def undummy_set(df, columns, name):
     a = cbind([df[df.columns.difference(columns)], df[columns].pipe(undummy)])
