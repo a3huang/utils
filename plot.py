@@ -4,6 +4,7 @@ import pandas as pd
 import seaborn as sns
 
 from lime.lime_tabular import LimeTabularExplainer
+from sklearn.calibration import calibration_curve
 from sklearn.decomposition import PCA
 from sklearn.metrics import confusion_matrix, roc_curve, f1_score
 from sklearn.model_selection import learning_curve, StratifiedKFold
@@ -586,3 +587,16 @@ def plot_explanations(explainer, model, X, i=None):
     a.plot.barh(color=colors)
     plt.legend().remove()
     plt.ylabel('')
+
+def plot_calibration_curve(model, X, y):
+    '''
+    Creates a line plot of the calibration curve for the given model and data.
+
+    ex) plot_calibration_curve(model, X_test, y_test)
+    '''
+
+    fp, mv = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
+    plt.plot(mv, fp)
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('Predicted Proportion')
+    plt.ylabel('True Proportion')
