@@ -210,7 +210,7 @@ def feature_scores(model, X, attr, sort_abs=False, top=None):
 
     if sort_abs:
         df['abs'] = np.abs(df[1])
-        df = df.sort_values(by='abs', ascending=False).drop('abs', 1)
+        df = df.sort_values(by='abs', ascending=False)
     else:
         df = df.sort_values(by=1, ascending=False)
 
@@ -466,16 +466,6 @@ def reduce_cardinality(a, n):
 
     elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
         return cut(a, bin_width=n)
-
-def cbind2(df, obj, **kwargs):
-    '''
-    Append a column or dataframe to an existing dataframe as new columns.
-
-    ex) df.pipe(cbind, a)
-    '''
-
-    objects = [df.reset_index(drop=True), pd.DataFrame(obj).reset_index(drop=True)]
-    return pd.concat(objects, axis=1, **kwargs)
 
 def filter_time_window(df, left_offset, right_offset, frequency):
     '''
