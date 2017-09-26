@@ -271,6 +271,33 @@ def compare_models_cv(models, df, target, omit=None, random_state=42):
 
     for model in models:
         print cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+
+def compare_model_data_cv(models, datasets, target, omit=None, random_state=42):
+    '''
+    Compares mean 5-fold CV AUC for all combinations of the given models and
+    datasets.
+
+    ex) compare_models_data_cv([model1, model2, model3], [df1, df2, df3],
+            target='cancel', omit=['user_id'])
+    '''
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+
+    scores = []
+    for i, df in enumerate(datasets):
+        scores_by_df = []
+        for model in models:
+            X = df.drop(omit + [target], 1)
+            y = df[target]
+            score = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+            scores_by_df.append(score)
+
+        scores_df = pd.DataFrame(scores_by_df, columns=['df_%s' % i])
+        scores.append(scores_df)
+
+    df = cbind(scores)
+    df.index = ['model_%s' % i for i in range(len(models))]
+    return df
 ######
 
 def mark_nth_week(df):
