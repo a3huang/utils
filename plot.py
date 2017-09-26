@@ -541,6 +541,51 @@ def plot_learning_curves(model, X, y):
     plt.ylabel('Performance')
     plt.legend(loc=(1, 0))
 
+def plot_calibration_curve(model, X, y):
+    '''
+    Creates a line plot of the calibration curve for the given model and data.
+
+    ex) plot_calibration_curve(model, X_test, y_test)
+    '''
+
+    fp, mv = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
+    plt.plot(mv, fp)
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('Predicted Proportion')
+    plt.ylabel('True Proportion')
+
+def plot_score_dists(model, X, y):
+    '''
+    Creates a density plot of model scores grouped by the target class. Useful
+    for seeing how well the model separates out the target classes.
+
+    ex) plot_score_dists(model, X_test, y_test)
+    '''
+
+    df = cbind(y, model.predict_proba(X)[:, 1]).rename(columns={0: 'score'})
+    df.pipe(distplot, by=df.columns[0], col='score')
+
+def plot_explanations(explainer, model, X, i=None):
+    '''
+    Creates a bar plot of the top feature effects via LIME for a given row in
+    the data. If no row number is specified, the function will pick one of the
+    rows at random.
+
+    ex) plot_explanations(explainer, model, X_test)
+    '''
+
+    if i is None:
+        i = np.random.randint(0, X.shape[0])
+
+    explanation = explainer.explain_instance(X.values[i], model.predict_proba)
+
+    a = pd.DataFrame(explanation.as_list()).sort_index(ascending=False).set_index(0)
+    colors = ''.join(['g' if i >= 0 else 'r' for i in a[1]])
+
+    a.plot.barh(color=colors)
+    plt.legend().remove()
+    plt.ylabel('')
+
 def plot_decision_tree(X, y, file_name, default_dir='/Users/alexhuang/',
                        max_depth=10, min_samples_leaf=100, **kwargs):
     '''
@@ -566,37 +611,3 @@ def plot_decision_tree(X, y, file_name, default_dir='/Users/alexhuang/',
     graph = graphviz.Source(dot_data)
     graph.render(file_name)
     subprocess.call(('open', file_name + '.pdf'))
-
-def plot_explanations(explainer, model, X, i=None):
-    '''
-    Creates a bar plot of the top feature effects via LIME for a given row in
-    the data. If no row number is specified, the function will pick one of the
-    rows at random.
-
-    ex) plot_explanations(explainer, model, X_test)
-    '''
-
-    if i is None:
-        i = np.random.randint(0, X.shape[0])
-
-    explanation = explainer.explain_instance(X.values[i], model.predict_proba)
-
-    a = pd.DataFrame(explanation.as_list()).sort_index(ascending=False).set_index(0)
-    colors = ''.join(['g' if i >= 0 else 'r' for i in a[1]])
-
-    a.plot.barh(color=colors)
-    plt.legend().remove()
-    plt.ylabel('')
-
-def plot_calibration_curve(model, X, y):
-    '''
-    Creates a line plot of the calibration curve for the given model and data.
-
-    ex) plot_calibration_curve(model, X_test, y_test)
-    '''
-
-    fp, mv = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
-    plt.plot(mv, fp)
-    plt.plot([0, 1], [0, 1], linestyle='--')
-    plt.xlabel('Predicted Proportion')
-    plt.ylabel('True Proportion')
