@@ -579,6 +579,22 @@ def plot_score_dists(model, X, y):
     df = cbind(y, model.predict_proba(X)[:, 1]).rename(columns={0: 'score'})
     df.pipe(distplot, by=df.columns[0], col='score')
 
+def plot_top_features(model, X, attr, n=10):
+    '''
+    Creates a bar plot of the top feature importance scores assigned by the given
+    model.
+
+    ex) plot_top_features(model, X_train, 'coef_')
+    '''
+    
+    scores = feature_scores(model, X, 'coef_', sort_abs=True)[:n]
+    a = scores.set_index(0).sort_values(by='abs')[1]
+
+    colors = ''.join(['g' if i >= 0 else 'r' for i in a])
+    a.plot.barh(color=colors)
+    plt.ylabel('')
+    plt.title('Top Features')
+
 def plot_explanations(explainer, model, X, i=None):
     '''
     Creates a bar plot of the top feature effects via LIME for a given row in
@@ -593,9 +609,8 @@ def plot_explanations(explainer, model, X, i=None):
 
     explanation = explainer.explain_instance(X.values[i], model.predict_proba)
 
-    a = pd.DataFrame(explanation.as_list()).sort_index(ascending=False).set_index(0)
-    colors = ''.join(['g' if i >= 0 else 'r' for i in a[1]])
-
+    a = pd.DataFrame(explanation.as_list()).sort_index(ascending=False).set_index(0)[1]
+    colors = ''.join(['g' if i >= 0 else 'r' for i in a])
     a.plot.barh(color=colors)
     plt.legend().remove()
     plt.ylabel('')
