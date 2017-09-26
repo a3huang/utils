@@ -75,14 +75,15 @@ def top(a, n=None):
     else:
         return a
 
-def cbind(df_list):
+def cbind(*args):
     '''
     Horizontally concatenate a list of columns or dataframes together without
     worrying about indices.
 
-    ex) cbind([X, y, model.predict(X)])
+    ex) cbind(X, y, model.predict(X))
     '''
 
+    df_list = args
     df = pd.concat([pd.DataFrame(df).reset_index(drop=True) for df in df_list], axis=1)
 
     if len(df.columns.value_counts().pipe(filter, lambda x: x > 1)) > 0:
