@@ -170,6 +170,27 @@ def show_duplicates(df, col):
     duplicates = counts[counts > 1].index
     return df[df[col].isin(duplicates)].sort_values(by=col)
 
+def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=np.mean, **kwargs):
+    '''
+    Calculate the cross tabulation between 2 categorical variables. Can optionally
+    specify how many of the top categories to display in the rows and columns
+    of the resulting table.
+
+    ex) df.pipe(table, cat1, cat2, row_n=5, col_n=5)
+    '''
+
+    df = df.copy()
+
+    if row_n:
+        df[row_var] = df[row_var].pipe(reduce_cardinality, row_n)
+    if col_n:
+        df[col_var] = df[col_var].pipe(reduce_cardinality, col_n)
+
+    if val_var is None:
+        return pd.crosstab(df[row_var], df[col_var], **kwargs)
+    else:
+        return pd.crosstab(df[row_var], df[col_var], df[val_var], aggfunc=agg_func, **kwargs)
+
 def feature_scores(model, X, attr, sort_abs=False, top=None):
     '''
     Calculate importance scores for each feature for a given model.
@@ -253,6 +274,7 @@ def scoring_table(scores):
     bottom_columns = ['Min Score', 'Max Score', 'Count', 'Composition', 'Cumulative', 'Count',
                       'Composition', 'Cumulative', 'Count', 'Composition', 'Cumulative', 'K-S',
                       'Cancel Rate', 'Cancel Index']
+
     df.columns = pd.MultiIndex.from_tuples(zip(top_columns, bottom_columns))
 
     return df
@@ -453,30 +475,6 @@ def cbind2(df, obj, **kwargs):
 
     objects = [df.reset_index(drop=True), pd.DataFrame(obj).reset_index(drop=True)]
     return pd.concat(objects, axis=1, **kwargs)
-
-def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=np.mean, **kwargs):
-    '''
-    Calculate the cross tabulation between 2 categorical variables.
-
-    ex) df.pipe(table, cat1, cat2)
-    ex) df.pipe(table, cat1, cat2, col)
-    ex) df.pipe(table, col, cat, row=5).iloc[:5]
-    '''
-
-    df = df.copy()
-
-    if row_n:
-        df[row_var] = df[row_var].pipe(reduce_cardinality, row_n)
-    if col_n:
-        df[col_var] = df[col_var].pipe(reduce_cardinality, col_n)
-
-    if val_var is None:
-        return pd.crosstab(df[row_var], df[col_var], **kwargs)
-    else:
-        return pd.crosstab(df[row_var], df[col_var], df[val_var], aggfunc=agg_func, **kwargs)
-
-    # df['dummy'] = 0
-    # pd.crosstab(df[row_var], df['dummy'])
 
 def filter_time_window(df, left_offset, right_offset, frequency):
     '''
