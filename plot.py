@@ -6,7 +6,8 @@ import seaborn as sns
 from lime.lime_tabular import LimeTabularExplainer
 from sklearn.calibration import calibration_curve
 from sklearn.decomposition import PCA
-from sklearn.metrics import confusion_matrix, roc_curve, f1_score
+from sklearn.metrics import confusion_matrix, roc_curve, f1_score, \
+    recall_score, precision_score
 from sklearn.model_selection import learning_curve, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
@@ -194,7 +195,7 @@ def nice_hist(df, col, range=None, prop=False):
 
     df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
 
-def nice_hist2(a, bins=10, **kwargs):
+def nice_hist_approx(a, bins=10, **kwargs):
     '''
     Creates a "nice" histogram by adjusting both the bin edges and the x-axis tick
     marks so that they line up nicely.
@@ -459,28 +460,41 @@ def plot_2d_projection(df, by, method=None, sample_size=None):
 
     df.pipe(scatplot, x='pca1', y='pca2', by=by)
 
-def plot_f1_scores(model, X, y):
+def plot_classif_metrics(model, X, y):
     '''
-    For each threshold value, calculates the mean 5-fold CV f1 score. Creates
-    a line plot of the threshold values vs. the f1 scores.
+    For each threshold value, calculates the mean 5-fold CV f1, recall, and
+    precision scores. Creates a line plot of the threshold values vs. each of
+    the metrics.
 
-    ex) plot_f1_scores(model, X_train, y_train)
+    ex) plot_classif_metrics(model, X_train, y_train)
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True)
 
-    cv_scores = []
+    outer_f1 = []
+    outer_recall = []
+    outer_precision = []
     for threshold in np.linspace(.1, 1, 10):
+        inner_f1 = []
+        inner_recall = []
+        inner_precision = []
 
-        inner_cv_scores = []
         for train, test in cv.split(X, y):
             true = y.values[test]
             pred = model.predict_proba(X.values[test])[:, 1] > threshold
-            inner_cv_scores.append(f1_score(true, pred))
 
-        cv_scores.append(np.mean(inner_cv_scores))
+            inner_f1.append(f1_score(true, pred))
+            inner_recall.append(recall_score(true, pred))
+            inner_precision.append(precision_score(true, pred))
 
-    plt.plot(np.linspace(.1, 1, 10), cv_scores)
+        outer_f1.append(np.mean(inner_f1))
+        outer_recall.append(np.mean(inner_recall))
+        outer_precision.append(np.mean(inner_precision))
+
+    plt.plot(np.linspace(.1, 1, 10), outer_f1, label='f1')
+    plt.plot(np.linspace(.1, 1, 10), outer_recall, label='recall')
+    plt.plot(np.linspace(.1, 1, 10), outer_precision, label='precision')
+    plt.legend(title='Metric', loc=(1, 0))
 
 def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False):
     '''
