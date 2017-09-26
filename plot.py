@@ -309,7 +309,7 @@ def distplot(df, col, by=None, prop=False, facet=False, range=None):
             g.map(prop_hist, col, prop=prop, range=r, bins=b, alpha=0.4)
         else:
             for group, column in df.groupby(by)[col]:
-                sns.kdeplot(column, label=group)
+                sns.kdeplot(column, label=group, shade=True)
             plt.xlim(range)
             plt.legend(title=by, loc=(1, 0))
 
