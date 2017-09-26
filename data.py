@@ -217,6 +217,46 @@ def top_corr(df, n=None):
     else:
         return a
 
+def scoring_table(scores):
+    '''
+    Takes a dataframe containing predicted scores for a binary classification
+    problem in the 1st column and true labels in the 2nd column. Creates an
+    aggregated scoring table based on deciles.
+
+    ex) scoring_table(cbind(model.predict_proba(X_test)[:, 1], y_test))
+    '''
+
+    scores.columns = ['scores', 'target']
+    scores = scores.sort_values(by='scores', ascending=False).reset_index(drop=True)
+    scores['Decile'] = pd.qcut(scores.index, 10, labels=False) + 1
+
+    df = scores.groupby('Decile')['scores'].agg([min, max])
+    df['count'] = scores.groupby('Decile').size()
+    df['composition'] = df['count'] / float(len(scores))
+    df['cumulative'] = df['composition'].cumsum()
+
+    df['count_0'] = scores[scores['target'] == 0].groupby('Decile').size()
+    df['composition_0'] = df['count_0'] / float(len(scores[scores['target'] == 0]))
+    df['cumulative_0'] = df['composition_0'].cumsum()
+
+    df['count_1'] = scores[scores['target'] == 1].groupby('Decile').size()
+    df['composition_1'] = df['count_1'] / float(len(scores[scores['target'] == 1]))
+    df['cumulative_1'] = df['composition_1'].cumsum()
+
+    df['KS'] = df['cumulataive_1'] - df['cumulative_0']
+    df['rate'] = df['count_1'] / df['count']
+    df['index'] = df['rate'] / (len(scores[scores['target'] == 1]) / float(len(scores))) * 100
+    df = df.round(2)
+
+    top_columns = ['scores']*2 + ['Population Metrics']*3 + ['Non-Target Metrics']*3 + \
+                  ['Target Metrics']*3 + ['Validation Metrics']*3
+    bottom_columns = ['Min Score', 'Max Score', 'Count', 'Composition', 'Cumulative', 'Count',
+                      'Composition', 'Cumulative', 'Count', 'Composition', 'Cumulative', 'K-S',
+                      'Cancel Rate', 'Cancel Index']
+    df.columns = pd.MultiIndex.from_tuples(zip(top_columns, bottom_columns))
+
+    return df
+
 def compare_datasets_test(model, datasets, target, omit=None, threshold=0.5, random_state=42):
     '''
     Compares the AUC, confusion matrix, and classification report (precision,
@@ -497,35 +537,6 @@ def interaction(df, col1, col2):
 
 def get_index(df, col_names):
     return [df.columns.get_loc(i) for i in col_names]
-
-def get_scoring_table(scores):
-    scores.columns = ['scores', 'target']
-    scores = scores.sort_values(by='scores', ascending=False).reset_index(drop=True)
-    scores['Decile'] = pd.qcut(scores.index, 10, labels=False) + 1
-
-    df = scores.groupby('Decile')['scores'].agg([min, max])
-    df['obs'] = scores.groupby('Decile').size()
-    df['comp'] = df['obs']/float(len(scores))
-    df['cum'] = df['comp'].cumsum()
-    df['obs_0'] = scores[scores['target'] == 0].groupby('Decile').size()
-    df['comp_0'] = df['obs_0'] / float(len(scores[scores['target'] == 0]))
-    df['cum_0'] = df['comp_0'].cumsum()
-    df['obs_1'] = scores[scores['target'] == 1].groupby('Decile').size()
-    df['comp_1'] = df['obs_1'] / float(len(scores[scores['target'] == 1]))
-    df['cum_1'] = df['comp_1'].cumsum()
-    df['KS'] = df['cum_1'] - df['cum_0']
-    df['rate'] = df['obs_1']/df['obs']
-    df['index'] = df['rate'] / (len(scores[scores['target'] == 1])/float(len(scores))) * 100
-    df = df.round(2)
-
-    top_columns = ['scores']*2 + ['Population Metrics']*3 + ['Non-Target Metrics']*3 + \
-                  ['Target Metrics']*3 + ['Validation Metrics']*3
-    bottom_columns = ['Min Score', 'Max Score', 'Count', 'Composition', 'Cumulative', 'Count',
-                      'Composition', 'Cumulative', 'Count', 'Composition', 'Cumulative', 'K-S',
-                      'Cancel Rate', 'Cancel Index']
-    df.columns = pd.MultiIndex.from_tuples(zip(top_columns, bottom_columns))
-
-    return df
 
 def mark_confusion_errors(model, X, y, threshold=0.5):
     target = pd.DataFrame(y)
