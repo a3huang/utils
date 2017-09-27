@@ -706,23 +706,30 @@ def plot_decision_tree(X, y, file_name, default_dir='/Users/alexhuang/',
     graph.render(file_name)
     subprocess.call(('open', file_name + '.pdf'))
 
-def plot_survival_curves(df, by, time, event):
+def plot_survival_curves(df, time, event, by=None):
     '''
     Creates survival curves grouped by the given categorical variable.
 
-    ex) df.pipe(plot_survival_curves, by='state', time='days', event='cancel')
+    ex) df.pipe(plot_survival_curves, time='days', event='cancel', by='state')
     '''
 
     df = df.copy()
-    a = df[by].dropna().astype(str)
-
     fig, ax = plt.subplots()
     kmf = KaplanMeierFitter()
 
-    for i in a.unique():
-        T = df.loc[df[by] == i, time]
-        E = df.loc[df[by] == i, event]
-        kmf.fit(T, event_observed=E, label=i)
-        kmf.survival_function_.plot(ax=ax)
+    if by:
+        a = df[by].dropna().astype(str)
 
-    plt.legend(title=by, loc=(1, 0))
+        for i in a.unique():
+            T = df.loc[df[by] == i, time]
+            E = df.loc[df[by] == i, event]
+            kmf.fit(T, event_observed=E, label=i)
+            kmf.survival_function_.plot(ax=ax)
+
+        plt.legend(title=by, loc=(1, 0))
+
+    else:
+        T = df[time]
+        E = df[event]
+        kmf.fit(T, event_observed=E)
+        kmf.survival_function_.plot(ax=ax)
