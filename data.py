@@ -539,8 +539,6 @@ def interaction(df, col1, col2):
     X = dmatrix(formula, df)
     return pd.DataFrame(X, columns=X.design_info.column_names)
 
-def get_index(df, col_names):
-    return [df.columns.get_loc(i) for i in col_names]
 
 def mark_confusion_errors(model, X, y, threshold=0.5):
     target = pd.DataFrame(y)
@@ -582,10 +580,8 @@ def compare_roc_curves(model, datasets, target, omit=None, threshold=0.5, random
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
 
-def missing_ind(a):
-    return a.isnull()
-
-def undummy_set(df, columns, name):
-    a = cbind(df[df.columns.difference(columns)], df[columns].pipe(undummy))
-    a = a.rename(columns={0: name})
-    return a
+def tsunitplot(df, date, unit):
+    df['unit'] = df[date].pipe(time_unit, unit)
+    df['unit'].value_counts().sort_index().plot.bar()
+    plt.xlabel(unit)
+    plt.ylabel('')
