@@ -4,6 +4,7 @@ import pandas as pd
 import seaborn as sns
 
 from lime.lime_tabular import LimeTabularExplainer
+from pandas.api.types import is_numeric_dtype, is_string_dtype
 from sklearn.calibration import calibration_curve
 from sklearn.decomposition import PCA
 from sklearn.metrics import confusion_matrix, roc_curve, f1_score, \
@@ -391,7 +392,7 @@ def tsboxplot(df, date, col, freq='M'):
     sns.boxplot(data=data, orient='h')
     plt.xlabel(col)
 
-def generate_distributions(df, by, folder_name, default_dir='/Users/alexhuang/'):
+def generate_distributions(df, by, folder_name, omit=None, default_dir='/Users/alexhuang/'):
     '''
     Generates and saves box plots for each continuous variable and bar plots for
     each categorical variable that grouped by a specified categorical variable.
@@ -399,20 +400,25 @@ def generate_distributions(df, by, folder_name, default_dir='/Users/alexhuang/')
     ex) df.pipe(generate_distributions, by='Target', folder_name='plots')
     '''
 
+    df = df.copy()
+
+    if omit:
+        df = df.drop(omit, 1)
+
     directory = default_dir + folder_name + '/'
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    for i, col in enumerate(df.drop(by, 1).select_dtypes(include=[np.number])):
-        df.pipe(boxplot, by=by, col=col)
-        plt.xlabel('')
-        plt.title(col)
-        plt.savefig(directory + '%s.png' % i, bbox_inches="tight")
-        plt.close()
-        print 'Saved Plot: %s' % col
+    for i, col in enumerate(df.drop(by, 1)):
+        if is_numeric_dtype(df[col]):
+            df.pipe(boxplot, by=by, col=col)
 
-    for i, col in enumerate(df.drop(by, 1).select_dtypes(exclude=[np.number])):
-        df.pipe(barplot, by=by, col=col)
+        elif is_string_dtype(df[col]):
+            if len(df[col].value_counts()) > 100:
+                print '[WARNING]: %s has too many categories' % col
+                continue
+            df.pipe(barplot, by=by, col=col)
+
         plt.xlabel('')
         plt.title(col)
         plt.savefig(directory + '%s.png' % i, bbox_inches="tight")
