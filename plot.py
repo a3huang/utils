@@ -392,6 +392,25 @@ def tsboxplot(df, date, col, freq='M'):
     sns.boxplot(data=data, orient='h')
     plt.xlabel(col)
 
+def timeunitplot(df, date, unit, col=None):
+    '''
+    Creates a bar plot of counts or average of column values grouped by a unit
+    of time (e.g. minute, hour, day, weekday)
+
+    ex) df.pipe(timeunitplot, date='date', unit='weekday', col='Total')
+    '''
+
+    df['unit'] = df[date].pipe(time_unit, unit)
+
+    if col:
+        df.groupby('unit')[col].mean().plot.bar()
+        plt.ylabel('')
+    else:
+        df['unit'].value_counts().sort_index().plot.bar()
+        plt.ylabel(col)
+
+    plt.xlabel(unit)
+
 def generate_distributions(df, by, folder_name, omit=None, default_dir='/Users/alexhuang/'):
     '''
     Generates and saves box plots for each continuous variable and bar plots for
