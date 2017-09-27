@@ -3,12 +3,13 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from lifelines import KaplanMeierFitter
 from lime.lime_tabular import LimeTabularExplainer
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from sklearn.calibration import calibration_curve
 from sklearn.decomposition import PCA
 from sklearn.metrics import confusion_matrix, roc_curve, f1_score, \
-    recall_score, precision_score
+        recall_score, precision_score
 from sklearn.model_selection import learning_curve, StratifiedKFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
@@ -704,3 +705,24 @@ def plot_decision_tree(X, y, file_name, default_dir='/Users/alexhuang/',
     graph = graphviz.Source(dot_data)
     graph.render(file_name)
     subprocess.call(('open', file_name + '.pdf'))
+
+def plot_survival_curves(df, by, time, event):
+    '''
+    Plots survival curves grouped by a specified categorical variable.
+
+    ex) df.pipe(plot_survival_curves, by='state', time='days', event='cancel')
+    '''
+
+    df = df.copy()
+    a = df[by].dropna().astype(str)
+
+    fig, ax = plt.subplots()
+    kmf = KaplanMeierFitter()
+
+    for i in a.unique():
+        T = df.loc[df[by] == i, time]
+        E = df.loc[df[by] == i, event]
+        kmf.fit(T, event_observed=E, label=i)
+        kmf.survival_function_.plot(ax=ax)
+
+    plt.legend(title=by, loc=(1, 0))
