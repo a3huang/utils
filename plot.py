@@ -392,12 +392,12 @@ def tsboxplot(df, date, col, freq='M'):
     sns.boxplot(data=data, orient='h')
     plt.xlabel(col)
 
-def timeunitplot(df, date, unit, col=None):
+def timeunit_barplot(df, date, unit='weekday', col=None):
     '''
-    Creates a bar plot of counts or average of column values grouped by a unit
+    Creates a bar plot of counts or the average of column values grouped by a unit
     of time (e.g. minute, hour, day, weekday)
 
-    ex) df.pipe(timeunitplot, date='date', unit='weekday', col='Total')
+    ex) df.pipe(timeunit_barplot, date='date', unit='weekday', col='Total')
     '''
 
     df['unit'] = df[date].pipe(time_unit, unit)
@@ -410,6 +410,29 @@ def timeunitplot(df, date, unit, col=None):
         plt.ylabel(col)
 
     plt.xlabel(unit)
+
+def timeunit_heatplot(df, date, freq='M', unit='weekday', col=None):
+    '''
+    Creates a heat plot of counts or the average of column values grouped by a
+    unit of time (e.g. minute, hour, day, weekday) on the y-axis and a frequency
+    on the x-axis.
+
+    ex) df.pipe(timeunit_heatplot, date='date', col='Total')
+    '''
+
+    df = df.copy()
+    df['unit'] = df[date].pipe(time_unit, unit)
+
+    if col:
+        a = df.groupby(['unit', pd.Grouper(key=date, freq=freq)])[col].mean().unstack()
+    else:
+        a = df.groupby(['unit', pd.Grouper(key=date, freq=freq)]).size().unstack()
+
+    sns.heatmap(a)
+
+    new_labels = [i.get_text().split('T')[0] for i in plt.gca().get_xticklabels()]
+    plt.gca().set_xticklabels(new_labels)
+    plt.ylabel(unit)
 
 def generate_distributions(df, by, folder_name, omit=None, default_dir='/Users/alexhuang/'):
     '''
