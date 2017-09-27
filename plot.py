@@ -24,7 +24,7 @@ from utils.data import *
 
 def dummy_categorical(df, n):
     '''
-    Creates a categorical column with labels 1 to n for testing purposes.
+    Creates a categorical variable with labels 1 to n for testing purposes.
 
     ex) df['dummy'] = df.pipe(dummy_categorical, 5)
     '''
@@ -42,7 +42,7 @@ def dummy_categorical(df, n):
 
 def dummy_continuous(df, loc=0, scale=1):
     '''
-    Creates a continuous column from a normal distribution for testing purposes.
+    Creates a continuous variable from a normal distribution for testing purposes.
 
     ex) df['dummy'] = df.pipe(dummy_continuous)
     '''
@@ -335,7 +335,7 @@ def heatplot(df, x, y, z=None, normalize=False):
 def multicol_heatplot(df, by, cols):
     '''
     Creates a heat map of the average values of several continuous variables
-    grouped by the specified categorical variable. Automatically standardizes
+    grouped by the given categorical variable. Automatically standardizes
     the continuous variables to faciliate comparison.
 
     ex) df.pipe(multicol_heatplot, 'Legendary', ['HP', 'Attack', 'Defense'])
@@ -411,8 +411,8 @@ def tsboxplot(df, date, col, freq='M'):
 
 def timeunit_barplot(df, date, unit='weekday', col=None):
     '''
-    Creates a bar plot of counts or the average of column values grouped by a unit
-    of time (e.g. minute, hour, day, weekday)
+    Creates a bar plot of counts or the average of continuous variable grouped
+    by a unit of time (e.g. minute, hour, day, weekday)
 
     ex) df.pipe(timeunit_barplot, date='date', unit='weekday', col='Total')
     '''
@@ -430,9 +430,9 @@ def timeunit_barplot(df, date, unit='weekday', col=None):
 
 def timeunit_heatplot(df, date, freq='M', unit='weekday', col=None):
     '''
-    Creates a heat plot of counts or the average of column values grouped by a
-    unit of time (e.g. minute, hour, day, weekday) on the y-axis and a frequency
-    on the x-axis.
+    Creates a heat plot of counts or the average of a continuous variable
+    grouped by a unit of time (e.g. minute, hour, day, weekday) on the y-axis
+    and a frequency on the x-axis.
 
     ex) df.pipe(timeunit_heatplot, date='date', col='Total')
     '''
@@ -454,7 +454,7 @@ def timeunit_heatplot(df, date, freq='M', unit='weekday', col=None):
 def generate_distributions(df, by, folder_name, omit=None, default_dir='/Users/alexhuang/'):
     '''
     Generates and saves box plots for each continuous variable and bar plots for
-    each categorical variable that grouped by a specified categorical variable.
+    each categorical variable that grouped by the given categorical variable.
 
     ex) df.pipe(generate_distributions, by='Target', folder_name='plots')
     '''
@@ -646,8 +646,8 @@ def plot_score_dists(model, X, y):
 
 def plot_top_features(model, X, attr, n=10):
     '''
-    Creates a bar plot of the top feature importance scores assigned by the given
-    model.
+    Creates a bar plot of the top feature importance scores assigned by the
+    given model.
 
     ex) plot_top_features(model, X_train, 'coef_')
     '''
@@ -662,7 +662,7 @@ def plot_top_features(model, X, attr, n=10):
 
 def plot_explanations(explainer, model, X, i=None):
     '''
-    Creates a bar plot of the top feature effects via LIME for a given row in
+    Creates a bar plot of the top feature effects via LIME for the given row in
     the data. If no row number is specified, the function will pick one of the
     rows at random.
 
@@ -708,7 +708,7 @@ def plot_decision_tree(X, y, file_name, default_dir='/Users/alexhuang/',
 
 def plot_survival_curves(df, by, time, event):
     '''
-    Plots survival curves grouped by a specified categorical variable.
+    Creates survival curves grouped by the given categorical variable.
 
     ex) df.pipe(plot_survival_curves, by='state', time='days', event='cancel')
     '''
