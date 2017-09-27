@@ -579,9 +579,3 @@ def compare_roc_curves(model, datasets, target, omit=None, threshold=0.5, random
     plt.plot([0, 1], [0, 1], linestyle='--')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
-
-def tsunitplot(df, date, unit):
-    df['unit'] = df[date].pipe(time_unit, unit)
-    df['unit'].value_counts().sort_index().plot.bar()
-    plt.xlabel(unit)
-    plt.ylabel('')
