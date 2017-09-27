@@ -331,6 +331,22 @@ def heatplot(df, x, y, z=None, normalize=False):
     else:
         sns.heatmap(df.pipe(table, x, y, normalize=normalize), annot=True, fmt='.2f')
 
+def multicol_heatplot(df, by, cols):
+    '''
+    Creates a heat map of the average values of several continuous variables
+    grouped by the specified categorical variable. Automatically standardizes
+    the continuous variables to faciliate comparison.
+
+    ex) df.pipe(multicol_heatplot, 'Legendary', ['HP', 'Attack', 'Defense'])
+    '''
+
+    s = StandardScaler()
+    a = pd.DataFrame(s.fit_transform(df.fillna(0)[cols]), columns=cols)
+    a = cbind(a, df[by])
+    a = a.groupby(by)[cols].mean()
+    sns.heatmap(a, annot=True, fmt='.2f')
+    plt.xticks(rotation=90)
+
 def scatplot(df, x, y, by=None, facet=False):
     '''
     Creates a scatter plot for 2 continuous variables. Group by an optional 3rd
