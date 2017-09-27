@@ -586,7 +586,7 @@ def plot_top_features(model, X, attr, n=10):
 
     ex) plot_top_features(model, X_train, 'coef_')
     '''
-    
+
     scores = feature_scores(model, X, 'coef_', sort_abs=True)[:n]
     a = scores.set_index(0).sort_values(by='abs')[1]
 
