@@ -69,7 +69,7 @@ def top(a, n=None):
     '''
 
     if n:
-        counts = a.fillna('missing').value_counts()
+        counts = a.value_counts()
         top = counts.iloc[:n].index
         return a.apply(lambda x: x if x in top else 'other')
     else:
@@ -571,9 +571,6 @@ def missing_ind(a):
     return a.isnull()
 
 def undummy_set(df, columns, name):
-    a = cbind([df[df.columns.difference(columns)], df[columns].pipe(undummy)])
+    a = cbind(df[df.columns.difference(columns)], df[columns].pipe(undummy))
     a = a.rename(columns={0: name})
     return a
-
-def binarize(a):
-    return a.apply(lambda x: 1 if x > 0 else 0)
