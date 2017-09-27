@@ -49,7 +49,6 @@ def dummy_replace(df, cols):
 
     df = df.copy()
     for col in cols:
-        df[col] = df[col].astype(str)
         df['missing_%s' % col] = df[col].isnull()
         df = cbind(df.drop(col, 1), df[col].pipe(dummy))
     return df
@@ -185,6 +184,24 @@ def show_duplicates(df, col):
     counts = df.groupby(col).size()
     duplicates = counts[counts > 1].index
     return df[df[col].isin(duplicates)].sort_values(by=col)
+
+def show_constant_var(df):
+    '''
+    Shows variables in dataframe that are constant.
+
+    ex) df.pipe(show_constant_var)
+    '''
+
+    return df.nunique().pipe(filter, lambda x: x == 1)
+
+def show_low_var(df):
+    '''
+    Shows variables in dataframe sorted increasing from lowest standard deviation.
+
+    ex) df.pipe(show_low_var)
+    '''
+
+    return df.std().sort_values()
 
 def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=np.mean, **kwargs):
     '''
