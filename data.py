@@ -39,6 +39,20 @@ def undummy(a):
 
     return a.apply(lambda x: x.idxmax(), axis=1)
 
+def dummy_replace(df, cols):
+    '''
+    Create dummy indicators for each categorical column specified and replace
+    the original columns with dummy variables for each level.
+
+    ex) df.pipe(dummy_replace, ['Type 1', 'Type 2'])
+    '''
+
+    df = df.copy()
+    for col in cols:
+        df['missing_%s' % col] = df[col].isnull()
+        df = cbind(df.drop(col, 1), df[col].pipe(dummy))
+    return df
+
 def time_unit(a, unit):
     '''
     Extract the value of a date variable with respect to a given time unit.
