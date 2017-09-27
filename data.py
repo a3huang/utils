@@ -49,6 +49,7 @@ def dummy_replace(df, cols):
 
     df = df.copy()
     for col in cols:
+        df[col] = df[col].astype(str)
         df['missing_%s' % col] = df[col].isnull()
         df = cbind(df.drop(col, 1), df[col].pipe(dummy))
     return df
