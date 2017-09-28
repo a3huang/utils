@@ -88,6 +88,16 @@ def top(a, n=None):
     else:
         return a
 
+def encode_str(a):
+    '''
+    Encodes a string variable into an integer variable for use in ML algorithms.
+
+    ex) df['status'].pipe(encode_str)
+    '''
+
+    encoder = LabelEncoder()
+    return encoder.fit_transform(a)
+
 def cbind(*args):
     '''
     Horizontally concatenate a list of columns or dataframes together without
@@ -624,7 +634,3 @@ def mark_confusion_errors(model, X, y, threshold=0.5):
     df.loc[(df['prediction'] == df['target']), 'error'] = 'Correct'
     df = df.fillna(0)
     return df
-
-def encode_str(a):
-    encoder = preprocessing.LabelEncoder()
-    return encoder.fit_transform(a)
