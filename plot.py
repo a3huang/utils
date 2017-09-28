@@ -525,13 +525,13 @@ def plot_2d_projection(df, by, method=None, sample_size=None):
 
     df.pipe(scatplot, x='pca1', y='pca2', by=by)
 
-def plot_classif_metrics(model, X, y):
+def plot_class_metrics(model, X, y, label=1):
     '''
     For each threshold value, calculates the mean 5-fold CV f1, recall, and
     precision scores. Creates a line plot of the threshold values vs. each of
     the metrics.
 
-    ex) plot_classif_metrics(model, X_train, y_train)
+    ex) plot_class_metrics(model, X_train, y_train)
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True)
@@ -545,8 +545,8 @@ def plot_classif_metrics(model, X, y):
         inner_precision = []
 
         for train, test in cv.split(X, y):
-            true = y.values[test]
-            pred = model.predict_proba(X.values[test])[:, 1] > threshold
+            true = pd.Series(y.values[test]).pipe(dummy).iloc[:, label]
+            pred = model.predict_proba(X.values[test])[:, label] > threshold
 
             inner_f1.append(f1_score(true, pred))
             inner_recall.append(recall_score(true, pred))
@@ -561,19 +561,21 @@ def plot_classif_metrics(model, X, y):
     plt.plot(np.linspace(.1, 1, 10), outer_precision, label='precision')
     plt.legend(title='Metric', loc=(1, 0))
 
-def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False):
+def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False, label=1):
     '''
     Creates a heat map of the confusion matrix for the given model and data.
 
     ex) plot_confusion_matrix(model, X_test, y_test, normalize='index')
     '''
 
-    try:
-        pred = model.predict_proba(X)[:, 1] > threshold
-    except:
-        pred = model.predict(X)
+    true = y.pipe(dummy).iloc[:, label]
 
-    a = confusion_matrix(y, pred).astype(float)
+    try:
+        pred = model.predict_proba(X)[:, label] > threshold
+    except:
+        pred = pd.Series(model.predict(X)).pipe(dummy).iloc[:, label]
+
+    a = confusion_matrix(true, pred).astype(float)
 
     if normalize == 'index':
         a = np.divide(a, np.sum(a, 1).reshape(2, 1))
@@ -584,19 +586,21 @@ def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False):
     plt.ylabel('True')
     plt.title('Predicted')
 
-def plot_roc_curves(model, X, y):
+def plot_roc_curves(model, X, y, label=1):
     '''
     Creates a line plot of the roc curve for the given model and data.
 
     ex) plot_roc_curves(model, X_test, y_test)
     '''
 
-    try:
-        pred = model.predict_proba(X)[:, 1]
-    except:
-        pred = model.predict(X)
+    true = y.pipe(dummy).iloc[:, label]
 
-    fpr, tpr, _ = roc_curve(y, pred)
+    try:
+        pred = model.predict_proba(X)[:, label]
+    except:
+        pred = pd.Series(model.predict(X)).pipe(dummy).iloc[:, label]
+
+    fpr, tpr, _ = roc_curve(true, pred)
     plt.plot(fpr, tpr)
     plt.plot([0, 1], [0, 1], linestyle='--')
     plt.xlabel('False Positive Rate')
@@ -675,7 +679,7 @@ def plot_score_dists(model, X, y):
     df = cbind(y, model.predict_proba(X)[:, 1]).rename(columns={0: 'score'})
     df.pipe(distplot, by=df.columns[0], col='score')
 
-def plot_top_features(model, X, attr, n=10):
+def plot_top_features(model, X, attr, n=10, label=0):
     '''
     Creates a bar plot of the top feature importance scores assigned by the
     given model.
@@ -683,7 +687,7 @@ def plot_top_features(model, X, attr, n=10):
     ex) plot_top_features(model, X_train, 'coef_')
     '''
 
-    scores = feature_scores(model, X, 'coef_', sort_abs=True)[:n]
+    scores = feature_scores(model, X, 'coef_', sort_abs=True, label=label)[:n]
     a = scores.set_index(0).sort_values(by='abs')[1]
 
     colors = ''.join(['g' if i >= 0 else 'r' for i in a])
