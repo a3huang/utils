@@ -50,8 +50,9 @@ def dummy_replace(df, cols):
     df = df.copy()
     for col in cols:
         df['missing_%s' % col] = df[col].isnull()
-        df = cbind(df.drop(col, 1), df[col].pipe(dummy))
-    return df
+        df[col] = df[col].astype(str)
+
+    return pd.get_dummies(df)
 
 def time_unit(a, unit):
     '''
