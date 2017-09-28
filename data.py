@@ -44,15 +44,10 @@ def dummy_replace(df, cols):
     Create dummy indicators for each categorical column specified and replace
     the original columns with dummy variables for each level.
 
-    ex) df.pipe(dummy_replace, ['Type 1', 'Type 2'])
+    ex) df.pipe(dummy_replace, cols=['Type 1', 'Type 2'])
     '''
 
-    df = df.copy()
-    for col in cols:
-        df['missing_%s' % col] = df[col].isnull()
-        df[col] = df[col].astype(str)
-
-    return pd.get_dummies(df)
+    return pd.get_dummies(df, columns=cols, dummy_na=True)
 
 def time_unit(a, unit):
     '''
