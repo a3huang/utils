@@ -380,7 +380,7 @@ def compare_data_test(model, datasets, target, omit=None, threshold=0.5, random_
         omit = []
 
     for df in datasets:
-        X = df.drop(omit + [target], 1)
+        X = df[df.columns.difference(omit + [target])]
         y = df[target]
 
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,
@@ -405,11 +405,12 @@ def compare_data_cv(model, datasets, target, omit=None, random_state=42):
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+
     if omit is None:
         omit = []
 
     for df in datasets:
-        X = df.drop(omit + [target], 1)
+        X = df[df.columns.difference(omit + [target])]
         y = df[target]
         print cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
 
@@ -422,10 +423,11 @@ def compare_model_cv(models, df, target, omit=None, random_state=42):
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+
     if omit is None:
         omit = []
 
-    X = df.drop(omit + [target], 1)
+    X = df[df.columns.difference(omit + [target])]
     y = df[target]
 
     for model in models:
@@ -441,6 +443,7 @@ def compare_model_data_cv(models, datasets, target, omit=None, random_state=42):
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+
     if omit is None:
         omit = []
 
@@ -448,7 +451,7 @@ def compare_model_data_cv(models, datasets, target, omit=None, random_state=42):
     for i, df in enumerate(datasets):
         scores_by_df = []
         for model in models:
-            X = df.drop(omit + [target], 1)
+            X = df[df.columns.difference(omit + [target])]
             y = df[target]
             score = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
             scores_by_df.append(score)
