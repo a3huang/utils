@@ -222,6 +222,24 @@ def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=n
     else:
         return pd.crosstab(df[row_var], df[col_var], df[val_var], aggfunc=agg_func, **kwargs)
 
+def time_diff(df, date, user_id):
+    '''
+    Calculates the time difference between consecutive rows of a date variable
+    to obtain the duration of each event in seconds. Marks the time differences
+    that occur between users as NaN.
+
+    Note that the duration of the final event of each user cannot be measured.
+
+    ex) df.pipe(time_diff, date='date', user_id='customer_id')
+    '''
+
+    df = df.copy()
+    df = df.sort_values(by=[user_id, date])
+    df['time_diff'] = df[date].diff().dt.total_seconds()
+    df.loc[df[user_id] != df[user_id].shift(), 'time_diff'] = None
+    df['duration'] = df['time_diff'].shift(-1)
+    return df.drop('time_diff', 1)
+
 def feature_scores(model, X, attr, sort_abs=False, top=None):
     '''
     Calculate importance scores for each feature for a given model.
