@@ -4,6 +4,7 @@ from pandas.tseries.offsets import *
 from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 import numpy as np
 import pandas as pd
@@ -240,7 +241,7 @@ def time_diff(df, date, user_id):
     df['duration'] = df['time_diff'].shift(-1)
     return df.drop('time_diff', 1)
 
-def feature_scores(model, X, attr, sort_abs=False, top=None):
+def feature_scores(model, X, attr, sort_abs=False, top=None, label=0):
     '''
     Calculate importance scores for each feature for a given model.
 
@@ -250,10 +251,7 @@ def feature_scores(model, X, attr, sort_abs=False, top=None):
     if 'pipeline' in str(model.__class__):
         model = model.steps[-1][1]
 
-    scores = getattr(model, attr)
-    if len(scores.shape) > 1:
-        scores = scores[0]
-
+    scores = getattr(model, attr)[label]
     df = pd.DataFrame(zip(X.columns, scores))
 
     if sort_abs:
@@ -626,3 +624,7 @@ def mark_confusion_errors(model, X, y, threshold=0.5):
     df.loc[(df['prediction'] == df['target']), 'error'] = 'Correct'
     df = df.fillna(0)
     return df
+
+def encode_str(a):
+    encoder = preprocessing.LabelEncoder()
+    return encoder.fit_transform(a)
