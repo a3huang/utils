@@ -1,12 +1,14 @@
 from datetime import datetime
 from pandas.tseries.offsets import *
-from patsy import dmatrix
 
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
-from sklearn.metrics import roc_auc_score, confusion_matrix, classification_report
+from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
+from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
+from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
 
 import numpy as np
 import pandas as pd
+
+from patsy import dmatrix
 
 def disjoint_intervals(start, end, step=2):
     '''
@@ -224,7 +226,7 @@ def feature_scores(model, X, attr, sort_abs=False, top=None):
     '''
     Calculate importance scores for each feature for a given model.
 
-    ex) feature_scores(rf, X_train, feature_importances_)
+    ex) feature_scores(rf, xtrain, feature_importances_)
     '''
 
     if 'pipeline' in str(model.__class__):
@@ -247,9 +249,39 @@ def feature_scores(model, X, attr, sort_abs=False, top=None):
     else:
         return df
 
+def mi_ranking(X, y):
+    '''
+    Ranks the variables in the dataset according to their mutual information
+    scores.
+
+    ex) mi_ranking(xtrain, ytrain)
+    '''
+
+    model = SelectKBest(score_func=mutual_info_classif)
+    model.fit(X, y)
+    return feature_scores(model, X, 'scores_')
+
+def rfe_ranking(model, X, y, random_state):
+    '''
+    Ranks the variables in the dataset according to when they were eliminated
+    via RFE with 5-fold CV AUC as the performance measure. A rank of 1 means
+    that the variable should be kept.
+
+    ex) rfe_ranking(model, xtrain, ytrain)
+    '''
+
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+    feature_selector = RFECV(model, cv=cv, scoring='roc_auc')
+    feature_selector.fit(X, y)
+
+    print 'Original AUC: %s' % cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+    print 'Best AUC: %s' % feature_selector.grid_scores_.max()
+
+    return feature_scores(feature_selector, X, 'ranking_').sort_values(by=1)
+
 def top_corr(df, n=None):
     '''
-    Show the top correlated pairs of variables sorted by magnitude.
+    Shows the top correlated pairs of variables sorted by magnitude.
 
     ex) df.pipe(top_corr, n=5)
     '''
@@ -273,7 +305,7 @@ def scoring_table(true_vals, preds):
     problem in the 1st column and true labels in the 2nd column. Creates an
     aggregated scoring table based on deciles.
 
-    ex) scoring_table(cbind(model.predict_proba(X_test)[:, 1], y_test))
+    ex) scoring_table(cbind(model.predict_proba(xtest)[:, 1], y_test))
     '''
 
     scores = cbind(preds, true_vals)
@@ -309,7 +341,7 @@ def scoring_table(true_vals, preds):
 
     return df
 
-def compare_datasets_test(model, datasets, target, omit=None, threshold=0.5, random_state=42):
+def compare_data_test(model, datasets, target, omit=None, threshold=0.5, random_state=42):
     '''
     Compares the AUC, confusion matrix, and classification report (precision,
     recall, f1 score) for a given model over several datasets.
@@ -317,6 +349,9 @@ def compare_datasets_test(model, datasets, target, omit=None, threshold=0.5, ran
     ex) compare_datasets_test(model, [df1, df2, df3, df4, df5], target='cancel',
             omit=['user_id'], threshold=0.1)
     '''
+
+    if omit is None:
+        omit = []
 
     for df in datasets:
         X = df.drop(omit + [target], 1)
@@ -335,7 +370,7 @@ def compare_datasets_test(model, datasets, target, omit=None, threshold=0.5, ran
         print classification_report(true, pred > threshold)
         print
 
-def compare_datasets_cv(model, datasets, target, omit=None, random_state=42):
+def compare_data_cv(model, datasets, target, omit=None, random_state=42):
     '''
     Compares mean 5-fold CV AUC for a given model over several datasets.
 
@@ -344,12 +379,15 @@ def compare_datasets_cv(model, datasets, target, omit=None, random_state=42):
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+    if omit is None:
+        omit = []
+
     for df in datasets:
         X = df.drop(omit + [target], 1)
         y = df[target]
         print cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
 
-def compare_models_cv(models, df, target, omit=None, random_state=42):
+def compare_model_cv(models, df, target, omit=None, random_state=42):
     '''
     Compares mean 5-fold CV AUC for a given dataset over several models.
 
@@ -358,6 +396,9 @@ def compare_models_cv(models, df, target, omit=None, random_state=42):
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+    if omit is None:
+        omit = []
+
     X = df.drop(omit + [target], 1)
     y = df[target]
 
@@ -374,6 +415,8 @@ def compare_model_data_cv(models, datasets, target, omit=None, random_state=42):
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+    if omit is None:
+        omit = []
 
     scores = []
     for i, df in enumerate(datasets):
@@ -553,7 +596,6 @@ def interaction(df, col1, col2):
     X = dmatrix(formula, df)
     return pd.DataFrame(X, columns=X.design_info.column_names)
 
-
 def mark_confusion_errors(model, X, y, threshold=0.5):
     target = pd.DataFrame(y)
     target.columns = ['target']
@@ -566,30 +608,3 @@ def mark_confusion_errors(model, X, y, threshold=0.5):
     df.loc[(df['prediction'] == df['target']), 'error'] = 'Correct'
     df = df.fillna(0)
     return df
-
-def compare_roc_curves(model, datasets, target, omit=None, threshold=0.5, random_state=42):
-    '''
-    Compares the ROC curves for a given model on a fixed test set of the data.
-
-    ex) compare_roc_curves(model, [df1, df2, df3, df4, df5], target='cancel',
-            omit=['user_id'], threshold=0.1)
-    '''
-
-    for df in datasets:
-        X = df.drop(omit + [target], 1)
-        y = df[target]
-
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,
-            random_state=random_state)
-
-        model.fit(X_train, y_train)
-
-        pred = model.predict_proba(X_test)[:, 1]
-        true = y_test
-
-        fpr, tpr, _ = roc_curve(true, pred)
-        plt.plot(fpr, tpr)
-
-    plt.plot([0, 1], [0, 1], linestyle='--')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
