@@ -267,7 +267,7 @@ def top_corr(df, n=None):
     else:
         return a
 
-def scoring_table(scores):
+def scoring_table(true_vals, preds):
     '''
     Takes a dataframe containing predicted scores for a binary classification
     problem in the 1st column and true labels in the 2nd column. Creates an
@@ -276,6 +276,7 @@ def scoring_table(scores):
     ex) scoring_table(cbind(model.predict_proba(X_test)[:, 1], y_test))
     '''
 
+    scores = cbind(preds, true_vals)
     scores.columns = ['scores', 'target']
     scores = scores.sort_values(by='scores', ascending=False).reset_index(drop=True)
     scores['Decile'] = pd.qcut(scores.index, 10, labels=False) + 1
@@ -293,7 +294,7 @@ def scoring_table(scores):
     df['composition_1'] = df['count_1'] / float(len(scores[scores['target'] == 1]))
     df['cumulative_1'] = df['composition_1'].cumsum()
 
-    df['KS'] = df['cumulataive_1'] - df['cumulative_0']
+    df['KS'] = df['cumulative_1'] - df['cumulative_0']
     df['rate'] = df['count_1'] / df['count']
     df['index'] = df['rate'] / (len(scores[scores['target'] == 1]) / float(len(scores))) * 100
     df = df.round(2)
