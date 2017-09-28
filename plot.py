@@ -531,7 +531,7 @@ def plot_class_metrics(model, X, y, label=1):
     precision scores. Creates a line plot of the threshold values vs. each of
     the metrics.
 
-    ex) plot_class_metrics(model, X_train, y_train)
+    ex) plot_class_metrics(model, xtrain ytrain)
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True)
@@ -565,7 +565,7 @@ def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False, label=1):
     '''
     Creates a heat map of the confusion matrix for the given model and data.
 
-    ex) plot_confusion_matrix(model, X_test, y_test, normalize='index')
+    ex) plot_confusion_matrix(model, xtest, ytest, normalize='index')
     '''
 
     true = y.pipe(dummy).iloc[:, label]
@@ -575,10 +575,33 @@ def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False, label=1):
     except:
         pred = pd.Series(model.predict(X)).pipe(dummy).iloc[:, label]
 
-    a = confusion_matrix(true, pred).astype(float)
+    a = confusion_matrix(y, pred).astype(float)
 
     if normalize == 'index':
         a = np.divide(a, np.sum(a, 1).reshape(2, 1))
+    elif normalize == 'column':
+        a = np.divide(a, np.sum(a, 0))
+
+    sns.heatmap(a, annot=True, fmt='.2f')
+    plt.ylabel('True')
+    plt.title('Predicted')
+
+
+def plot_multi_confusion_matrix(model, X, y, normalize=False):
+    '''
+    Creates a heat map of the multilabel confusion matrix for the given model
+    and data.
+
+    ex) plot_multi_confusion_matrix(model, xtest, ytest, normalize='index')
+    '''
+
+    true = y
+    pred = model.predict(X)
+
+    a = confusion_matrix(true, pred).astype(float)
+
+    if normalize == 'index':
+        a = np.divide(a, np.sum(a, 1).reshape(len(a), 1))
     elif normalize == 'column':
         a = np.divide(a, np.sum(a, 0))
 
@@ -590,7 +613,7 @@ def plot_roc_curves(model, X, y, label=1):
     '''
     Creates a line plot of the roc curve for the given model and data.
 
-    ex) plot_roc_curves(model, X_test, y_test)
+    ex) plot_roc_curves(model, xtest, ytest)
     '''
 
     true = y.pipe(dummy).iloc[:, label]
@@ -644,7 +667,7 @@ def plot_learning_curves(model, X, y):
     over the 5 validation sets. Creates a line plot of the sample sizes vs.
     the mean CV train set scores and the mean CV validation set scores.
 
-    ex) plot_learning_curves(model, X_train, y_train)
+    ex) plot_learning_curves(model, xtrain ytrain)
     '''
 
     cv = StratifiedKFold(n_splits=5, shuffle=True)
@@ -659,7 +682,7 @@ def plot_calibration_curve(model, X, y):
     '''
     Creates a line plot of the calibration curve for the given model and data.
 
-    ex) plot_calibration_curve(model, X_test, y_test)
+    ex) plot_calibration_curve(model, xtest, ytest)
     '''
 
     fp, mv = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
@@ -673,7 +696,7 @@ def plot_score_dists(model, X, y):
     Creates a density plot of model scores grouped by the target class. Useful
     for seeing how well the model separates out the target classes.
 
-    ex) plot_score_dists(model, X_test, y_test)
+    ex) plot_score_dists(model, xtest, ytest)
     '''
 
     df = cbind(y, model.predict_proba(X)[:, 1]).rename(columns={0: 'score'})
