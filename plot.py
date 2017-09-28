@@ -602,6 +602,37 @@ def plot_roc_curves(model, X, y):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
 
+def compare_data_roc_curves(model, datasets, target, omit=None, threshold=0.5,
+                            random_state=42):
+    '''
+    Compares the ROC curves for a given model over several datasets.
+
+    ex) compare_roc_curves(model, [df1, df2, df3, df4, df5], target='cancel',
+            omit=['user_id'], threshold=0.1)
+    '''
+
+    if omit is None:
+        omit = []
+
+    for df in datasets:
+        X = df.drop(omit + [target], 1)
+        y = df[target]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,
+            random_state=random_state)
+
+        model.fit(X_train, y_train)
+
+        pred = model.predict_proba(X_test)[:, 1]
+        true = y_test
+
+        fpr, tpr, _ = roc_curve(true, pred)
+        plt.plot(fpr, tpr)
+
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+
 def plot_learning_curves(model, X, y):
     '''
     For each sample size, splits the given data into 5 CV train test pairs.
