@@ -733,3 +733,4 @@ def plot_survival_curves(df, time, event, by=None):
         E = df[event]
         kmf.fit(T, event_observed=E)
         kmf.survival_function_.plot(ax=ax)
+        plt.legend().remove()
