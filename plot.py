@@ -731,6 +731,8 @@ def plot_explanations(explainer, model, X, i=None):
     if i is None:
         i = np.random.randint(0, X.shape[0])
 
+    i = int(i)
+
     explanation = explainer.explain_instance(X.values[i], model.predict_proba)
 
     a = pd.DataFrame(explanation.as_list()).sort_index(ascending=False).set_index(0)[1]
