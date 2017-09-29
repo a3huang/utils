@@ -562,6 +562,28 @@ def plot_class_metrics(model, X, y, label=1):
     plt.plot(np.linspace(.1, 1, 10), outer_precision, label='precision')
     plt.legend(title='Metric', loc=(1, 0))
 
+def plot_classification_report(model, X, y):
+    '''
+    Creates a heat map of the classification report for the given model.
+
+    ex) plot_classification_report(model, xtest, ytest)
+    '''
+
+    a = classification_report(y, model.predict(X))
+    lines = a.split('\n')[2:-3]
+
+    classes = []
+    matrix = []
+    for line in lines:
+        s = line.split()
+        classes.append(s[0])
+        matrix.append([float(x) for x in s[1:-1]])
+
+    df = pd.DataFrame(matrix, index=classes, columns=['precision', 'recall', 'f1'])
+
+    sns.heatmap(df, annot=True, fmt='.2f')
+    plt.ylabel('Class')
+
 def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False, label=1):
     '''
     Creates a heat map of the confusion matrix for the given model and data.
