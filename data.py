@@ -261,7 +261,9 @@ def feature_scores(model, X, attr, sort_abs=False, top=None, label=0):
     if 'pipeline' in str(model.__class__):
         model = model.steps[-1][1]
 
-    scores = getattr(model, attr)[label]
+    scores = getattr(model, attr)
+    if len(scores.shape) > 1:
+        scores = scores[label]
     df = pd.DataFrame(zip(X.columns, scores))
 
     if sort_abs:
@@ -553,20 +555,20 @@ def cut(a, bin_width=None, bin_range=None, num_bins=None):
     bin_edges = [min_edge + bin_width * i for i in range(num_bins + 1)]
     return pd.cut(a, bins=bin_edges, include_lowest=True)
 
-def reduce_cardinality(a, n):
-    '''
-    Reduce the number of unique values of a variable. For a categorical variable,
-    n specifies the number of categories. For a continuous variable, n specifies
-    the bin widths.
-
-    ex) df[col].pipe(reduce_cardinality, num_values=5)
-    '''
-
-    if a.dtype == 'O':
-        return top(a, n)
-
-    elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
-        return cut(a, bin_width=n)
+# def reduce_cardinality(a, n):
+#     '''
+#     Reduce the number of unique values of a variable. For a categorical variable,
+#     n specifies the number of categories. For a continuous variable, n specifies
+#     the bin widths.
+#
+#     ex) df[col].pipe(reduce_cardinality, num_values=5)
+#     '''
+#
+#     if a.dtype == 'O':
+#         return top(a, n)
+#
+#     elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
+#         return cut(a, bin_width=n)
 
 def filter_time_window(df, left_offset, right_offset, frequency):
     '''
@@ -637,3 +639,9 @@ def mark_confusion_errors(model, X, y, threshold=0.5):
     df.loc[(df['prediction'] == df['target']), 'error'] = 'Correct'
     df = df.fillna(0)
     return df
+
+def sample(a, index=False):
+    if index == True:
+        return a.sample(1).index[0]
+    else:
+        return a.sample(1).values[0]
