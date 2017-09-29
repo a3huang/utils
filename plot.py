@@ -545,8 +545,9 @@ def plot_class_metrics(model, X, y, label=1):
         inner_precision = []
 
         for train, test in cv.split(X, y):
-            true = pd.Series(y.values[test]).pipe(dummy).iloc[:, label]
-            pred = model.predict_proba(X.values[test])[:, label] > threshold
+            model.fit(X.iloc[train], y.iloc[train])
+            true = pd.Series(y.iloc[test]).pipe(dummy).iloc[:, label]
+            pred = model.predict_proba(X.iloc[test])[:, label] > threshold
 
             inner_f1.append(f1_score(true, pred))
             inner_recall.append(recall_score(true, pred))
@@ -710,7 +711,7 @@ def plot_top_features(model, X, attr, n=10, label=0):
     ex) plot_top_features(model, X_train, 'coef_')
     '''
 
-    scores = feature_scores(model, X, 'coef_', sort_abs=True, label=label)[:n]
+    scores = feature_scores(model, X, attr, sort_abs=True, label=label)[:n]
     a = scores.set_index(0).sort_values(by='abs')[1]
 
     colors = ''.join(['g' if i >= 0 else 'r' for i in a])
