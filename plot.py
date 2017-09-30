@@ -562,14 +562,19 @@ def plot_class_metrics(model, X, y, label=1):
     plt.plot(np.linspace(.1, 1, 10), outer_precision, label='precision')
     plt.legend(title='Metric', loc=(1, 0))
 
-def plot_classification_report(model, X, y):
+def plot_classification_report(model, X, y, threshold=0.5):
     '''
     Creates a heat map of the classification report for the given model.
 
     ex) plot_classification_report(model, xtest, ytest)
     '''
 
-    a = classification_report(y, model.predict(X))
+    if len(y.value_counts()) > 2:
+        pred = model.predict(X)
+    else:
+        pred = model.predict_proba(X)[:, 1] > threshold
+
+    a = classification_report(y, pred)
     lines = a.split('\n')[2:-3]
 
     classes = []
@@ -652,19 +657,19 @@ def plot_roc_curves(model, X, y, label=1):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
 
-def compare_data_roc_curves(model, datasets, target, omit=None, threshold=0.5,
+def compare_data_roc_curves(model, datasets, target, omit=None,
                             random_state=42):
     '''
     Compares the ROC curves for a given model over several datasets.
 
-    ex) compare_roc_curves(model, [df1, df2, df3, df4, df5], target='cancel',
-            omit=['user_id'], threshold=0.1)
+    ex) compare_data_roc_curves(model, [df1, df2, df3, df4, df5], target='cancel',
+            omit=['user_id'])
     '''
 
     if omit is None:
         omit = []
 
-    for df in datasets:
+    for i, df in enumerate(datasets, 1):
         X = df.drop(omit + [target], 1)
         y = df[target]
 
@@ -677,11 +682,12 @@ def compare_data_roc_curves(model, datasets, target, omit=None, threshold=0.5,
         true = y_test
 
         fpr, tpr, _ = roc_curve(true, pred)
-        plt.plot(fpr, tpr)
+        plt.plot(fpr, tpr, label=i)
 
     plt.plot([0, 1], [0, 1], linestyle='--')
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
+    plt.legend(title='dataset', loc=(1, 0))
 
 def plot_learning_curves(model, X, y):
     '''
