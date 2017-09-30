@@ -50,7 +50,14 @@ def dummy_replace(df, cols):
     ex) df.pipe(dummy_replace, cols=['Type 1', 'Type 2'])
     '''
 
-    return pd.get_dummies(df, columns=cols, dummy_na=True)
+    a = pd.get_dummies(df, columns=cols, dummy_na=True)
+
+    nan_cols = [i for i in a.columns if '_nan' in i]
+    for col in nan_cols:
+        if len(a[col].value_counts()) == 1:
+            a = a.drop(col, 1)
+
+    return a
 
 def time_unit(a, unit):
     '''
