@@ -162,15 +162,6 @@ def filter_u(df, f, user_id):
     ids = df.pipe(query, f)[user_id].unique()
     return df[df[user_id].isin(ids)]
 
-def count_missing(df):
-    '''
-    Count the number of missing values in each column.
-
-    ex) df.pipe(count_missing).iloc[:5].sort_values().plot.barh()
-    '''
-
-    return df.isnull().sum()
-
 def check_unique(df, col):
     '''
     Check if given column values are unique.
@@ -194,6 +185,20 @@ def show_duplicates(df, col):
     duplicates = counts[counts > 1].index
     return df[df[col].isin(duplicates)].sort_values(by=col)
 
+def show_missing(df, normalize=False):
+    '''
+    Shows the number of missing values for each variable.
+
+    ex) df.pipe(show_missing).iloc[:5].sort_values().plot.barh()
+    '''
+
+    a = df.isnull().sum()
+
+    if normalize == True:
+        a = a / df.shape[0]
+
+    return a
+
 def show_constant_var(df):
     '''
     Shows variables in dataframe that are constant.
@@ -205,7 +210,8 @@ def show_constant_var(df):
 
 def show_low_var(df):
     '''
-    Shows variables in dataframe sorted increasing from lowest standard deviation.
+    Shows variables in dataframe sorted increasing from lowest standard
+    deviation.
 
     ex) df.pipe(show_low_var)
     '''
