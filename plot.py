@@ -451,12 +451,13 @@ def timeunit_heatplot(df, date, freq='M', unit='weekday', col=None):
     plt.gca().set_xticklabels(new_labels)
     plt.ylabel(unit)
 
-def generate_distributions(df, by, folder_name, omit=None, default_dir='/Users/alexhuang/'):
+def generate_distribution_plots(df, by, folder_name, omit=None,
+                                default_dir='/Users/alexhuang/'):
     '''
-    Generates and saves box plots for each continuous variable and bar plots for
-    each categorical variable that grouped by the given categorical variable.
+    Generates a box plot for each continuous variable and a bar plot for each
+    categorical variable that are grouped by the given categorical variable.
 
-    ex) df.pipe(generate_distributions, by='Target', folder_name='plots')
+    ex) df.pipe(generate_distribution_plots, by='Target', folder_name='plots')
     '''
 
     df = df.copy()
@@ -480,6 +481,39 @@ def generate_distributions(df, by, folder_name, omit=None, default_dir='/Users/a
 
         plt.xlabel('')
         plt.title(col)
+        plt.savefig(directory + '%s.png' % i, bbox_inches="tight")
+        plt.close()
+        print 'Saved Plot: %s' % col
+
+def generate_partial_dependence_plots(df, target, folder_name, omit=None,
+                                      default_dir='/Users/alexhuang/'):
+    '''
+    Fits a Logistic GAM and generates the partial dependence plot for each
+    variable against the target variable.
+
+    ex) df.pipe(generate_partial_dependence_plots, target='Target',
+                folder_name='plots')
+    '''
+
+    df = df.copy()
+
+    if omit:
+        df = df.drop(omit, 1)
+
+    X = df[df.columns.difference([target])]
+    y = df[target]
+
+    directory = default_dir + folder_name + '/'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
+    gam = LogisticGAM().gridsearch(X, y)
+    grid = generate_X_grid(gam)
+
+    for i in range(len(X.columns)):
+        p = gam.partial_dependence(grid, feature=i)
+        plt.plot(grid[:, i], p)
+        plt.title(X.columns[i])
         plt.savefig(directory + '%s.png' % i, bbox_inches="tight")
         plt.close()
         print 'Saved Plot: %s' % col
