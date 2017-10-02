@@ -11,7 +11,7 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import confusion_matrix, roc_curve, f1_score, \
         recall_score, precision_score
 from sklearn.model_selection import learning_curve, StratifiedKFold
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 
@@ -340,8 +340,9 @@ def multicol_heatplot(df, by, cols):
 
     ex) df.pipe(multicol_heatplot, 'Legendary', ['HP', 'Attack', 'Defense'])
     '''
+    
+    s = MinMaxScaler()
 
-    s = StandardScaler()
     a = pd.DataFrame(s.fit_transform(df.fillna(0)[cols]), columns=cols)
     a = cbind(a, df[by])
     a = a.groupby(by)[cols].mean()
