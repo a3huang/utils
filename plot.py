@@ -531,31 +531,19 @@ def plot_class_metrics(model, X, y, label=1):
     precision scores. Creates a line plot of the threshold values vs. each of
     the metrics.
 
-    ex) plot_class_metrics(model, xtrain ytrain)
+    ex) plot_class_metrics(model, xtest ytest)
     '''
-
-    cv = StratifiedKFold(n_splits=5, shuffle=True)
 
     outer_f1 = []
     outer_recall = []
     outer_precision = []
     for threshold in np.linspace(.1, 1, 10):
-        inner_f1 = []
-        inner_recall = []
-        inner_precision = []
+         true = pd.Series(y).pipe(dummy).iloc[:, label]
+         pred = model.predict_proba(X)[:, label] > threshold
 
-        for train, test in cv.split(X, y):
-            model.fit(X.iloc[train], y.iloc[train])
-            true = pd.Series(y.iloc[test]).pipe(dummy).iloc[:, label]
-            pred = model.predict_proba(X.iloc[test])[:, label] > threshold
-
-            inner_f1.append(f1_score(true, pred))
-            inner_recall.append(recall_score(true, pred))
-            inner_precision.append(precision_score(true, pred))
-
-        outer_f1.append(np.mean(inner_f1))
-        outer_recall.append(np.mean(inner_recall))
-        outer_precision.append(np.mean(inner_precision))
+         outer_f1.append(f1_score(true, pred))
+         outer_recall.append(recall_score(true, pred))
+         outer_precision.append(precision_score(true, pred))
 
     plt.plot(np.linspace(.1, 1, 10), outer_f1, label='f1')
     plt.plot(np.linspace(.1, 1, 10), outer_recall, label='recall')
