@@ -9,8 +9,6 @@ from sklearn.preprocessing import LabelEncoder
 import numpy as np
 import pandas as pd
 
-from patsy import dmatrix
-
 def disjoint_intervals(start, end, step=2):
     '''
     Create 2-tuples of integers where each end point is equal to the next
@@ -67,18 +65,6 @@ def time_unit(a, unit):
     '''
 
     return getattr(a.dt, unit)
-
-def qcut(a, q=10):
-    '''
-    Cut a continuous variable into quantiles with the smallest quantile equal
-    to 1. Unlike pd.cut, allows for repeated bin edges.
-
-    ex) df['HP'].pipe(qcut)
-    '''
-
-    a = a.sort_values().reset_index().reset_index()
-    a['quantile'] = pd.qcut(a['level_0'], 10, labels=False) + 1
-    return a.set_index('index').sort_index().reset_index()['quantile']
 
 def top(a, n=None):
     '''
@@ -583,11 +569,12 @@ def cut(a, bin_width=None, bin_range=None, num_bins=None):
 #     elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
 #         return cut(a, bin_width=n)
 
-def filter_time_window(df, left_offset, right_offset, frequency):
+def relative_time_window(df, left_offset, right_offset, frequency):
     '''
-    Filter rows of a transactional dataframe with date lying within the specified time window.
+    Filter rows of a transactional dataframe with date lying within a relative
+    time window.
 
-    ex) df.pipe(filter_time_window, 1, 2, freq='7D')
+    ex) df.pipe(relative_time_window, 1, 2, freq='7D')
     '''
 
     df = df.copy()
@@ -629,32 +616,32 @@ def timeseries(df, datecol, user_col, freq, aggfunc):
     a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
     return a.reset_index()
 
-def interaction(df, col1, col2):
-    '''
-    Create interaction terms between 2 variables.
-
-    ex) df.pipe(interaction, col1, col2)
-    '''
-
-    formula = '%s:%s - 1' % (col1, col2)
-    X = dmatrix(formula, df)
-    return pd.DataFrame(X, columns=X.design_info.column_names)
-
-def mark_confusion_errors(model, X, y, threshold=0.5):
-    target = pd.DataFrame(y)
-    target.columns = ['target']
-
-    prediction = pd.DataFrame(model.predict_proba(X)[:, 1] > threshold, columns=['prediction'])
-
-    df = cbind([X, target, prediction])
-    df.loc[(df['prediction'] == 1) & (df['target'] == 0), 'error'] = 'FP'
-    df.loc[(df['prediction'] == 0) & (df['target'] == 1), 'error'] = 'FN'
-    df.loc[(df['prediction'] == df['target']), 'error'] = 'Correct'
-    df = df.fillna(0)
-    return df
-
 def sample(a, index=False):
     if index == True:
         return a.sample(1).index[0]
     else:
         return a.sample(1).values[0]
+
+def binned_barplot(df, col, bins=5):
+    a = pd.cut(df[col], bins=bins).value_counts()
+    a.sort_index(ascending=False).plot.barh()
+
+def binned_lineplot(df, by, col, bins=5):
+    df = df.copy()
+    df[by] = pd.cut(df[by], bins=bins, include_lowest=True)
+    df.groupby(by)[col].mean().plot()
+    plt.xticks(rotation=90)
+
+def plot_parallel_coordinates(df, by, cols, n=1000, ax=None):
+    df1 = df.sample(n)[cols + [by]]
+
+    s = MinMaxScaler()
+
+    df2 = cbind(pd.DataFrame(s.fit_transform(df1.iloc[:, :-1]), columns=cols), df1[by])
+
+    parallel_coordinates(df2, by, ax=ax)
+    plt.xticks(rotation=90)
+
+def plot_radviz(df, by, cols, n=1000, ax=None):
+    df1 = df.sample(n)[cols + [by]]
+    radviz(df1, by, ax=ax)
