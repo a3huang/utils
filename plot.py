@@ -340,7 +340,7 @@ def multicol_heatplot(df, by, cols):
 
     ex) df.pipe(multicol_heatplot, 'Legendary', ['HP', 'Attack', 'Defense'])
     '''
-    
+
     s = MinMaxScaler()
 
     a = pd.DataFrame(s.fit_transform(df.fillna(0)[cols]), columns=cols)
@@ -519,7 +519,7 @@ def generate_partial_dependence_plots(df, target, folder_name, omit=None,
         plt.close()
         print 'Saved Plot: %s' % col
 
-def plot_interaction(df, col, by, val, heat=False):
+def plot_interaction(df, col, by, val, kind='line'):
     '''
     Creates an interaction line plot or heat map between 2 predictor variables and
     a 3rd target variable.
@@ -529,11 +529,14 @@ def plot_interaction(df, col, by, val, heat=False):
 
     a = df.pipe(table, col, by, val)
 
-    if heat:
+    if kind == 'box':
+        sns.boxplot(x=col, y=val, hue=by, data=df)
+    elif kind == 'heat':
         sns.heatmap(a, annot=True, fmt='.2f')
-    else:
+    elif kind == 'line':
         a.plot()
-        plt.legend(title=by, loc=(1, 0))
+
+    plt.legend(title=by, loc=(1, 0))
 
 def plot_2d_projection(df, by, method=None, sample_size=None):
     '''
