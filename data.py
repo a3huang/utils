@@ -645,3 +645,30 @@ def plot_parallel_coordinates(df, by, cols, n=1000, ax=None):
 def plot_radviz(df, by, cols, n=1000, ax=None):
     df1 = df.sample(n)[cols + [by]]
     radviz(df1, by, ax=ax)
+
+def cohort_monthly_retention_table(users):
+    '''
+    Note: users table must contain unique users.
+    '''
+
+    users = users.copy()
+    users = users[['user_id', 'start', 'end']]
+
+    date_range = (datetime.now() - users['start'].min()).days / 30
+    date_buckets = pd.date_range(start=users['start'].min(), periods=date_range, freq='M')
+    date_buckets_names = ['month %s' % i for i in range(1, date_range+1)]
+    users = pd.concat([users, pd.DataFrame(columns=date_buckets_names)])
+    users.loc[:, date_buckets_names] = date_buckets
+
+    df = users.melt(['user_id', 'start', 'end', 'new'], users.columns.difference(['user_id', 'start', 'end']))
+    df = df.rename(columns={'value': 'date'})
+    df = df.pipe(filter, lambda x: (x['date'].between(x['start'], x['end'])) | (x['end'].isnull()))\
+           .pipe(filter, lambda x: x['date'] <= datetime.now())
+
+    start = pd.Grouper(key='start', freq='M')
+    date = pd.Grouper(key='date', freq='M')
+
+    table = df.groupby([start, date]).size().unstack()
+    table['new'] = users.groupby(start).size()
+    table = table[['new'] + table.columns[:-1].tolist()]
+    return table
