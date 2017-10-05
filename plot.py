@@ -22,7 +22,7 @@ import subprocess
 
 from utils.data import *
 
-def dummy_categorical(df, n):
+def dummy_categorical(df, n, shuffle=False):
     '''
     Creates a categorical variable with labels 1 to n for testing purposes.
 
@@ -38,7 +38,12 @@ def dummy_categorical(df, n):
     for i in range(2, n+1):
         a.append(np.full((size, 1), i))
 
-    return pd.DataFrame(np.append(a[0], a[1:]))
+    b = pd.DataFrame(np.append(a[0], a[1:]))
+
+    if shuffle:
+        b = np.random.permutation(b)
+
+    return b
 
 def dummy_continuous(df, loc=0, scale=1):
     '''
