@@ -646,13 +646,15 @@ def plot_radviz(df, by, cols, n=1000, ax=None):
     df1 = df.sample(n)[cols + [by]]
     radviz(df1, by, ax=ax)
 
-def cohort_monthly_retention_table(users):
-    '''
-    Note: users table must contain unique users.
-    '''
-
+def cohort_monthly_retention_table(users, by=None):
     users = users.copy()
-    users = users[['user_id', 'start', 'end']]
+
+    if by:
+        cols = ['user_id', 'start', 'end', by]
+    else:
+        cols = ['user_id', 'start', 'end']
+
+    users = users[cols]
 
     date_range = (datetime.now() - users['start'].min()).days / 30
     date_buckets = pd.date_range(start=users['start'].min(), periods=date_range, freq='M')
@@ -660,7 +662,7 @@ def cohort_monthly_retention_table(users):
     users = pd.concat([users, pd.DataFrame(columns=date_buckets_names)])
     users.loc[:, date_buckets_names] = date_buckets
 
-    df = users.melt(['user_id', 'start', 'end', 'new'], users.columns.difference(['user_id', 'start', 'end']))
+    df = users.melt(id_vars=cols, value_vars=users.columns.difference(cols))
     df = df.rename(columns={'value': 'date'})
     df = df.pipe(filter, lambda x: (x['date'].between(x['start'], x['end'])) | (x['end'].isnull()))\
            .pipe(filter, lambda x: x['date'] <= datetime.now())
@@ -668,7 +670,19 @@ def cohort_monthly_retention_table(users):
     start = pd.Grouper(key='start', freq='M')
     date = pd.Grouper(key='date', freq='M')
 
-    table = df.groupby([start, date]).size().unstack()
-    table['new'] = users.groupby(start).size()
+    if by:
+        group = by
+    else:
+        group = start
+
+    table = df.groupby([group, date]).size().unstack()
+    table['new'] = users.groupby(group).size()
     table = table[['new'] + table.columns[:-1].tolist()]
     return table
+
+def unique_events(df, date, user_id, event):
+    df = df.copy()
+    df = df.sort_values([user_id, date])
+    df['event_change'] = (df[event] != df[event].shift()) | (df[user_id] != df[user_id].shift())
+    df['event_id'] = df.groupby(user_id)['event_change'].cumsum()
+    return df.groupby([user_id, 'event_id']).head(1).drop(['event_change', 'event_id'], 1)
