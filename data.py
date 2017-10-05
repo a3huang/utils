@@ -686,3 +686,20 @@ def unique_events(df, date, user_id, event):
     df['event_change'] = (df[event] != df[event].shift()) | (df[user_id] != df[user_id].shift())
     df['event_id'] = df.groupby(user_id)['event_change'].cumsum()
     return df.groupby([user_id, 'event_id']).head(1).drop(['event_change', 'event_id'], 1)
+
+def jaccard_similarity_table(df, col1, col2):
+    col1_vals = df[col1].dropna().unique()
+    col2_vals = df[col2].dropna().unique()
+
+    m = col1_vals.shape[0]
+    n = col2_vals.shape[0]
+
+    a = np.zeros((m, n))
+
+    for i, j in product(range(m), range(n)):
+        top = df[(df[col1] == col1_vals[i]) & (df[col2] == col2_vals[j])].shape[0]
+        bot = df[(df[col1] == col1_vals[i]) | (df[col2] == col2_vals[j])].shape[0]
+        a[i, j] = top / float(bot)
+
+    a = pd.DataFrame(a, index=col1_vals, columns=col2_vals)
+    return a
