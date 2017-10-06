@@ -676,11 +676,7 @@ def plot_roc_curves(model, X, y, label=1):
     '''
 
     true = y.pipe(dummy).iloc[:, label]
-
-    try:
-        pred = model.predict_proba(X)[:, label]
-    except:
-        pred = pd.Series(model.predict(X)).pipe(dummy).iloc[:, label]
+    pred = model.predict_proba(X)[:, label]
 
     fpr, tpr, _ = roc_curve(true, pred)
     plt.plot(fpr, tpr)
