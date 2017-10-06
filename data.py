@@ -1,6 +1,7 @@
 from datetime import datetime
 from pandas.tseries.offsets import *
 
+from boruta import BorutaPy
 from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
@@ -303,6 +304,21 @@ def rfe_ranking(model, X, y, random_state):
 
     print 'Original AUC: %s' % cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
     print 'Best AUC: %s' % feature_selector.grid_scores_.max()
+
+    return feature_scores(feature_selector, X, 'ranking_').sort_values(by=1)
+
+def boruta_ranking(model, X, y, random_state):
+    '''
+    Ranks the variables in the dataset according to their relevance in
+    predicting the target variable. A rank of 1 means that the variable is
+    important while a rank of 2 means that it is tenatively important.
+
+    ex) boruta_ranking(model, xtrain, ytrain)
+    '''
+
+    model = GradientBoostingClassifier(n_jobs=-1)
+    feature_selector = BorutaPy(model, n_estimators='auto')
+    feature_selector.fit(X.values, y.values)
 
     return feature_scores(feature_selector, X, 'ranking_').sort_values(by=1)
 
