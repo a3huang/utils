@@ -316,8 +316,8 @@ def boruta_ranking(model, X, y, random_state):
     ex) boruta_ranking(model, xtrain, ytrain)
     '''
 
-    model = GradientBoostingClassifier(n_jobs=-1)
-    feature_selector = BorutaPy(model, n_estimators='auto')
+    model = RandomForestClassifier(n_jobs=-1, max_depth=5, random_state=random_state)
+    feature_selector = BorutaPy(model, n_estimators='auto', random_state=random_state)
     feature_selector.fit(X.values, y.values)
 
     return feature_scores(feature_selector, X, 'ranking_').sort_values(by=1)
