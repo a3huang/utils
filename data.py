@@ -719,3 +719,28 @@ def jaccard_similarity_table(df, col1, col2):
 
     a = pd.DataFrame(a, index=col1_vals, columns=col2_vals)
     return a
+
+class OneHotEncode(TransformerMixin):
+    def __init__(self, col):
+        self.col = col
+
+    def fit(self, X, y=None):
+        X = pd.get_dummies(X[self.col], dummy_na=True)
+        self.columns = X.columns
+        return self
+
+    def transform(self, X):
+        Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
+        return cbind(X.drop(self.col, 1), Xdummy.T.reindex(self.columns).T.fillna(0))
+
+class CategoricalImputer(TransformerMixin):
+    def __init__(self, col):
+        self.col = col
+
+    def fit(self, X, y=None):
+        self.val = X[self.col].apply(lambda x: x.value_counts().index[0])
+        return self
+
+    def transform(self, X):
+        a = X[self.col].fillna(self.val)
+        return cbind(X.drop(self.col, 1), a)
