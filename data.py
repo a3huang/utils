@@ -571,21 +571,6 @@ def cut(a, bin_width=None, bin_range=None, num_bins=None):
     bin_edges = [min_edge + bin_width * i for i in range(num_bins + 1)]
     return pd.cut(a, bins=bin_edges, include_lowest=True)
 
-# def reduce_cardinality(a, n):
-#     '''
-#     Reduce the number of unique values of a variable. For a categorical variable,
-#     n specifies the number of categories. For a continuous variable, n specifies
-#     the bin widths.
-#
-#     ex) df[col].pipe(reduce_cardinality, num_values=5)
-#     '''
-#
-#     if a.dtype == 'O':
-#         return top(a, n)
-#
-#     elif a.dtype in ['int32', 'int64', 'float32', 'float64']:
-#         return cut(a, bin_width=n)
-
 def relative_time_window(df, left_offset, right_offset, frequency):
     '''
     Filter rows of a transactional dataframe with date lying within a relative
@@ -601,22 +586,6 @@ def relative_time_window(df, left_offset, right_offset, frequency):
     df['right_bound'] = df.set_index('start').shift(periods=right_offset, freq=freq).index
     df = df.query('left_bound <= date < right_bound')
     return df
-
-# def mark_timestep(df, unit):
-#     '''
-#     df.pipe(mark_timestep, 'week')
-#     '''
-#     df = df.copy()
-#     df['date'] = pd.to_datetime(df['date'])
-#     df['start'] = pd.to_datetime(df['start'])
-#
-#     time_difference = (df['date'] - df['start']).dt.total_seconds()
-#     unit_dict = {'sec': 1, 'min': 60, 'hour': 3600, 'day': 3600*24, 'week': 3600*24*7}
-#
-#     df['timestep'] = time_difference / unit_dict[unit] + 1
-#     df['timestep'] = df['timestep'].astype(int)
-#
-#     return df
 
 def timeseries(df, datecol, user_col, freq, aggfunc):
     # if want to start on monday -> choose W-SUN
@@ -642,12 +611,6 @@ def sample(a, index=False):
 def binned_barplot(df, col, bins=5):
     a = pd.cut(df[col], bins=bins).value_counts()
     a.sort_index(ascending=False).plot.barh()
-
-def binned_lineplot(df, by, col, bins=5):
-    df = df.copy()
-    df[by] = pd.cut(df[by], bins=bins, include_lowest=True)
-    df.groupby(by)[col].mean().plot()
-    plt.xticks(rotation=90)
 
 def plot_parallel_coordinates(df, by, cols, n=1000, ax=None):
     df1 = df.sample(n)[cols + [by]]
