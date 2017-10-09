@@ -708,3 +708,9 @@ class CategoricalImputer(TransformerMixin):
     def transform(self, X):
         a = X[self.col].fillna(self.val)
         return cbind(X.drop(self.col, 1), a)
+
+def model_pred_corrs(models, X):
+    scores = []
+    for model in models:
+        scores.append(model.predict_proba(X)[:, 1])
+    return cbind(scores).T.corr()
