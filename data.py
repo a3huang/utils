@@ -2,6 +2,7 @@ from datetime import datetime
 from pandas.tseries.offsets import *
 
 from boruta import BorutaPy
+from sklearn.base import TransformerMixin
 from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
