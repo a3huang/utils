@@ -850,3 +850,16 @@ def plot_survival_curves(df, time, event, by=None):
         kmf.fit(T, event_observed=E)
         kmf.survival_function_.plot(ax=ax)
         plt.legend().remove()
+
+def plot_cont_vs_binary(df, by, col, bins=5):
+    '''
+    Creates a line plot of the mean of a binary target variable grouped by a
+    binned continuous variable.
+
+    ex) df.pipe(plot_cont_vs_binary, by='HP', col='Legendary', bins=10)
+    '''
+
+    df = df.copy()
+    df[by] = pd.cut(df[by], bins=bins, include_lowest=True)
+    df.groupby(by)[col].mean().plot()
+    plt.xticks(rotation=90)
