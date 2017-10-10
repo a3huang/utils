@@ -714,3 +714,35 @@ def model_pred_corrs(models, X):
     for model in models:
         scores.append(model.predict_proba(X)[:, 1])
     return cbind(scores).T.corr()
+
+def fetch_table(name):
+    def wrapper(f):
+        f.table_name = name
+        return f
+    return wrapper
+
+def create_table_feature_dict(features_file, target):
+    a = import_module(features_file, target)
+    d = defaultdict(list)
+
+    for i in dir(a):
+        item = getattr(a, i)
+        if callable(item):
+            try:
+                d[item.table_name].append(item)
+            except:
+                continue
+
+    return d
+
+def create_engine_from_config(config, section, prefix=None):
+    host = config.get(section, 'host')
+    port = config.get(section, 'port')
+    user = config.get(section, 'user')
+    password = config.get(section, 'password')
+    db = config.get(section, 'db')
+    if prefix is None:
+        prefix = section
+    connection_params = (prefix, user, password, host, port, db)
+    connection_string = '%s://%s:%s@%s:%s/%s' % connection_params
+    return create_engine(connection_string)
