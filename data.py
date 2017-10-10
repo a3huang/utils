@@ -7,6 +7,7 @@ from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
 from sklearn.preprocessing import LabelEncoder
+from sqlalchemy import create_engine
 
 import numpy as np
 import pandas as pd
@@ -721,8 +722,8 @@ def fetch_table(name):
         return f
     return wrapper
 
-def create_table_feature_dict(features_file, target):
-    a = import_module(features_file, target)
+def create_table_feature_dict(features_file, folder_name):
+    a = import_module(features_file, folder_name)
     d = defaultdict(list)
 
     for i in dir(a):
