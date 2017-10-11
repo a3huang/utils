@@ -685,44 +685,51 @@ def jaccard_similarity_table(df, col1, col2):
     a = pd.DataFrame(a, index=col1_vals, columns=col2_vals)
     return a
 
-class OneHotEncode(TransformerMixin):
-    def __init__(self, col):
-        self.col = col
-
-    def fit(self, X, y=None):
-        X = pd.get_dummies(X[self.col], dummy_na=True)
-        self.columns = X.columns
-        return self
-
-    def transform(self, X):
-        Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
-        return cbind(X.drop(self.col, 1), Xdummy.T.reindex(self.columns).T.fillna(0))
-
-class CategoricalImputer(TransformerMixin):
-    def __init__(self, col):
-        self.col = col
-
-    def fit(self, X, y=None):
-        self.val = X[self.col].apply(lambda x: x.value_counts().index[0])
-        return self
-
-    def transform(self, X):
-        a = X[self.col].fillna(self.val)
-        return cbind(X.drop(self.col, 1), a)
-
 def model_pred_corrs(models, X):
     scores = []
     for model in models:
         scores.append(model.predict_proba(X)[:, 1])
     return cbind(scores).T.corr()
 
+def create_engine_from_config(config, section, prefix=None):
+    '''
+    Takes a config object returned by ConfigParser and returns an sqlalchemy
+    enging object for the given database specified in the section parameter.
+    '''
+
+    host = config.get(section, 'host')
+    port = config.get(section, 'port')
+    user = config.get(section, 'user')
+    password = config.get(section, 'password')
+    db = config.get(section, 'db')
+    if prefix is None:
+        prefix = section
+    connection_params = (prefix, user, password, host, port, db)
+    connection_string = '%s://%s:%s@%s:%s/%s' % connection_params
+    return create_engine(connection_string)
+
 def fetch_table(name):
+    '''
+    Decorator that sets the table name for each function used to generate a
+    feature. This label will be used by the create_table_feature_dict function
+    to determine which event table to use when constructing features.
+    '''
+
     def wrapper(f):
         f.table_name = name
         return f
+
     return wrapper
 
 def create_table_feature_dict(features_file, folder_name):
+    '''
+    Function that iterates through a given module that contains function
+    definitions for generating features. Creates a dictionary with keys being
+    the name of the event table to be used and values being a list of function
+    objects to be executed. The resulting dictionary will be passed in to the
+    create_dataframe function in the model training file.
+    '''
+
     a = import_module(features_file, folder_name)
     d = defaultdict(list)
 
@@ -736,14 +743,40 @@ def create_table_feature_dict(features_file, folder_name):
 
     return d
 
-def create_engine_from_config(config, section, prefix=None):
-    host = config.get(section, 'host')
-    port = config.get(section, 'port')
-    user = config.get(section, 'user')
-    password = config.get(section, 'password')
-    db = config.get(section, 'db')
-    if prefix is None:
-        prefix = section
-    connection_params = (prefix, user, password, host, port, db)
-    connection_string = '%s://%s:%s@%s:%s/%s' % connection_params
-    return create_engine(connection_string)
+class CategoricalImputer(TransformerMixin):
+    '''
+    Uses the training data to get the most common categories for each column.
+    Then when transforming on new data, it makes sure to use the most common
+    categories found in the training data to fill in missing values.
+    '''
+
+    def __init__(self, col):
+        self.col = col
+
+    def fit(self, X, y=None):
+        self.val = X[self.col].apply(lambda x: x.value_counts().index[0])
+        return self
+
+    def transform(self, X):
+        a = X[self.col].fillna(self.val)
+        return cbind(X.drop(self.col, 1), a)
+
+class OneHotEncode(TransformerMixin):
+    '''
+    Uses the training data to get all unique categories for each column and
+    creates one dummy column for each unique category. Then when transforming
+    on new data, it makes sure that the same dummy columns as found in the
+    training data are created.
+    '''
+
+    def __init__(self, col):
+        self.col = col
+
+    def fit(self, X, y=None):
+        X = pd.get_dummies(X[self.col], dummy_na=True)
+        self.columns = X.columns
+        return self
+
+    def transform(self, X):
+        Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
+        return cbind(X.drop(self.col, 1), Xdummy.T.reindex(self.columns).T.fillna(0))
