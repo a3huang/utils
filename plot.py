@@ -267,12 +267,16 @@ def barplot(df, col, by=None, kind=None, prop=False):
                 sns.barplot(x=0, y=col, data=layer, estimator=np.sum, ci=False,
                             orient='h', color=colors[i-1])
 
-        else:
+        elif kind is None:
             sns.barplot(x=0, y=col, hue=by, data=data, orient='h')
 
+        else:
+            raise Exception, 'Not a valid value for kind'
+
     else:
+        colors = sns.color_palette()
         data = df[col].value_counts(normalize=prop).reset_index()
-        sns.barplot(x=col, y='index', data=data, orient='h')
+        sns.barplot(x=col, y='index', data=data, orient='h', color=colors[0])
         plt.ylabel(col)
 
     plt.xlabel('')
