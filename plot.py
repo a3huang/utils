@@ -282,7 +282,7 @@ def barplot(df, col, by=None, kind=None, prop=False):
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
 
-def boxplot(df, col, by, facet_by=None, sort_median=False):
+def boxplot(df, col, by, facet=False, sort_median=False):
     '''
     Creates a grouped box plot for a continuous variable. Facet by an optional
     3rd categorical variable.
@@ -296,11 +296,14 @@ def boxplot(df, col, by, facet_by=None, sort_median=False):
     else:
         order = None
 
-    if facet_by:
-        g = sns.FacetGrid(df, col=facet_by)
-        g.map(sns.boxplot, by, col, order=order)
+    if isinstance(by, list):
+        if facet:
+            g = sns.FacetGrid(df, col=by[1])
+            g.map(sns.boxplot, by[0], col, order=order)
+        else:
+            sns.boxplot(x=by[0], y=col, hue=by[1], data=df, order=order)
     else:
-        sns.boxplot(x=col, y=by, data=df, order=order, orient='h')
+        sns.boxplot(x=by, y=col, data=df, order=order)
 
 def distplot(df, col, by=None, prop=False, facet=False, range=None):
     '''
