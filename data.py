@@ -780,3 +780,35 @@ class OneHotEncode(TransformerMixin):
     def transform(self, X):
         Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
         return cbind(X.drop(self.col, 1), Xdummy.T.reindex(self.columns).T.fillna(0))
+
+def split_dir(directory, categories):
+    files = os.listdir(directory)
+
+    for cat in categories:
+        cat_dir = os.path.join(directory, cat)
+        os.makedirs(cat_dir)
+        print 'folder created: %s' % cat_dir
+
+        cat_files = [i for i in os.listdir(directory) if cat in i]
+        for f in cat_files:
+            shutil.move(os.path.join(directory, f), cat_dir)
+        print 'files copied to folder: %s' % cat_dir
+
+def train_valid_split(directory):
+    train_dir = os.path.join(directory, 'train')
+    valid_dir = os.path.join(directory, 'valid')
+    os.makedirs(valid_dir)
+
+    for cls in next(os.walk(train_dir))[1]:
+        cls_dir = os.path.join(train_dir, cls)
+
+        files = os.listdir(cls_dir)
+        random.shuffle(files)
+        valid_files = files[:int(len(files)*0.3)]
+        valid_cls_dir = os.path.join(valid_dir, cls)
+        os.makedirs(valid_cls_dir)
+        print 'folder created: %s' % valid_cls_dir
+
+        for f in valid_files:
+            shutil.move(os.path.join(cls_dir, f), valid_cls_dir)
+        print 'files copied to folder: %s' % valid_cls_dir
