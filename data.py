@@ -792,7 +792,7 @@ def split_dir(directory, categories):
         cat_files = [i for i in os.listdir(directory) if cat in i]
         for f in cat_files:
             shutil.move(os.path.join(directory, f), cat_dir)
-        print 'files copied to folder: %s' % cat_dir
+        print 'files moved to folder: %s' % cat_dir
 
 def train_valid_split(directory):
     train_dir = os.path.join(directory, 'train')
@@ -811,4 +811,24 @@ def train_valid_split(directory):
 
         for f in valid_files:
             shutil.move(os.path.join(cls_dir, f), valid_cls_dir)
-        print 'files copied to folder: %s' % valid_cls_dir
+        print 'files moved to folder: %s' % valid_cls_dir
+
+def sample_dir(directory):
+    parts = directory.split('/')
+    sample_dir = os.path.join(parts[0], 'sample', parts[1])
+    os.makedirs(sample_dir)
+
+    for cls in next(os.walk(directory))[1]:
+        cls_dir = os.path.join(directory, cls)
+
+        files = os.listdir(cls_dir)
+        random.shuffle(files)
+        sample_files = files[:100]
+
+        sample_cls_dir = os.path.join(sample_dir, cls)
+        os.makedirs(sample_cls_dir)
+        print 'folder created: %s' % sample_cls_dir
+
+        for f in sample_files:
+            shutil.copy(os.path.join(cls_dir, f), sample_cls_dir)
+        print 'files copied to folder: %s' % sample_cls_dir
