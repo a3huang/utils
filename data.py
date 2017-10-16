@@ -863,3 +863,10 @@ def create_pred_csv(model, directory, batch_size):
             writer.writerows(data)
 
             print('Finished %s batches: %s images' % (i+1, (i+1)*batch_size))
+
+def create_dir(folder):
+    try:
+        os.makedirs(folder)
+    except OSError:
+        if not os.path.isdir(folder):
+            raise
