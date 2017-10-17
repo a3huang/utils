@@ -833,6 +833,13 @@ def sample_dir(directory):
             shutil.copy(os.path.join(cls_dir, f), sample_cls_dir)
         print 'files copied to folder: %s' % sample_cls_dir
 
+def create_dir(folder):
+    try:
+        os.makedirs(folder)
+    except OSError:
+        if not os.path.isdir(folder):
+            raise
+
 def create_pred_csv(model, directory, batch_size):
     unknown_folder = os.path.join(directory, 'unknown')
     create_dir(unknown_folder)
@@ -854,7 +861,8 @@ def create_pred_csv(model, directory, batch_size):
                 break
 
             ids = [name.split('/')[1].split('.')[0] for name in filenames[batch_size*i: batch_size*(i+1)]]
-            preds = model.predict(batch)[0]
+            probs, indices, labels = model.predict(batch)
+            preds = [a if b == 1 else 1 - a for a, b in zip(probs, indices)]
             data = zip(ids, preds)
             writer.writerows(data)
 
@@ -863,10 +871,3 @@ def create_pred_csv(model, directory, batch_size):
                 print('Finished batch %s: %s images' % (i+1, num_files))
             else:
                 print('Finished batch %s: %s images' % (i+1, num_finished))
-
-def create_dir(folder):
-    try:
-        os.makedirs(folder)
-    except OSError:
-        if not os.path.isdir(folder):
-            raise
