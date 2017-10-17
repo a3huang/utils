@@ -287,8 +287,9 @@ def boxplot(df, col, by, facet=False, sort_median=False):
     Creates a grouped box plot for a continuous variable. Facet by an optional
     3rd categorical variable.
 
-    ex) df.pipe(boxplot, col='HP', by='Type')
-    ex) df.pipe(boxplot, col='Amount', by='Category', facet_by='Target')
+    ex) df.pipe(boxplot, by='Type', col='HP')
+    ex) df.pipe(boxplot, by=['Category', 'Target'], col='Amount')
+    ex) df.pipe(boxplot, by=pd.qcut(df['HP'], 5), col='Attack')
     '''
 
     if sort_median:
