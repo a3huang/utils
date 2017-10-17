@@ -835,19 +835,15 @@ def sample_dir(directory):
 
 def create_pred_csv(model, directory, batch_size):
     unknown_folder = os.path.join(directory, 'unknown')
-    try:
-        os.makedirs(unknown_folder)
-    except OSError:
-        if not os.path.isdir(unknown_folder):
-            raise
+    create_dir(unknown_folder)
 
     files = os.listdir(unknown_folder)
     num_files = len(files)
+
     generator = image.ImageDataGenerator()
     batches = generator.flow_from_directory(directory, target_size=(224,224), shuffle=False, class_mode=None,
                                             batch_size=batch_size)
     filenames = batches.filenames
-    batches = itertools.islice(batches, 5)
 
     with open('predictions.csv', "wb") as csv_file:
         writer = csv.writer(csv_file, delimiter=',')
@@ -858,11 +854,15 @@ def create_pred_csv(model, directory, batch_size):
                 break
 
             ids = [name.split('/')[1].split('.')[0] for name in filenames[batch_size*i: batch_size*(i+1)]]
-            preds = model.predict(batch)[1]
+            preds = model.predict(batch)[0]
             data = zip(ids, preds)
             writer.writerows(data)
 
-            print('Finished %s batches: %s images' % (i+1, (i+1)*batch_size))
+            num_finished = (i+1)*batch_size
+            if num_finished > num_files:
+                print('Finished batch %s: %s images' % (i+1, num_files))
+            else:
+                print('Finished batch %s: %s images' % (i+1, num_finished))
 
 def create_dir(folder):
     try:
