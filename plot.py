@@ -22,6 +22,7 @@ import subprocess
 
 from utils.data import *
 
+# deprecate
 def create_explainer(model, X):
     '''
     Convenience function for creating a LIME explainer object.
@@ -42,16 +43,7 @@ def ceil_with_base(x, base):
 
     return base * np.ceil(float(x) / base)
 
-def round_with_base(x, base):
-    '''
-    Rounds a number with respect to any base.
-
-    ex) round_with_base(0.03, 0.05) -> 0.05
-    ex) round_with_base(0.02, 0.05) -> 0
-    '''
-
-    return base * np.round(float(x) / base)
-
+# deprecate
 def nice_round(x):
     '''
     Rounds a number "nicely" to the nearest denomination of 5 or 10. Numbers less
@@ -73,20 +65,26 @@ def nice_round(x):
     else:
         return round_with_base(x, base=5*10**(power-1))
 
+#deprecate
 def truncate(x):
     '''
-    Truncates a decimal to its first nonzero digit.
+    Truncates a floating point number to its first nonzero digit.
 
     ex) truncate(0.0345) -> 0.03
     '''
 
     if x == 0:
         return 0
+
     sign = -1 if x < 0 else 1
+
     scale = int(-np.floor(np.log10(abs(x))))
+
     if scale <= 0:
         scale = 1
+
     factor = 10**scale
+
     return sign * np.floor(abs(x) * factor) / factor
 
 def nice_range_bin(ax, range=None):
@@ -134,6 +132,7 @@ def nice_hist(df, col, range=None, prop=False):
 
     df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
 
+# deprecate
 def nice_hist_approx(a, bins=10, **kwargs):
     '''
     Creates a "nice" histogram by adjusting both the bin edges and the x-axis tick

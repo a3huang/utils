@@ -47,6 +47,20 @@ def dummy_continuous(df, loc=0, scale=1):
     '''
 
     return pd.DataFrame(np.random.normal(loc=loc, scale=scale, size=df.shape[0]))
+
+def round_to_nearest_mult(x, mult):
+    '''
+    Rounds a floating point number to the nearest multiple of mult.
+
+    Note: Uses "round half to even" method.
+
+    ex) round_to_nearest_mult(0.0250, 0.05) -> 0
+    ex) round_to_nearest_mult(0.0251, 0.05) -> 0.05
+    ex) round_to_nearest_mult(1250, 500) -> 1000
+    ex) round_to_nearest_mult(1251, 500) -> 1500
+    '''
+
+    return mult * np.round(float(x) / mult)
 #####
 
 def disjoint_intervals(start, end, step=2):
