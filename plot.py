@@ -33,130 +33,7 @@ def create_explainer(model, X):
     explainer = LimeTabularExplainer(X.values, feature_names=X.columns.values)
     return explainer
 
-def ceil_with_base(x, base):
-    '''
-    Takes the ceiling of a number with respect to any base.
-
-    ex) ceil_with_base(0.03, 0.05) -> 0.05
-    ex) ceil_with_base(0.02, 0.05) -> 0.05
-    '''
-
-    return base * np.ceil(float(x) / base)
-
-# deprecate
-def nice_round(x):
-    '''
-    Rounds a number "nicely" to the nearest denomination of 5 or 10. Numbers less
-    than 1 will be always be rounded upwards. Numbers greater than 1 may be rounded
-    upwards or downwards.
-
-    ex) nice_round(0.03) -> 0.05
-    ex) nice_round(0.02) -> 0.05
-    ex) nice_round(12) -> 10
-    ex) nice_round(14) -> 15
-    ex) nice_round(7) -> 7
-    ex) nice_round(7.2) -> 7
-    '''
-
-    power = np.ceil(np.abs(np.log10(x))) - 1
-
-    if x < 1:
-        return ceil_with_base(x, base=5*10**-(power+1))
-    else:
-        return round_with_base(x, base=5*10**(power-1))
-
 #deprecate
-def truncate(x):
-    '''
-    Truncates a floating point number to its first nonzero digit.
-
-    ex) truncate(0.0345) -> 0.03
-    '''
-
-    if x == 0:
-        return 0
-
-    sign = -1 if x < 0 else 1
-
-    scale = int(-np.floor(np.log10(abs(x))))
-
-    if scale <= 0:
-        scale = 1
-
-    factor = 10**scale
-
-    return sign * np.floor(abs(x) * factor) / factor
-
-def nice_range_bin(ax, range=None):
-    '''
-    Helper function for matplotlib histograms to find the right range and number
-    of bins so that the bar edges will line up nicely with existing x-axis tick
-    marks.
-
-    ex) fig, ax = plt.subplots()
-        df[col].plot.hist(ax=ax)
-        range, bins = nice_range_bin(ax)
-    '''
-
-    ticks = ax.get_xticks()
-
-    if range is None:
-        range = ticks[1], ticks[-2]
-
-    total_length = range[1] - range[0]
-    bin_size = ticks[1] - ticks[0]
-    bins = int(total_length / bin_size)
-    return range, bins
-
-def nice_hist(df, col, range=None, prop=False):
-    '''
-    Creates a "nice" histogram by drawing the default histogram first and then
-    adjusting the bin edges so that they line up with the existing x-axis
-    tick marks.
-
-    This function takes advantage of the fact that matplotlib's
-    plt.hist already comes up with "nice" values for the x-axis tick marks.
-
-    Note: Does not play nicely with seaborn's FacetGrid.
-    '''
-
-    fig, ax = plt.subplots()
-    df[col].plot.hist(range=range, ax=ax)
-    range, bins = nice_range_bin(ax, range)
-    plt.clf()
-
-    if prop:
-        weights = np.ones_like(df[col]) / float(len(df[col]))
-    else:
-        weights = None
-
-    df[col].plot.hist(range=range, bins=bins, weights=weights, alpha=0.4)
-
-# deprecate
-def nice_hist_approx(a, bins=10, **kwargs):
-    '''
-    Creates a "nice" histogram by adjusting both the bin edges and the x-axis tick
-    marks so that they line up nicely.
-
-    Unlike nice_hist, this function uses custom functions to determine "nice"
-    locations for the x-axis tick marks. This leads to tick values that are not
-    as nice as the ones matplotlib's plt.hist gives.
-
-    Note: Does not play nicely with seaborn's FacetGrid.
-    '''
-
-    heights, edges = np.histogram(a)
-    width = (edges[-1] - edges[0]) / bins
-
-    if width < 1:
-        width = truncate(width)
-    else:
-        width = nice_round(width)
-
-    new_edges = [round_with_base(edges[0], width) + i*width for i in range(len(edges))]
-    plt.hist(a, bins=new_edges, **kwargs)
-    plt.xticks(new_edges)
-
 def prop_hist(a, prop=False, **kwargs):
     '''
     Creates a histogram where each bar displays the proportion of observations
@@ -169,6 +46,41 @@ def prop_hist(a, prop=False, **kwargs):
         weights = None
 
     plt.hist(a, weights=weights, **kwargs)
+#####
+
+def plot_nice_histogram(df, col, bin_mult=1, range=None, prop=False):
+    '''
+    Creates a "nice" histogram by drawing the default histogram first and then
+    adjusting the bin edges so that they line up with the existing x-axis
+    tick marks. This function takes advantage of the fact that matplotlib's
+    plt.hist automatically comes up with "nice" values for the x-axis tick marks.
+
+    Note: Does not play nicely with seaborn's FacetGrid.
+
+    ex) df.pipe(plot_nice_histogram, col='HP')
+    '''
+
+    # make temporary plot of min and max just to get the "right" x-axis tick marks
+    pd.DataFrame([df[col].min(), df[col].max()]).plot.hist(range=range)
+
+    ticks = plt.gca().get_xticks()
+
+    if range is None:
+        range = ticks[1], ticks[-2]
+
+    total_span = range[1] - range[0]
+    bin_width = ticks[1] - ticks[0]
+    num_bins = int(total_span / bin_width)
+
+    # remove temporary plot
+    plt.clf()
+
+    if prop:
+        weights = np.ones_like(df[col]) / float(len(df[col]))
+    else:
+        weights = None
+
+    df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
 
 def barplot(df, col, by=None, kind=None, prop=False):
     '''
