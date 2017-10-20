@@ -12,6 +12,30 @@ from sqlalchemy import create_engine
 import numpy as np
 import pandas as pd
 
+def dummy_categorical(df, n, shuffle=False):
+    '''
+    Creates a categorical variable with labels 1 to n for testing purposes.
+
+    ex) df['dummy'] = df.pipe(dummy_categorical, 5)
+    '''
+
+    size = df.shape[0] / n
+    remainder = df.shape[0] - n * size
+
+    l = []
+    l.append(np.full((size + remainder, 1), 1))
+
+    for i in range(2, n+1):
+        l.append(np.full((size, 1), i))
+
+    a = pd.DataFrame(np.append(l[0], l[1:]))
+
+    if shuffle:
+        a = np.random.permutation(a)
+
+    return a
+#####
+
 def disjoint_intervals(start, end, step=2):
     '''
     Create 2-tuples of integers where each end point is equal to the next

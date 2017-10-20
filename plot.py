@@ -22,29 +22,6 @@ import subprocess
 
 from utils.data import *
 
-def dummy_categorical(df, n, shuffle=False):
-    '''
-    Creates a categorical variable with labels 1 to n for testing purposes.
-
-    ex) df['dummy'] = df.pipe(dummy_categorical, 5)
-    '''
-
-    size = df.shape[0] / n
-    remainder = df.shape[0] - n * size
-
-    a = []
-    a.append(np.full((size + remainder, 1), 1))
-
-    for i in range(2, n+1):
-        a.append(np.full((size, 1), i))
-
-    b = pd.DataFrame(np.append(a[0], a[1:]))
-
-    if shuffle:
-        b = np.random.permutation(b)
-
-    return b
-
 def dummy_continuous(df, loc=0, scale=1):
     '''
     Creates a continuous variable from a normal distribution for testing purposes.
