@@ -70,7 +70,6 @@ def nice_round(x):
 
     if x < 1:
         return ceil_with_base(x, base=5*10**-(power+1))
-
     else:
         return round_with_base(x, base=5*10**(power-1))
 
@@ -89,19 +88,6 @@ def truncate(x):
         scale = 1
     factor = 10**scale
     return sign * np.floor(abs(x) * factor) / factor
-
-def take(iterator, n):
-    '''
-    Returns the nth item from an iterator.
-
-    ex) take(df.groupby('Generation'), 2)
-    '''
-
-    for i, a in enumerate(iterator):
-        if i != n:
-            continue
-        else:
-            return a
 
 def nice_range_bin(ax, range=None):
     '''
