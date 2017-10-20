@@ -14,7 +14,7 @@ import pandas as pd
 
 def dummy_categorical(df, n, shuffle=False):
     '''
-    Creates a categorical variable with labels 1 to n for testing purposes.
+    Creates a categorical column with labels 1 to n for testing purposes.
 
     ex) df['dummy'] = df.pipe(dummy_categorical, 5)
     '''
@@ -34,6 +34,16 @@ def dummy_categorical(df, n, shuffle=False):
         a = np.random.permutation(a)
 
     return a
+
+def dummy_continuous(df, loc=0, scale=1):
+    '''
+    Creates a continuous column with each value drawn from a normal
+    distribution for testing purposes.
+
+    ex) df['dummy'] = df.pipe(dummy_continuous)
+    '''
+
+    return pd.DataFrame(np.random.normal(loc=loc, scale=scale, size=df.shape[0]))
 #####
 
 def disjoint_intervals(start, end, step=2):

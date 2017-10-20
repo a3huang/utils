@@ -22,15 +22,6 @@ import subprocess
 
 from utils.data import *
 
-def dummy_continuous(df, loc=0, scale=1):
-    '''
-    Creates a continuous variable from a normal distribution for testing purposes.
-
-    ex) df['dummy'] = df.pipe(dummy_continuous)
-    '''
-
-    return pd.DataFrame(np.random.normal(loc=loc, scale=scale, size=df.shape[0]))
-
 def facet(df, row, col, **kwargs):
     '''
     Convenience function for creating seaborn facet grids.
