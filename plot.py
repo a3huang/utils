@@ -314,7 +314,7 @@ def distplot(df, col, by=None, prop=False, facet=False, range=None):
     ex) df.pipe(distplot, col='HP', by='Type')
     '''
 
-    if by:
+    if by is not None:
         if facet:
             g = sns.FacetGrid(df, col=by)
             g.map(prop_hist, col, range=range)
