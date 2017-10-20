@@ -31,19 +31,6 @@ def dummy_continuous(df, loc=0, scale=1):
 
     return pd.DataFrame(np.random.normal(loc=loc, scale=scale, size=df.shape[0]))
 
-def pipeline_nth_step(pipeline, X, n):
-    '''
-    Returns the resulting dataframe after applying the nth step of an sklearn
-    pipeline.
-
-    ex) pipeline_nth_step(pipeline, X_train, 5)
-    '''
-
-    a = pipeline.steps[0][1].transform(X.values)
-    for i in range(1, n):
-        a = pipeline.steps[i][1].transform(a)
-    return pd.DataFrame(a, columns=X.columns)
-
 def facet(df, row, col, **kwargs):
     '''
     Convenience function for creating seaborn facet grids.
