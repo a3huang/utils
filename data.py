@@ -12,6 +12,9 @@ from sqlalchemy import create_engine
 import numpy as np
 import pandas as pd
 
+###################
+##### Testing #####
+###################
 def dummy_categorical(df, n, shuffle=False):
     '''
     Creates a categorical column with labels 1 to n for testing purposes.
@@ -37,8 +40,8 @@ def dummy_categorical(df, n, shuffle=False):
 
 def dummy_continuous(df, loc=0, scale=1):
     '''
-    Creates a continuous column with each value drawn from a normal
-    distribution for testing purposes.
+    Creates a continuous column with each value drawn from a normal distribution for
+    testing purposes.
 
     ex) df['dummy'] = df.pipe(dummy_continuous)
     '''

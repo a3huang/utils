@@ -22,15 +22,6 @@ import subprocess
 
 from utils.data import *
 
-def facet(df, row, col, **kwargs):
-    '''
-    Convenience function for creating seaborn facet grids.
-
-    ex) df.pipe(facet, row='Type 1', col='Type 2').map(plt.scatter, 'Attack', 'Defense')
-    '''
-
-    return sns.FacetGrid(df, row=row, col=col, **kwargs)
-
 def create_explainer(model, X):
     '''
     Convenience function for creating a LIME explainer object.
