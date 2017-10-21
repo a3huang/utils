@@ -75,29 +75,24 @@ def plot_nice_histogram(df, col, bin_mult=1, range=None, prop=False):
     # remove temporary plot
     plt.clf()
 
-    if prop:
-        weights = np.ones_like(df[col]) / float(len(df[col]))
-    else:
-        weights = None
-
+    weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
     df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
-#####
 
-def barplot(df, col, by=None, kind=None, prop=False):
+def plot_bar(df, col, by=None, kind=None, prop=False):
     '''
     Creates a bar plot of counts for a categorical variable. Can group by an optional
     2nd categorical variable.
 
-    ex) df.pipe(barplot, col='HP', by='Type')
+    ex) df.pipe(plot_bar, by='Type', col='HP')
+    ex) df.pipe(plot_bar, by=pd.cut(df['Attack'], 5), col='HP')
     '''
 
-    if by:
-        if prop:
-            normalize = 'index'
-        else:
-            normalize = False
-
+    if by is not None:
+        normalize = 'index' if prop else False
         data = df.pipe(table, col, by, normalize=normalize).unstack().reset_index()
+
+        # make sure "by" is now a string
+        by = by if isinstance(by, str) else by.name
 
         if kind == 'facet':
             g = sns.factorplot(x=0, y=col, col=by, data=data, kind='bar', orient='h')
@@ -106,10 +101,13 @@ def barplot(df, col, by=None, kind=None, prop=False):
         elif kind == 'stack':
             values = data[by].unique()
             colors = sns.color_palette()
+
+            # plot layers one at a time from largest to smallest to create the "stacked"
+            # effect
             for i in reversed(range(1, len(values)+1)):
                 layer = data[data[by].isin(values[:i])]
                 sns.barplot(x=0, y=col, data=layer, estimator=np.sum, ci=False,
-                            orient='h', color=colors[i-1])
+                    orient='h', color=colors[i-1])
 
         elif kind is None:
             sns.barplot(x=0, y=col, hue=by, data=data, orient='h')
@@ -125,6 +123,7 @@ def barplot(df, col, by=None, kind=None, prop=False):
 
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
+#####
 
 def boxplot(df, col, by, facet=False, sort_median=False):
     '''
@@ -174,7 +173,7 @@ def distplot(df, col, by=None, prop=False, facet=False, range=None):
             plt.legend(title=by, loc=(1, 0))
 
     else:
-        nice_hist(df, col, prop=prop, range=range)
+        plot_nice_histogram(df, col, prop=prop, range=range)
 
 def heatplot(df, x, y, z=None, normalize=False):
     '''
