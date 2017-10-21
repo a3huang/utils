@@ -924,3 +924,25 @@ def create_pred_csv(model, directory, batch_size):
                 print('Finished batch %s: %s images' % (i+1, num_files))
             else:
                 print('Finished batch %s: %s images' % (i+1, num_finished))
+
+def create_sample_dir(directory, n=500):
+    root = directory.split('/')[0]
+    files = os.listdir(directory)
+    random.shuffle(files)
+
+    sample_files = files[:n]
+    sample_cls_dir = os.path.join(root, 'test_copy')
+    create_dir(sample_cls_dir)
+
+    for f in sample_files:
+        shutil.copy(os.path.join(directory, f), sample_cls_dir)
+
+def move_to_dir(directory):
+    new_dir = os.path.join(directory, 'unknown')
+    create_dir(new_dir)
+
+    if os.listdir(new_dir) == []:
+        files = [i for i in os.listdir(directory) if os.path.isfile(os.path.join(directory, i))
+
+        for f in files:
+            shutil.move(f, new_dir)
