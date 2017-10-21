@@ -265,26 +265,33 @@ def show_low_var(df):
 
     return df.std().sort_values()
 
-def table(df, row_var, col_var, val_var=None, row_n=None, col_n=None, agg_func=np.mean, **kwargs):
+def table(df, row, col, val=None, agg_func=np.mean, **kwargs):
     '''
     Calculate the cross tabulation between 2 categorical variables. Can optionally
     specify how many of the top categories to display in the rows and columns
     of the resulting table.
 
-    ex) df.pipe(table, cat1, cat2, row_n=5, col_n=5)
+    ex) df.pipe(table, cat1, cat2)
+    ex) df.pipe(table, pd.cut(df[cat1], 5), pd.cut(df[cat2], 3))
     '''
 
     df = df.copy()
 
-    if row_n:
-        df[row_var] = df[row_var].pipe(reduce_cardinality, row_n)
-    if col_n:
-        df[col_var] = df[col_var].pipe(reduce_cardinality, col_n)
+    # if row_n:
+    #     df[row] = df[row].pipe(reduce_cardinality, row_n)
+    # if col_n:
+    #     df[col] = df[col].pipe(reduce_cardinality, col_n)
 
-    if val_var is None:
-        return pd.crosstab(df[row_var], df[col_var], **kwargs)
+    if isinstance(row, str):
+        x = df[row]
+
+    if isinstance(col, str):
+        y = df[col]
+
+    if val is None:
+        return pd.crosstab(df[row], df[col], **kwargs)
     else:
-        return pd.crosstab(df[row_var], df[col_var], df[val_var], aggfunc=agg_func, **kwargs)
+        return pd.crosstab(df[row], df[col], df[val], aggfunc=agg_func, **kwargs)
 
 def time_diff(df, date, user_id):
     '''

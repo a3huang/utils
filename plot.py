@@ -81,11 +81,12 @@ def plot_nice_histogram(df, col, bin_mult=1, range=None, prop=False):
         weights = None
 
     df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
+#####
 
 def barplot(df, col, by=None, kind=None, prop=False):
     '''
-    Creates a bar plot for a categorical variable. Group by an optional 2nd
-    categorical variable.
+    Creates a bar plot of counts for a categorical variable. Can group by an optional
+    2nd categorical variable.
 
     ex) df.pipe(barplot, col='HP', by='Type')
     '''
