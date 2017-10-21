@@ -104,16 +104,17 @@ def plot_box(df, col, by, facet=False, sort_median=False):
     else:
         sns.boxplot(x=by, y=col, data=df, order=order)
 
-def plot_hist(df, col, bin_mult=1, range=None, prop=False):
+def plot_hist_nice(df, col, bin_mult=1, range=None, prop=False):
     '''
-    Creates a "nice" histogram by drawing the default histogram first and then
-    adjusting the bin edges so that they line up with the existing x-axis
-    tick marks. This function takes advantage of the fact that matplotlib's
-    plt.hist automatically comes up with "nice" values for the x-axis tick marks.
+    Creates a "nice" histogram for a continuous variable. It does this by first
+    drawing a temporary histogram to determine the x-axis tick marks of the plot.
+    Then it redraws the histogram so that its bin edges now line up with the tick
+    marks. This function takes advantage of the fact that matplotlib's plt.hist
+    automatically comes up with "nice" values for the x-axis tick marks.
 
     Note: Does not play nicely with seaborn's FacetGrid.
 
-    ex) df.pipe(plot_hist, col='HP')
+    ex) df.pipe(plot_hist_nice, col='HP')
     '''
 
     # make temporary plot of min and max just to get the "right" x-axis tick marks
