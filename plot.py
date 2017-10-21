@@ -135,19 +135,35 @@ def plot_hist_nice(df, col, bin_mult=1, range=None, prop=False):
     weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
     df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
 
-def plot_hist_with_prop(a, prop=False, **kwargs):
+def plot_hist_with_prop(a, prop=False, bin_num=None, bin_width=None, bin_range=None):
     '''
-    Creates a histogram for a continuous variable. Allows additional option of
-    displaying proportions in each bin rather than counts.
+    Creates a histogram for a continuous variable. Can choose to display proportions
+    in each bin rather than counts. Can control either the width of the bins or the
+    number of bins (but not both at the same time).
 
-    Note: Meant to be used with seaborn's FacetGrid. If just creating a single
-          histogram, use plot_histogram instead.
+    Note: This function takes a series rather than a dataframe as an argument to make
+          it compatible with seaborn's FacetGrid.
 
-    ex) plot_hist_with_prop(df[col], prop=True)
+    ex) plot_hist_with_prop(df[col], bin_width=10, bin_range=(0, 100), prop=True)
     '''
+
+    range = (a.min(), a.max()) if bin_range is None else bin_range
+
+    if bin_width and bin_num:
+        raise Exception, 'Must specify only one of bin_num or bin_width'
+
+    elif bin_width:
+        bin_num = int(round((range[1] - range[0]) / bin_width))
+        bins = [a.min() + bin_width*i for i in np.arange(bin_num+1)]
+
+    elif bin_num:
+        bins = bin_num
+
+    else:
+        bins = 10
 
     weights = np.ones_like(a) / float(len(a)) if prop else None
-    plt.hist(a, weights=weights, **kwargs)
+    plt.hist(a, bins=bins, range=range, weights=weights)
 
 def plot_histogram(df, col, by=None, prop=False, facet=False, **kwargs):
     '''
