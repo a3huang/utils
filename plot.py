@@ -32,20 +32,6 @@ def create_explainer(model, X):
 
     explainer = LimeTabularExplainer(X.values, feature_names=X.columns.values)
     return explainer
-
-# deprecate
-def prop_hist(a, prop=False, **kwargs):
-    '''
-    Creates a histogram where each bar displays the proportion of observations
-    in each bin rather than their counts.
-    '''
-
-    if prop:
-        weights = np.ones_like(a) / float(len(a))
-    else:
-        weights = None
-
-    plt.hist(a, weights=weights, **kwargs)
 #####
 
 def plot_bar(df, col, by=None, kind=None, prop=False):
@@ -94,7 +80,31 @@ def plot_bar(df, col, by=None, kind=None, prop=False):
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
 
-def plot_nice_histogram(df, col, bin_mult=1, range=None, prop=False):
+def plot_box(df, col, by, facet=False, sort_median=False):
+    '''
+    Creates box plots for a continuous variable grouped by either 1 or 2
+    categorical variables.
+
+    ex) df.pipe(plot_box, by='Type', col='HP')
+    ex) df.pipe(plot_box, by=['Type 1', 'Type 2'], col='HP')
+    ex) df.pipe(plot_box, by=pd.cut(df['Attack'], 5), col='HP')
+    '''
+
+    if sort_median:
+        order = df.groupby(by)[col].median().sort_values().index
+    else:
+        order = None
+
+    if isinstance(by, list):
+        if facet:
+            g = sns.FacetGrid(df, col=by[1])
+            g.map(sns.boxplot, by[0], col, order=order)
+        else:
+            sns.boxplot(x=by[0], y=col, hue=by[1], data=df, order=order)
+    else:
+        sns.boxplot(x=by, y=col, data=df, order=order)
+
+def plot_hist(df, col, bin_mult=1, range=None, prop=False):
     '''
     Creates a "nice" histogram by drawing the default histogram first and then
     adjusting the bin edges so that they line up with the existing x-axis
@@ -103,7 +113,7 @@ def plot_nice_histogram(df, col, bin_mult=1, range=None, prop=False):
 
     Note: Does not play nicely with seaborn's FacetGrid.
 
-    ex) df.pipe(plot_nice_histogram, col='HP')
+    ex) df.pipe(plot_hist, col='HP')
     '''
 
     # make temporary plot of min and max just to get the "right" x-axis tick marks
@@ -123,57 +133,48 @@ def plot_nice_histogram(df, col, bin_mult=1, range=None, prop=False):
 
     weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
     df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
-#####
 
-def boxplot(df, col, by, facet=False, sort_median=False):
+def plot_hist_with_prop(a, prop=False, **kwargs):
     '''
-    Creates a grouped box plot for a continuous variable. Facet by an optional
-    3rd categorical variable.
+    Creates a histogram for a continuous variable. Allows additional option of
+    displaying proportions in each bin rather than counts.
 
-    ex) df.pipe(boxplot, by='Type', col='HP')
-    ex) df.pipe(boxplot, by=['Category', 'Target'], col='Amount')
-    ex) df.pipe(boxplot, by=pd.qcut(df['HP'], 5), col='Attack')
+    Note: Meant to be used with seaborn's FacetGrid. If just creating a single
+          histogram, use plot_histogram instead.
+
+    ex) plot_hist_with_prop(df[col], prop=True)
     '''
 
-    if sort_median:
-        order = df.groupby(by)[col].median().sort_values().index
-    else:
-        order = None
+    weights = np.ones_like(a) / float(len(a)) if prop else None
+    plt.hist(a, weights=weights, **kwargs)
 
-    if isinstance(by, list):
-        if facet:
-            g = sns.FacetGrid(df, col=by[1])
-            g.map(sns.boxplot, by[0], col, order=order)
-        else:
-            sns.boxplot(x=by[0], y=col, hue=by[1], data=df, order=order)
-    else:
-        sns.boxplot(x=by, y=col, data=df, order=order)
-
-def distplot(df, col, by=None, prop=False, facet=False, range=None):
+def plot_histogram(df, col, by=None, prop=False, facet=False, **kwargs):
     '''
-    Creates a histogram for a continuous variable. Group by an optional 2nd
+    Creates a histogram for a continuous variable. Can group by an optional 2nd
     categorical variable.
 
-    ex) df.pipe(distplot, col='HP', by='Type')
+    ex) df.pipe(plot_histogram, by='Type', col='HP')
     '''
 
     if by is not None:
         if facet:
-            g = sns.FacetGrid(df, col=by)
-            g.map(prop_hist, col, range=range)
-            r, b = nice_range_bin(g.axes.flat[0], range)
-            plt.clf()
-
             g = sns.FacetGrid(df, col=by, col_wrap=3)
-            g.map(prop_hist, col, prop=prop, range=r, bins=b, alpha=0.4)
+            g.map(plot_hist_with_prop, col, prop=prop, alpha=0.4, **kwargs)
+
         else:
             for group, column in df.groupby(by)[col]:
                 sns.kdeplot(column, label=group, shade=True)
-            plt.xlim(range)
-            plt.legend(title=by, loc=(1, 0))
+
+            if 'range' in kwargs:
+                range = kwargs['range']
+                plt.xlim(range)
+
+            title = by if isinstance(by, str) else by.name
+            plt.legend(title=title, loc=(1, 0))
 
     else:
-        plot_nice_histogram(df, col, prop=prop, range=range)
+        plot_hist_with_prop(df[col], prop=prop, alpha=0.4, **kwargs)
+#####
 
 def heatplot(df, x, y, z=None, normalize=False):
     '''
