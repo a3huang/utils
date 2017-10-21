@@ -62,7 +62,7 @@ def round_to_nearest_mult(x, mult):
 
     return mult * np.round(float(x) / mult)
 
-def table(df, row, col, val=None, agg_func=np.mean, **kwargs):
+def table(df, row, col, val=None, **kwargs):
     '''
     Calculates a table containing counts of every combination of levels bewteen 2
     categorical variables.
@@ -77,7 +77,7 @@ def table(df, row, col, val=None, agg_func=np.mean, **kwargs):
     if val is None:
         return pd.crosstab(x, y, **kwargs)
     else:
-        return pd.crosstab(x, y, df[val], aggfunc=agg_func, **kwargs)
+        return pd.crosstab(x, y, df[val], aggfunc=np.mean, **kwargs)
 #####
 
 def disjoint_intervals(start, end, step=2):
