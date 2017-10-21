@@ -61,6 +61,23 @@ def round_to_nearest_mult(x, mult):
     '''
 
     return mult * np.round(float(x) / mult)
+
+def table(df, row, col, val=None, agg_func=np.mean, **kwargs):
+    '''
+    Calculates a table containing counts of every combination of levels bewteen 2
+    categorical variables.
+
+    ex) df.pipe(table, 'Type 1', 'Type 2')
+    ex) df.pipe(table, pd.cut(df['Type 1'], 3), pd.cut(df['Type 2'], 3))
+    '''
+
+    x = df[row] if isinstance(row, str) else row
+    y = df[col] if isinstance(col, str) else col
+
+    if val is None:
+        return pd.crosstab(x, y, **kwargs)
+    else:
+        return pd.crosstab(x, y, df[val], aggfunc=agg_func, **kwargs)
 #####
 
 def disjoint_intervals(start, end, step=2):
@@ -264,34 +281,6 @@ def show_low_var(df):
     '''
 
     return df.std().sort_values()
-
-def table(df, row, col, val=None, agg_func=np.mean, **kwargs):
-    '''
-    Calculate the cross tabulation between 2 categorical variables. Can optionally
-    specify how many of the top categories to display in the rows and columns
-    of the resulting table.
-
-    ex) df.pipe(table, cat1, cat2)
-    ex) df.pipe(table, pd.cut(df[cat1], 5), pd.cut(df[cat2], 3))
-    '''
-
-    df = df.copy()
-
-    # if row_n:
-    #     df[row] = df[row].pipe(reduce_cardinality, row_n)
-    # if col_n:
-    #     df[col] = df[col].pipe(reduce_cardinality, col_n)
-
-    if isinstance(row, str):
-        x = df[row]
-
-    if isinstance(col, str):
-        y = df[col]
-
-    if val is None:
-        return pd.crosstab(df[row], df[col], **kwargs)
-    else:
-        return pd.crosstab(df[row], df[col], df[val], aggfunc=agg_func, **kwargs)
 
 def time_diff(df, date, user_id):
     '''
