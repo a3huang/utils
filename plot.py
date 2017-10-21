@@ -135,7 +135,8 @@ def plot_hist_nice(df, col, bin_mult=1, range=None, prop=False):
     weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
     df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
 
-def plot_hist_with_prop(a, prop=False, bin_num=None, bin_width=None, bin_range=None):
+def plot_hist_with_prop(a, prop=False, bin_num=None, bin_width=None,
+                        bin_range=None, **kwargs):
     '''
     Creates a histogram for a continuous variable. Can choose to display proportions
     in each bin rather than counts. Can control either the width of the bins or the
@@ -163,7 +164,7 @@ def plot_hist_with_prop(a, prop=False, bin_num=None, bin_width=None, bin_range=N
         bins = 10
 
     weights = np.ones_like(a) / float(len(a)) if prop else None
-    plt.hist(a, bins=bins, range=range, weights=weights)
+    plt.hist(a, bins=bins, range=range, weights=weights, **kwargs)
 
 def plot_histogram(df, col, by=None, prop=False, facet=False, **kwargs):
     '''
