@@ -48,6 +48,9 @@ def dummy_continuous(df, loc=0, scale=1):
 
     return pd.DataFrame(np.random.normal(loc=loc, scale=scale, size=df.shape[0]))
 
+#####################
+##### Numerical #####
+#####################
 def round_to_nearest_mult(x, mult):
     '''
     Rounds a floating point number to the nearest multiple of mult.
@@ -62,13 +65,16 @@ def round_to_nearest_mult(x, mult):
 
     return mult * np.round(float(x) / mult)
 
+######################
+##### Dataframes #####
+######################
 def table(df, row, col, val=None, **kwargs):
     '''
     Calculates a table containing counts of every combination of levels bewteen 2
     categorical variables.
 
     ex) df.pipe(table, 'Type 1', 'Type 2')
-    ex) df.pipe(table, pd.cut(df['Type 1'], 3), pd.cut(df['Type 2'], 3))
+    ex) df.pipe(table, pd.cut(df['Attack'], 3), pd.cut(df['HP'], 3))
     '''
 
     x = df[row] if isinstance(row, str) else row

@@ -33,7 +33,7 @@ def create_explainer(model, X):
     explainer = LimeTabularExplainer(X.values, feature_names=X.columns.values)
     return explainer
 
-#deprecate
+# deprecate
 def prop_hist(a, prop=False, **kwargs):
     '''
     Creates a histogram where each bar displays the proportion of observations
@@ -47,36 +47,6 @@ def prop_hist(a, prop=False, **kwargs):
 
     plt.hist(a, weights=weights, **kwargs)
 #####
-
-def plot_nice_histogram(df, col, bin_mult=1, range=None, prop=False):
-    '''
-    Creates a "nice" histogram by drawing the default histogram first and then
-    adjusting the bin edges so that they line up with the existing x-axis
-    tick marks. This function takes advantage of the fact that matplotlib's
-    plt.hist automatically comes up with "nice" values for the x-axis tick marks.
-
-    Note: Does not play nicely with seaborn's FacetGrid.
-
-    ex) df.pipe(plot_nice_histogram, col='HP')
-    '''
-
-    # make temporary plot of min and max just to get the "right" x-axis tick marks
-    pd.DataFrame([df[col].min(), df[col].max()]).plot.hist(range=range)
-
-    ticks = plt.gca().get_xticks()
-
-    if range is None:
-        range = ticks[1], ticks[-2]
-
-    total_span = range[1] - range[0]
-    bin_width = ticks[1] - ticks[0]
-    num_bins = int(total_span / bin_width)
-
-    # remove temporary plot
-    plt.clf()
-
-    weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
-    df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
 
 def plot_bar(df, col, by=None, kind=None, prop=False):
     '''
@@ -123,6 +93,36 @@ def plot_bar(df, col, by=None, kind=None, prop=False):
 
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
+
+def plot_nice_histogram(df, col, bin_mult=1, range=None, prop=False):
+    '''
+    Creates a "nice" histogram by drawing the default histogram first and then
+    adjusting the bin edges so that they line up with the existing x-axis
+    tick marks. This function takes advantage of the fact that matplotlib's
+    plt.hist automatically comes up with "nice" values for the x-axis tick marks.
+
+    Note: Does not play nicely with seaborn's FacetGrid.
+
+    ex) df.pipe(plot_nice_histogram, col='HP')
+    '''
+
+    # make temporary plot of min and max just to get the "right" x-axis tick marks
+    pd.DataFrame([df[col].min(), df[col].max()]).plot.hist(range=range)
+
+    ticks = plt.gca().get_xticks()
+
+    if range is None:
+        range = ticks[1], ticks[-2]
+
+    total_span = range[1] - range[0]
+    bin_width = ticks[1] - ticks[0]
+    num_bins = int(total_span / bin_width)
+
+    # remove temporary plot
+    plt.clf()
+
+    weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
+    df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
 #####
 
 def boxplot(df, col, by, facet=False, sort_median=False):
