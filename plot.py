@@ -50,8 +50,9 @@ def plot_bar(df, col, by=None, kind=None, prop=False):
         normalize = 'index' if prop else False
         data = df.pipe(table, col, by, normalize=normalize).unstack().reset_index()
 
-        # make sure "by" is now a string
+        # make sure "by" and "col" are both strings from now on
         by = by if isinstance(by, str) else by.name
+        col = col if isinstance(col, str) else col.name
 
         if kind == 'facet':
             g = sns.factorplot(x=0, y=col, col=by, data=data, kind='bar', orient='h')
@@ -76,9 +77,12 @@ def plot_bar(df, col, by=None, kind=None, prop=False):
 
     else:
         colors = sns.color_palette()
-        data = df[col].value_counts(normalize=prop).reset_index()
-        sns.barplot(x=col, y='index', data=data, orient='h', color=colors[0])
-        plt.ylabel(col)
+
+        col = df[col] if isinstance(col, str) else col
+        data = col.value_counts(normalize=prop).reset_index()
+
+        sns.barplot(x=col.name, y='index', data=data, orient='h', color=colors[0])
+        plt.ylabel(col.name)
 
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
