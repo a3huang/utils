@@ -34,6 +34,9 @@ def create_explainer(model, X):
     return explainer
 #####
 
+#########################
+##### Basic Ploting #####
+#########################
 def plot_bar(df, col, by=None, kind=None, prop=False):
     '''
     Creates a bar plot of counts for a categorical variable. Can group by an optional
@@ -104,6 +107,19 @@ def plot_box(df, col, by, facet=False, sort_median=False):
     else:
         sns.boxplot(x=by, y=col, data=df, order=order)
 
+def plot_heatmap(df, row, col, val=None, normalize=False):
+    '''
+    Creates a heat map of counts for 2 categorical variables. Can display the mean of
+    an optional 3rd continuous variable for each cell.
+
+    ex) df.pipe(plot_heatmap, row='Type 1', col='Type 2', val='HP')
+    '''
+
+    if val:
+        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
+    else:
+        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
+
 def plot_hist_nice(df, col, bin_mult=1, range=None, prop=False):
     '''
     Creates a "nice" histogram for a continuous variable. It does this by first
@@ -138,9 +154,9 @@ def plot_hist_nice(df, col, bin_mult=1, range=None, prop=False):
 def plot_hist_with_prop(a, prop=False, bin_num=None, bin_width=None,
                         bin_range=None, **kwargs):
     '''
-    Creates a histogram for a continuous variable. Can choose to display proportions
-    in each bin rather than counts. Can control either the width of the bins or the
-    number of bins (but not both at the same time).
+    Creates a histogram for a continuous variable. Can choose to display the
+    proportions in each bin rather than the counts. Can control either the width
+    of the bins or the number of bins (but not both at the same time).
 
     Note: This function takes a series rather than a dataframe as an argument to make
           it compatible with seaborn's FacetGrid.
@@ -193,19 +209,6 @@ def plot_histogram(df, col, by=None, prop=False, facet=False, **kwargs):
     else:
         plot_hist_with_prop(df[col], prop=prop, alpha=0.4, **kwargs)
 #####
-
-def heatplot(df, x, y, z=None, normalize=False):
-    '''
-    Creates a heat map between 2 categorical variables. Calculate the mean for an
-    optional 3rd continuous variable.
-
-    ex) df.pipe(heatplot, x='Type 1', y='Type 2', z='Attack')
-    '''
-
-    if z:
-        sns.heatmap(df.pipe(table, x, y, z), annot=True, fmt='.2f')
-    else:
-        sns.heatmap(df.pipe(table, x, y, normalize=normalize), annot=True, fmt='.2f')
 
 def multicol_heatplot(df, by, cols):
     '''

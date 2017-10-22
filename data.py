@@ -808,4 +808,3 @@ class OneHotEncode(TransformerMixin):
     def transform(self, X):
         Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
         return cbind(X.drop(self.col, 1), Xdummy.T.reindex(self.columns).T.fillna(0))
-f
