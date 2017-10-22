@@ -600,31 +600,6 @@ def get_ts_sum(df, start, end, col, name):
 #
 #     return parsed
 
-# split into cut_width and cut_num?
-def cut(a, bin_width=None, bin_range=None, num_bins=None):
-    '''
-    Cut a continuous variable into bins of desired widths or number.
-
-    ex) df[col].pipe(cut, num_bins=10)
-    ex) df[col].pipe(cut, bin_width=30, range=(0, 100))
-    '''
-
-    if bin_range is None:
-        bin_range = a.min(), a.max()
-
-    if bin_width is None:
-        bin_width = int(np.ceil((bin_range[1] - bin_range[0]) / num_bins))
-
-    elif num_bins is None:
-        num_bins = int(np.ceil((bin_range[1] - bin_range[0]) / bin_width))
-
-    else:
-        raise Exception, 'Need to specify either one of bin_width or num_bins.'
-
-    min_edge = np.floor(bin_range[0] / bin_width)
-    bin_edges = [min_edge + bin_width * i for i in range(num_bins + 1)]
-    return pd.cut(a, bins=bin_edges, include_lowest=True)
-
 def relative_time_window(df, left_offset, right_offset, frequency):
     '''
     Filter rows of a transactional dataframe with date lying within a relative
@@ -833,3 +808,4 @@ class OneHotEncode(TransformerMixin):
     def transform(self, X):
         Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
         return cbind(X.drop(self.col, 1), Xdummy.T.reindex(self.columns).T.fillna(0))
+f
