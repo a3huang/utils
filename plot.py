@@ -37,7 +37,7 @@ def create_explainer(model, X):
 #########################
 ##### Basic Ploting #####
 #########################
-def plot_bar(df, col, by=None, kind=None, prop=False):
+def plot_bar(df, col, by=None, prop=False, stacked=False):
     '''
     Creates a bar plot of counts for a categorical variable. Can group by an optional
     2nd categorical variable.
@@ -54,27 +54,20 @@ def plot_bar(df, col, by=None, kind=None, prop=False):
         by = by if isinstance(by, str) else by.name
         col = col if isinstance(col, str) else col.name
 
-        if kind == 'facet':
-            g = sns.factorplot(x=0, y=col, col=by, data=data, kind='bar', orient='h')
-            g.set_axis_labels('', col)
-
-        elif kind == 'stack':
+        if stacked:
             values = data[by].unique()
             colors = sns.color_palette()
 
             # plot layers one at a time from largest to smallest to create the "stacked"
             # effect
-            for i in reversed(range(1, len(values)+1)):
-                layer = data[data[by].isin(values[:i])]
+            for i in reversed(range(len(values))):
+                layer = data[data[by].isin(values[:i+1])]
                 sns.barplot(x=0, y=col, data=layer, estimator=np.sum, ci=False,
-                    orient='h', color=colors[i-1])
-
-        elif kind is None:
-            sns.barplot(x=0, y=col, hue=by, data=data, orient='h')
+                    orient='h', color=colors[i], label=values[i])
 
         else:
-            raise Exception, 'Not a valid value for kind'
-
+            sns.barplot(x=0, y=col, hue=by, data=data, orient='h')
+        
     else:
         colors = sns.color_palette()
 
