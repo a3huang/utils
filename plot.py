@@ -212,6 +212,24 @@ def plot_histogram(df, col, by=None, prop=False, facet=False, **kwargs):
 
     else:
         plot_hist_with_prop(df[col], prop=prop, alpha=0.4, **kwargs)
+
+def plot_scatter(df, x, y, by=None, facet=False):
+    '''
+    Creates a scatter plot for 2 continuous variables. Can group by an optional 3rd
+    categorical variable.
+
+    ex) df.pipe(plot_scatter, x='Attack', y='HP', by='Type')
+    '''
+
+    if by is not None:
+        if facet:
+            g = sns.FacetGrid(df, col=by)
+            g.map(sns.regplot, x, y, fit_reg=False, ci=False)
+        else:
+            sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
+            plt.legend(title=by, loc=(1, 0))
+    else:
+        sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
 #####
 
 def multicol_heatplot(df, by, cols):
@@ -220,7 +238,7 @@ def multicol_heatplot(df, by, cols):
     grouped by the given categorical variable. Automatically standardizes
     the continuous variables to faciliate comparison.
 
-    ex) df.pipe(multicol_heatplot, 'Legendary', ['HP', 'Attack', 'Defense'])
+    ex) df.pipe(multicol_heatplot, 'Type', ['HP', 'Attack', 'Defense'])
     '''
 
     s = MinMaxScaler()
@@ -230,24 +248,6 @@ def multicol_heatplot(df, by, cols):
     a = a.groupby(by)[cols].mean()
     sns.heatmap(a, annot=True, fmt='.2f')
     plt.xticks(rotation=90)
-
-def scatplot(df, x, y, by=None, facet=False):
-    '''
-    Creates a scatter plot for 2 continuous variables. Group by an optional 3rd
-    categorical variable.
-
-    ex) df.pipe(scatplot, x='Attack', y='Defense', by='Legendary')
-    '''
-
-    if by:
-        if facet:
-            g = sns.FacetGrid(df, col=by)
-            g.map(sns.regplot, x, y, fit_reg=False, ci=False)
-        else:
-            sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
-            plt.legend(title=by, loc=(1, 0))
-    else:
-        sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
 
 def tsplot(df, date, by=None, val=None, freq='M', area=False):
     '''
