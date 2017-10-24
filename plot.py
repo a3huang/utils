@@ -182,26 +182,21 @@ def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
     plt.xlabel(col)
 #####
 
-def distplot2(col, by=None, prop=False, facet=False, **kwargs):
+def distplot2(*args, **kwargs):
     '''
     Creates a histogram or a grouped density plot for a continuous variable.
 
     ex) df.pipe(distplot, by='Survived', col='Age')
     ex) df.pipe(distplot, by=pd.qcut(df['Age'], 3), col='Fare')
+
+    ex) g = sns.FacetGrid(col='Survived', data=df.assign(Fare=pd.qcut(df['Fare'], 3)))
+        g.map(distplot2, 'Age', 'Fare')
     '''
 
-    if by is None:
-        col = col.name
-        distplot(df, col)
-    else:
-        df = cbind([col, by]).T
-
-        col = col.name
-        by = by.name
-
-        df.columns = [col, by]
-
-    distplot(df, col, by)
+    cols = [i for i in args if i is not None]
+    df = cbind(cols).T
+    df.columns = [i.name for i in cols]
+    distplot(df, *df.columns, **kwargs)
 
 def multicol_heatplot(df, by, cols):
     '''
