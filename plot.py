@@ -229,6 +229,38 @@ def scatterplot(df, x, y, by=None, **kwargs):
 ######################################
 ##### Model Performance Plotting #####
 ######################################
+def plot_classification_report(model, X, y, threshold=0.5):
+    '''
+    Creates a heat map of the classification report for a model.
+
+    ex) plot_classification_report(model, xtest, ytest)
+    '''
+
+    if len(y.value_counts()) > 2:
+        pred = model.predict(X)
+
+    else:
+        try:
+            pred = model.predict_proba(X)[:, 1] > threshold
+        except:
+            pred = model.predict(X)
+
+    a = classification_report(y, pred)
+
+    lines = a.split('\n')[2: -3]
+
+    classes = []
+    matrix = []
+    for line in lines:
+        s = line.split()
+        classes.append(s[0])
+        matrix.append([float(x) for x in s[1: -1]])
+
+    df = pd.DataFrame(matrix, index=classes, columns=['precision', 'recall', 'f1'])
+
+    sns.heatmap(df, annot=True, fmt='.2f')
+    plt.ylabel('Class')
+
 def plot_confusion_matrix(model, X, y, normalize=False, threshold=0.5):
     '''
     Creates a heat map of the confusion matrix for a binary or multiclass
@@ -510,33 +542,6 @@ def plot_class_metrics(model, X, y, label=1):
     plt.plot(np.linspace(.1, 1, 10), outer_recall, label='recall')
     plt.plot(np.linspace(.1, 1, 10), outer_precision, label='precision')
     plt.legend(title='Metric', loc=(1, 0))
-
-def plot_classification_report(model, X, y, threshold=0.5):
-    '''
-    Creates a heat map of the classification report for the given model.
-
-    ex) plot_classification_report(model, xtest, ytest)
-    '''
-
-    if len(y.value_counts()) > 2:
-        pred = model.predict(X)
-    else:
-        pred = model.predict_proba(X)[:, 1] > threshold
-
-    a = classification_report(y, pred)
-    lines = a.split('\n')[2:-3]
-
-    classes = []
-    matrix = []
-    for line in lines:
-        s = line.split()
-        classes.append(s[0])
-        matrix.append([float(x) for x in s[1:-1]])
-
-    df = pd.DataFrame(matrix, index=classes, columns=['precision', 'recall', 'f1'])
-
-    sns.heatmap(df, annot=True, fmt='.2f')
-    plt.ylabel('Class')
 
 def plot_roc_curves(model, X, y, label=1):
     '''
