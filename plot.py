@@ -154,13 +154,17 @@ def hist(a, prop=False, bin_num=None, bin_width=None, bin_range=None, **kwargs):
 
 def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
     '''
-    Creates a histogram for a continuous variable.
+    Creates a histogram or a grouped density plot for a continuous variable.
 
     ex) df.pipe(distplot, by='Survived', col='Age')
     ex) df.pipe(distplot, by=pd.qcut(df['Age'], 3), col='Fare')
     '''
 
     if by is not None:
+        if not isinstance(by, str):
+            df[by.name] = by
+            by = by.name
+
         for group, column in df.groupby(by)[col]:
             sns.kdeplot(column, label=group, shade=True)
 
@@ -168,29 +172,12 @@ def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
             range = kwargs['range']
             plt.xlim(range)
 
-        title = by if isinstance(by, str) else by.name
-        plt.legend(title=title, loc=(1, 0))
+        plt.legend(title=by, loc=(1, 0))
 
     else:
-        plot_hist_with_prop(df[col], prop=prop, alpha=0.4, **kwargs)
+        hist(df[col], prop=prop, alpha=0.4, **kwargs)
 
-def plot_scatter(df, x, y, by=None, facet=False):
-    '''
-    Creates a scatter plot for 2 continuous variables. Can group by an optional 3rd
-    categorical variable.
-
-    ex) df.pipe(plot_scatter, x='Attack', y='HP', by='Type')
-    '''
-
-    if by is not None:
-        if facet:
-            g = sns.FacetGrid(df, col=by)
-            g.map(sns.regplot, x, y, fit_reg=False, ci=False)
-        else:
-            sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
-            plt.legend(title=by, loc=(1, 0))
-    else:
-        sns.lmplot(x=x, y=y, hue=by, data=df, legend=False, fit_reg=False, ci=False)
+    plt.xlabel(col)
 #####
 
 def multicol_heatplot(df, by, cols):
