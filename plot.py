@@ -46,13 +46,19 @@ def plot_bar(df, col, by=None, prop=False, stacked=False):
     ex) df.pipe(plot_bar, by=pd.cut(df['Attack'], 5), col='HP')
     '''
 
+    df = df.copy()
+
+    if not isinstance(col, str):
+        df[col.name] = col
+        col = col.name
+
     if by is not None:
+        if not isinstance(by, str):
+            df[by.name] = by
+            by = by.name
+
         normalize = 'index' if prop else False
         data = df.pipe(table, col, by, normalize=normalize).unstack().reset_index()
-
-        # make sure "by" and "col" are both strings from now on
-        by = by if isinstance(by, str) else by.name
-        col = col if isinstance(col, str) else col.name
 
         if stacked:
             values = data[by].unique()
@@ -62,20 +68,21 @@ def plot_bar(df, col, by=None, prop=False, stacked=False):
             # effect
             for i in reversed(range(len(values))):
                 layer = data[data[by].isin(values[:i+1])]
-                sns.barplot(x=0, y=col, data=layer, estimator=np.sum, ci=False,
-                    orient='h', color=colors[i], label=values[i])
+                sns.barplot(x=0, y=col, data=layer, ci=False, color=colors[i],
+                    estimator=np.sum, label=values[i], orient='h')
 
         else:
             sns.barplot(x=0, y=col, hue=by, data=data, orient='h')
-        
+
     else:
         colors = sns.color_palette()
 
-        col = df[col] if isinstance(col, str) else col
-        data = col.value_counts(normalize=prop).reset_index()
+        data = df.groupby(col).size()
+        data = data / np.sum(data) if prop else data
+        data = data.reset_index()
 
-        sns.barplot(x=col.name, y='index', data=data, orient='h', color=colors[0])
-        plt.ylabel(col.name)
+        sns.barplot(x=0, y=col, data=data, color=colors[0], orient='h')
+        plt.ylabel(col)
 
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
