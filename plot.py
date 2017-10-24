@@ -199,7 +199,15 @@ def lineplot(df, x, y, by=None, **kwargs):
     ex) df.pipe(lineplot, x=pd.cut(df['Age'], 3), y='Fare', by='Sex')
     '''
 
+    df = df.copy()
+
+    if by is not None:
+        if not isinstance(by, str):
+            df[by.name] = by
+            by = by.name
+
     sns.pointplot(x, y, hue=by, data=df, **kwargs)
+    plt.legend(title=by, loc=(1, 0))
 
 def scatterplot(df, x, y, by=None, **kwargs):
     '''
@@ -208,7 +216,15 @@ def scatterplot(df, x, y, by=None, **kwargs):
     ex) df.pipe(scatterplot, x='Age', y='Fare', by='Survived')
     '''
 
+    df = df.copy()
+
+    if by is not None:
+        if not isinstance(by, str):
+            df[by.name] = by
+            by = by.name
+    
     sns.lmplot(x, y, hue=by, data=df, **kwargs)
+    plt.legend(title=by, loc=(1, 0))
 #####
 
 def multicol_heatplot(df, by, cols):
