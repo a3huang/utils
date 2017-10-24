@@ -34,9 +34,9 @@ def create_explainer(model, X):
     return explainer
 #####
 
-#########################
-##### Basic Ploting #####
-#########################
+##########################
+##### Basic Plotting #####
+##########################
 def barplot(df, col, by=None, prop=False, stacked=False):
     '''
     Creates a bar plot of counts for a categorical variable.
@@ -214,6 +214,9 @@ def scatterplot(df, x, y, by=None, **kwargs):
     Creates a scatter plot for 2 continuous variables.
 
     ex) df.pipe(scatterplot, x='Age', y='Fare', by='Survived')
+    ex) projection = make_pipeline(StandardScaler(), PCA())
+        df1 = cbind(df, projection.fit_transform(df.drop('Survived', 1))[:, :1])
+        df1.pipe(scatterplot, x='PCA1', y='PCA2', by='Survived')
     '''
 
     df = df.copy()
@@ -415,6 +418,7 @@ def plot_interaction(df, col, by, val, kind='line'):
 
     plt.legend(title=by, loc=(1, 0))
 
+#deprecate
 def plot_2d_projection(df, by, method=None, sample_size=None):
     '''
     Creates a scatter plot of the 2-D projection of the dataset. Groups by a
