@@ -214,9 +214,6 @@ def scatterplot(df, x, y, by=None, **kwargs):
     Creates a scatter plot for 2 continuous variables.
 
     ex) df.pipe(scatterplot, x='Age', y='Fare', by='Survived')
-    ex) projection = make_pipeline(StandardScaler(), PCA())
-        df1 = cbind(df, projection.fit_transform(df.drop('Survived', 1))[:, :1])
-        df1.pipe(scatterplot, x='PCA1', y='PCA2', by='Survived')
     '''
 
     df = df.copy()
@@ -228,6 +225,44 @@ def scatterplot(df, x, y, by=None, **kwargs):
 
     sns.lmplot(x, y, hue=by, data=df, **kwargs)
     plt.legend(title=by, loc=(1, 0))
+
+######################################
+##### Model Performance Plotting #####
+######################################
+def plot_confusion_matrix(model, X, y, label=1, normalize=False, threshold=0.5):
+    '''
+    Creates a heat map of the confusion matrix for a model.
+
+    ex) plot_confusion_matrix(model, xtest, ytest, normalize='index')
+    '''
+
+    true = y.pipe(dummy).iloc[:, label]
+
+    try:
+        pred = model.predict_proba(X)[:, label] > threshold
+    except:
+        pred = pd.Series(model.predict(X)).pipe(dummy).iloc[:, label]
+
+    a = confusion_matrix(y, pred).astype(float)
+
+    if normalize == 'index':
+        a = np.divide(a, np.sum(a, 1).reshape(2, 1))
+    elif normalize == 'column':
+        a = np.divide(a, np.sum(a, 0))
+
+    sns.heatmap(a, annot=True, fmt='.2f')
+    plt.ylabel('True')
+    plt.title('Predicted')
+
+def plot_score_distribution(model, X, y):
+    '''
+    Creates a density plot of model prediction scores grouped by the target class.
+
+    ex) plot_score_distribution(model, xtest, ytest)
+    '''
+
+    df = cbind(y, model.predict_proba(X)[:, 1])
+    df.pipe(distplot, by=df.columns[0], col=df.columns[1])
 #####
 
 def multicol_heatplot(df, by, cols):
@@ -426,6 +461,10 @@ def plot_2d_projection(df, by, method=None, sample_size=None):
     dimensionality reduction.
 
     ex) df.pipe(plot_2d_projection, by='Legendary')
+
+    ex) projection = make_pipeline(StandardScaler(), PCA())
+        df1 = cbind(df, projection.fit_transform(df.drop('Survived', 1))[:, :1])
+        df1.pipe(scatterplot, x='PCA1', y='PCA2', by='Survived')
     '''
 
     df = df.copy()
@@ -495,32 +534,6 @@ def plot_classification_report(model, X, y, threshold=0.5):
 
     sns.heatmap(df, annot=True, fmt='.2f')
     plt.ylabel('Class')
-
-def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False, label=1):
-    '''
-    Creates a heat map of the confusion matrix for the given model and data.
-
-    ex) plot_confusion_matrix(model, xtest, ytest, normalize='index')
-    '''
-
-    true = y.pipe(dummy).iloc[:, label]
-
-    try:
-        pred = model.predict_proba(X)[:, label] > threshold
-    except:
-        pred = pd.Series(model.predict(X)).pipe(dummy).iloc[:, label]
-
-    a = confusion_matrix(y, pred).astype(float)
-
-    if normalize == 'index':
-        a = np.divide(a, np.sum(a, 1).reshape(2, 1))
-    elif normalize == 'column':
-        a = np.divide(a, np.sum(a, 0))
-
-    sns.heatmap(a, annot=True, fmt='.2f')
-    plt.ylabel('True')
-    plt.title('Predicted')
-
 
 def plot_multi_confusion_matrix(model, X, y, normalize=False):
     '''
@@ -623,17 +636,6 @@ def plot_calibration_curve(model, X, y):
     plt.xlabel('Predicted Proportion')
     plt.ylabel('True Proportion')
 
-def plot_score_dists(model, X, y):
-    '''
-    Creates a density plot of model scores grouped by the target class. Useful
-    for seeing how well the model separates out the target classes.
-
-    ex) plot_score_dists(model, xtest, ytest)
-    '''
-
-    df = cbind(y, model.predict_proba(X)[:, 1]).rename(columns={0: 'score'})
-    df.pipe(distplot, by=df.columns[0], col='score')
-
 def plot_top_features(model, X, attr, n=10, label=0):
     '''
     Creates a bar plot of the top feature importance scores assigned by the
@@ -726,16 +728,3 @@ def plot_survival_curves(df, time, event, by=None):
         kmf.fit(T, event_observed=E)
         kmf.survival_function_.plot(ax=ax)
         plt.legend().remove()
-
-def plot_cont_vs_binary(df, by, col, bins=5):
-    '''
-    Creates a line plot of the mean of a binary target variable grouped by a
-    binned continuous variable.
-
-    ex) df.pipe(plot_cont_vs_binary, by='HP', col='Legendary', bins=10)
-    '''
-
-    df = df.copy()
-    df[by] = pd.cut(df[by], bins=bins, include_lowest=True)
-    df.groupby(by)[col].mean().plot()
-    plt.xticks(rotation=90)
