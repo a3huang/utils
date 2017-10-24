@@ -160,6 +160,8 @@ def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
     ex) df.pipe(distplot, by=pd.qcut(df['Age'], 3), col='Fare')
     '''
 
+    df = df.copy()
+
     if by is not None:
         if not isinstance(by, str):
             df[by.name] = by
