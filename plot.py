@@ -229,24 +229,27 @@ def scatterplot(df, x, y, by=None, **kwargs):
 ######################################
 ##### Model Performance Plotting #####
 ######################################
-def plot_confusion_matrix(model, X, y, label=1, normalize=False, threshold=0.5):
+def plot_confusion_matrix(model, X, y, normalize=False, threshold=0.5):
     '''
-    Creates a heat map of the confusion matrix for a model.
+    Creates a heat map of the confusion matrix for a binary or multiclass
+    classification model.
 
     ex) plot_confusion_matrix(model, xtest, ytest, normalize='index')
     '''
 
-    true = y.pipe(dummy).iloc[:, label]
+    if len(y.value_counts()) > 2:
+        pred = model.predict(X)
 
-    try:
-        pred = model.predict_proba(X)[:, label] > threshold
-    except:
-        pred = pd.Series(model.predict(X)).pipe(dummy).iloc[:, label]
+    else:
+        try:
+            pred = model.predict_proba(X)[:, 1] > threshold
+        except:
+            pred = model.predict(X)
 
     a = confusion_matrix(y, pred).astype(float)
 
     if normalize == 'index':
-        a = np.divide(a, np.sum(a, 1).reshape(2, 1))
+        a = np.divide(a, np.sum(a, 1).reshape(len(a), 1))
     elif normalize == 'column':
         a = np.divide(a, np.sum(a, 0))
 
@@ -534,28 +537,6 @@ def plot_classification_report(model, X, y, threshold=0.5):
 
     sns.heatmap(df, annot=True, fmt='.2f')
     plt.ylabel('Class')
-
-def plot_multi_confusion_matrix(model, X, y, normalize=False):
-    '''
-    Creates a heat map of the multilabel confusion matrix for the given model
-    and data.
-
-    ex) plot_multi_confusion_matrix(model, xtest, ytest, normalize='index')
-    '''
-
-    true = y
-    pred = model.predict(X)
-
-    a = confusion_matrix(true, pred).astype(float)
-
-    if normalize == 'index':
-        a = np.divide(a, np.sum(a, 1).reshape(len(a), 1))
-    elif normalize == 'column':
-        a = np.divide(a, np.sum(a, 0))
-
-    sns.heatmap(a, annot=True, fmt='.2f')
-    plt.ylabel('True')
-    plt.title('Predicted')
 
 def plot_roc_curves(model, X, y, label=1):
     '''
