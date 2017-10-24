@@ -177,7 +177,7 @@ def distplot(df, col, by=None, prop=False, **kwargs):
         plt.legend(title=by, loc=(1, 0))
 
     else:
-        hist(df[col], prop=prop, alpha=0.4, **kwargs)
+        df.pipe(hist, col, prop=prop, alpha=0.4, **kwargs)
 
     plt.xlabel(col)
 #####
