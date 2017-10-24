@@ -182,6 +182,27 @@ def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
     plt.xlabel(col)
 #####
 
+def distplot2(a, by, prop=False, facet=False, **kwargs):
+    '''
+    Creates a histogram or a grouped density plot for a continuous variable.
+
+    ex) df.pipe(distplot, by='Survived', col='Age')
+    ex) df.pipe(distplot, by=pd.qcut(df['Age'], 3), col='Fare')
+    '''
+
+    df = cbind([a, by]).T
+
+    col = a.name
+    by = by.name
+
+    df.columns = [col, by]
+
+    if by is not None:
+        for group, column in df.groupby(by)[col]:
+            sns.kdeplot(column, label=group, shade=True)
+    else:
+        hist(a, prop=prop, alpha=0.4, **kwargs)
+
 def multicol_heatplot(df, by, cols):
     '''
     Creates a heat map of the average values of several continuous variables
