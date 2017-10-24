@@ -86,6 +86,16 @@ def barplot(df, col, by=None, prop=False, stacked=False):
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
 
+def boxplot(df, by, col, **kwargs):
+    '''
+    Creates a grouped box plot for a continuous variable.
+
+    ex) df.pipe(boxplot, by='Survived', col='Age')
+    ex) df.pipe(boxplot, by=pd.qcut(df['Age'], 3), col='Fare')
+    '''
+
+    sns.boxplot(x=by, y=col, data=df, **kwargs)
+
 def heatmap(df, row, col, val=None, normalize=False):
     '''
     Creates a heat map of counts for 2 categorical variables.
@@ -180,6 +190,16 @@ def distplot(df, col, by=None, prop=False, **kwargs):
         df.pipe(hist, col, prop=prop, alpha=0.4, **kwargs)
 
     plt.xlabel(col)
+
+def scatterplot(df, x, y, by=None, **kwargs):
+    '''
+    Creates a scatter plot for 2 continuous variables.
+
+    ex) df.pipe(scatterplot, x='Age', y='Fare', by='Survived')
+    '''
+
+    sns.lmplot(x, y, hue=by, data=df, **kwargs)
+
 #####
 
 def multicol_heatplot(df, by, cols):
