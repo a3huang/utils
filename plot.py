@@ -42,7 +42,7 @@ def barplot(df, col, by=None, prop=False, stacked=False):
     Creates a bar plot of counts for a categorical variable.
 
     ex) df.pipe(barplot, by='Survived', col='Sex')
-    ex) df.pipe(barplot, by=pd.qcut(df['Age'], 3), col=pd.qcut(df['Fare'], 3))
+    ex) df.pipe(barplot, by=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
     '''
 
     df = df.copy()
@@ -91,7 +91,7 @@ def boxplot(df, by, col, **kwargs):
     Creates a grouped box plot for a continuous variable.
 
     ex) df.pipe(boxplot, by='Survived', col='Age')
-    ex) df.pipe(boxplot, by=pd.qcut(df['Age'], 3), col='Fare')
+    ex) df.pipe(boxplot, by=pd.qcut(df.Age, 3), col='Fare')
     '''
 
     sns.boxplot(x=by, y=col, data=df, **kwargs)
@@ -154,7 +154,7 @@ def distplot(df, col, by=None, prop=False, **kwargs):
     Creates a histogram or a grouped density plot for a continuous variable.
 
     ex) df.pipe(distplot, by='Survived', col='Age')
-    ex) df.pipe(distplot, by=pd.qcut(df['Age'], 3), col='Fare')
+    ex) df.pipe(distplot, by=pd.qcut(df.Age, 3), col='Fare')
     '''
 
     df = df.copy()
@@ -182,8 +182,8 @@ def heatmap(df, row, col, val=None, normalize=False):
     '''
     Creates a heat map of counts for 2 categorical variables.
 
-    ex) df.pipe(heatmap, row='Survived', col='Sex', val='Age')
-    ex) df.pipe(heatmap, row=pd.qcut(df['Age'], 3), col=pd.qcut(df['Fare'], 3))
+    ex) df.pipe(heatmap, row='Cabin', col='Sex', val='Survived')
+    ex) df.pipe(heatmap, row=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
     '''
 
     if val:
@@ -195,8 +195,8 @@ def lineplot(df, x, y, by=None, **kwargs):
     '''
     Creates a line plot of the mean value for a continuous variable.
 
-    ex) df.pipe(lineplot, x='Survived', y='Age')
-    ex) df.pipe(lineplot, x=pd.cut(df['Age'], 3), y='Fare', by='Sex')
+    ex) df.pipe(lineplot, x='Cabin', y='Survived', by='Sex')
+    ex) df.pipe(lineplot, x=pd.cut(df.Age, 3), y='Survived')
     '''
 
     df = df.copy()
@@ -222,7 +222,7 @@ def scatterplot(df, x, y, by=None, **kwargs):
         if not isinstance(by, str):
             df[by.name] = by
             by = by.name
-    
+
     sns.lmplot(x, y, hue=by, data=df, **kwargs)
     plt.legend(title=by, loc=(1, 0))
 #####
