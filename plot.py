@@ -96,19 +96,6 @@ def boxplot(df, by, col, **kwargs):
 
     sns.boxplot(x=by, y=col, data=df, **kwargs)
 
-def heatmap(df, row, col, val=None, normalize=False):
-    '''
-    Creates a heat map of counts for 2 categorical variables.
-
-    ex) df.pipe(heatmap, row='Embarked', col='Sex', val='Survived')
-    ex) df.pipe(heatmap, row=pd.qcut(df['Age'], 3), col=pd.qcut(df['Fare'], 3))
-    '''
-
-    if val:
-        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
-    else:
-        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
-
 def nice_hist(df, col, bin_mult=1, range=None, prop=False):
     '''
     Creates a "nice" histogram for a continuous variable, where the bin edges
@@ -191,6 +178,29 @@ def distplot(df, col, by=None, prop=False, **kwargs):
 
     plt.xlabel(col)
 
+def heatmap(df, row, col, val=None, normalize=False):
+    '''
+    Creates a heat map of counts for 2 categorical variables.
+
+    ex) df.pipe(heatmap, row='Survived', col='Sex', val='Age')
+    ex) df.pipe(heatmap, row=pd.qcut(df['Age'], 3), col=pd.qcut(df['Fare'], 3))
+    '''
+
+    if val:
+        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
+    else:
+        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
+
+def lineplot(df, x, y, by=None, **kwargs):
+    '''
+    Creates a line plot of the mean value for a continuous variable.
+
+    ex) df.pipe(lineplot, x='Survived', y='Age')
+    ex) df.pipe(lineplot, x=pd.cut(df['Age'], 3), y='Fare', by='Sex')
+    '''
+
+    sns.pointplot(x, y, hue=by, data=df, **kwargs)
+
 def scatterplot(df, x, y, by=None, **kwargs):
     '''
     Creates a scatter plot for 2 continuous variables.
@@ -199,7 +209,6 @@ def scatterplot(df, x, y, by=None, **kwargs):
     '''
 
     sns.lmplot(x, y, hue=by, data=df, **kwargs)
-
 #####
 
 def multicol_heatplot(df, by, cols):
