@@ -125,14 +125,14 @@ def nice_hist(df, col, bin_mult=1, range=None, prop=False):
     weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
     df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
 
-def hist(a, prop=False, bin_num=None, bin_width=None, bin_range=None, **kwargs):
+def hist(df, col, bin_num=None, bin_width=None, bin_range=None, prop=False, **kwargs):
     '''
     Creates a histogram for a continuous variable.
 
-    Note: This function takes a series rather than a dataframe as an argument.
-
-    ex) hist(df['Age'], bin_width=10, bin_range=(0, 100), prop=True)
+    ex) df.pipe(hist, 'Age', bin_width=10, bin_range=(0, 100), prop=True)
     '''
+
+    a = df[col]
 
     range = (a.min(), a.max()) if bin_range is None else bin_range
 
@@ -152,7 +152,7 @@ def hist(a, prop=False, bin_num=None, bin_width=None, bin_range=None, **kwargs):
     weights = np.ones_like(a) / float(len(a)) if prop else None
     plt.hist(a, bins=bins, range=range, weights=weights, **kwargs)
 
-def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
+def distplot(df, col, by=None, prop=False, **kwargs):
     '''
     Creates a histogram or a grouped density plot for a continuous variable.
 
@@ -181,22 +181,6 @@ def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
 
     plt.xlabel(col)
 #####
-
-def distplot2(*args, **kwargs):
-    '''
-    Creates a histogram or a grouped density plot for a continuous variable.
-
-    ex) df.pipe(distplot, by='Survived', col='Age')
-    ex) df.pipe(distplot, by=pd.qcut(df['Age'], 3), col='Fare')
-
-    ex) g = sns.FacetGrid(col='Survived', data=df.assign(Fare=pd.qcut(df['Fare'], 3)))
-        g.map(distplot2, 'Age', 'Fare')
-    '''
-
-    cols = [i for i in args if i is not None]
-    df = cbind(cols).T
-    df.columns = [i.name for i in cols]
-    distplot(df, *df.columns, **kwargs)
 
 def multicol_heatplot(df, by, cols):
     '''
