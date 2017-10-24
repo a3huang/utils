@@ -37,13 +37,12 @@ def create_explainer(model, X):
 #########################
 ##### Basic Ploting #####
 #########################
-def plot_bar(df, col, by=None, prop=False, stacked=False):
+def barplot(df, col, by=None, prop=False, stacked=False):
     '''
-    Creates a bar plot of counts for a categorical variable. Can group by an optional
-    2nd categorical variable.
+    Creates a bar plot of counts for a categorical variable.
 
-    ex) df.pipe(plot_bar, by='Type', col='HP')
-    ex) df.pipe(plot_bar, by=pd.cut(df['Attack'], 5), col='HP')
+    ex) df.pipe(barplot, by='Survived', col='Sex')
+    ex) df.pipe(barplot, by=pd.qcut(df['Age'], 3), col=pd.qcut(df['Fare'], 3))
     '''
 
     df = df.copy()
@@ -64,8 +63,8 @@ def plot_bar(df, col, by=None, prop=False, stacked=False):
             values = data[by].unique()
             colors = sns.color_palette()
 
-            # plot layers one at a time from largest to smallest to create the "stacked"
-            # effect
+            # plot layers one at a time from largest to smallest to create
+            # the "stacked" effect
             for i in reversed(range(len(values))):
                 layer = data[data[by].isin(values[:i+1])]
                 sns.barplot(x=0, y=col, data=layer, ci=False, color=colors[i],
@@ -87,36 +86,12 @@ def plot_bar(df, col, by=None, prop=False, stacked=False):
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
 
-def plot_box(df, col, by, facet=False, sort_median=False):
+def heatmap(df, row, col, val=None, normalize=False):
     '''
-    Creates box plots for a continuous variable grouped by either 1 or 2
-    categorical variables.
+    Creates a heat map of counts for 2 categorical variables.
 
-    ex) df.pipe(plot_box, by='Type', col='HP')
-    ex) df.pipe(plot_box, by=['Type 1', 'Type 2'], col='HP')
-    ex) df.pipe(plot_box, by=pd.cut(df['Attack'], 5), col='HP')
-    '''
-
-    if sort_median:
-        order = df.groupby(by)[col].median().sort_values().index
-    else:
-        order = None
-
-    if isinstance(by, list):
-        if facet:
-            g = sns.FacetGrid(df, col=by[1])
-            g.map(sns.boxplot, by[0], col, order=order)
-        else:
-            sns.boxplot(x=by[0], y=col, hue=by[1], data=df, order=order)
-    else:
-        sns.boxplot(x=by, y=col, data=df, order=order)
-
-def plot_heatmap(df, row, col, val=None, normalize=False):
-    '''
-    Creates a heat map of counts for 2 categorical variables. Can display the mean of
-    an optional 3rd continuous variable for each cell.
-
-    ex) df.pipe(plot_heatmap, row='Type 1', col='Type 2', val='HP')
+    ex) df.pipe(heatmap, row='Embarked', col='Sex', val='Survived')
+    ex) df.pipe(heatmap, row=pd.qcut(df['Age'], 3), col=pd.qcut(df['Fare'], 3))
     '''
 
     if val:
@@ -124,17 +99,12 @@ def plot_heatmap(df, row, col, val=None, normalize=False):
     else:
         sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
 
-def plot_hist_nice(df, col, bin_mult=1, range=None, prop=False):
+def nice_hist(df, col, bin_mult=1, range=None, prop=False):
     '''
-    Creates a "nice" histogram for a continuous variable. It does this by first
-    drawing a temporary histogram to determine the x-axis tick marks of the plot.
-    Then it redraws the histogram so that its bin edges now line up with the tick
-    marks. This function takes advantage of the fact that matplotlib's plt.hist
-    automatically comes up with "nice" values for the x-axis tick marks.
+    Creates a "nice" histogram for a continuous variable, where the bin edges
+    align with the x-axis tick marks.
 
-    Note: Does not play nicely with seaborn's FacetGrid.
-
-    ex) df.pipe(plot_hist_nice, col='HP')
+    ex) df.pipe(nice_hist, col='Age')
     '''
 
     # make temporary plot of min and max just to get the "right" x-axis tick marks
@@ -155,17 +125,13 @@ def plot_hist_nice(df, col, bin_mult=1, range=None, prop=False):
     weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
     df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
 
-def plot_hist_with_prop(a, prop=False, bin_num=None, bin_width=None,
-                        bin_range=None, **kwargs):
+def hist(a, prop=False, bin_num=None, bin_width=None, bin_range=None, **kwargs):
     '''
-    Creates a histogram for a continuous variable. Can choose to display the
-    proportions in each bin rather than the counts. Can control either the width
-    of the bins or the number of bins (but not both at the same time).
+    Creates a histogram for a continuous variable.
 
-    Note: This function takes a series rather than a dataframe as an argument to make
-          it compatible with seaborn's FacetGrid.
+    Note: This function takes a series rather than a dataframe as an argument.
 
-    ex) plot_hist_with_prop(df[col], bin_width=10, bin_range=(0, 100), prop=True)
+    ex) hist(df['Age'], bin_width=10, bin_range=(0, 100), prop=True)
     '''
 
     range = (a.min(), a.max()) if bin_range is None else bin_range
@@ -186,29 +152,24 @@ def plot_hist_with_prop(a, prop=False, bin_num=None, bin_width=None,
     weights = np.ones_like(a) / float(len(a)) if prop else None
     plt.hist(a, bins=bins, range=range, weights=weights, **kwargs)
 
-def plot_histogram(df, col, by=None, prop=False, facet=False, **kwargs):
+def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
     '''
-    Creates a histogram for a continuous variable. Can group by an optional 2nd
-    categorical variable.
+    Creates a histogram for a continuous variable.
 
-    ex) df.pipe(plot_histogram, by='Type', col='HP')
+    ex) df.pipe(distplot, by='Survived', col='Age')
+    ex) df.pipe(distplot, by=pd.qcut(df['Age'], 3), col='Fare')
     '''
 
     if by is not None:
-        if facet:
-            g = sns.FacetGrid(df, col=by, col_wrap=3)
-            g.map(plot_hist_with_prop, col, prop=prop, alpha=0.4, **kwargs)
+        for group, column in df.groupby(by)[col]:
+            sns.kdeplot(column, label=group, shade=True)
 
-        else:
-            for group, column in df.groupby(by)[col]:
-                sns.kdeplot(column, label=group, shade=True)
+        if 'range' in kwargs:
+            range = kwargs['range']
+            plt.xlim(range)
 
-            if 'range' in kwargs:
-                range = kwargs['range']
-                plt.xlim(range)
-
-            title = by if isinstance(by, str) else by.name
-            plt.legend(title=title, loc=(1, 0))
+        title = by if isinstance(by, str) else by.name
+        plt.legend(title=title, loc=(1, 0))
 
     else:
         plot_hist_with_prop(df[col], prop=prop, alpha=0.4, **kwargs)
