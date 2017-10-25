@@ -266,12 +266,25 @@ def tslineplot(df, date, by=None, val=None, area=False, freq='M'):
 ######################################
 ##### Model Performance Plotting #####
 ######################################
+def plot_calibration_curve(model, X, y):
+    '''
+    Creates a plot of the calibration curve for a binary classification model.
+
+    ex) plot_calibration_curve(model, xtest, ytest)
+    '''
+
+    prob_true, prob_pred = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
+    plt.plot(prob_pred, prob_true)
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('Predicted Proportion')
+    plt.ylabel('True Proportion')
+
 def plot_classification_metrics(model, X, y, threshold=0.5):
     '''
-    Creates line plots of the f1 score, recall, and precision for several
+    Creates plots of the f1 score, recall, and precision curves over several
     threshold values.
 
-    ex) plot_classification_metrics(model, xtest ytest)
+    ex) plot_classification_metrics(model, xtest, ytest)
     '''
 
     f1 = []
@@ -568,8 +581,8 @@ def plot_roc_curves2(models, X, y):
 
     for i, model in enumerate(models):
         pred = model.predict_proba(X)[:, 1]
-        fpr, tpr, _ = roc_curve(y, pred)
-        plt.plot(fpr, tpr, label=i)
+        false_pos_rate, true_pos_rate, _ = roc_curve(y, pred)
+        plt.plot(false_pos_rate, true_pos_rate, label=i)
 
     plt.plot([0, 1], [0, 1], linestyle='--')
     plt.xlabel('False Positive Rate')
@@ -578,6 +591,7 @@ def plot_roc_curves2(models, X, y):
     if len(models) > 1:
         plt.legend(title='Model', loc=(1, 0))
 
+# deprecate
 def plot_roc_curves(model, X, y, label=1):
     '''
     Creates a line plot of the roc curve for the given model and data.
@@ -594,6 +608,7 @@ def plot_roc_curves(model, X, y, label=1):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
 
+# deprecate
 def compare_data_roc_curves(model, datasets, target, omit=None,
                             random_state=42):
     '''
@@ -643,19 +658,6 @@ def plot_learning_curves(model, X, y):
     plt.xlabel('Sample Size')
     plt.ylabel('Performance')
     plt.legend(loc=(1, 0))
-
-def plot_calibration_curve(model, X, y):
-    '''
-    Creates a line plot of the calibration curve for the given model and data.
-
-    ex) plot_calibration_curve(model, xtest, ytest)
-    '''
-
-    fp, mv = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
-    plt.plot(mv, fp)
-    plt.plot([0, 1], [0, 1], linestyle='--')
-    plt.xlabel('Predicted Proportion')
-    plt.ylabel('True Proportion')
 
 def plot_top_features(model, X, attr, n=10, label=0):
     '''
