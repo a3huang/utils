@@ -226,6 +226,42 @@ def scatterplot(df, x, y, by=None, **kwargs):
     sns.lmplot(x, y, hue=by, data=df, **kwargs)
     plt.legend(title=by, loc=(1, 0))
 
+################################
+##### Time Series Plotting #####
+################################
+def tslineplot(df, date, by=None, val=None, area=False, freq='M'):
+    '''
+    Creates a time series line plot of counts for a date variable.
+
+    ex) df.pipe(tslineplot, date='date', by='diet')
+    '''
+
+    df = df.copy()
+
+    if by is not None:
+        if not isinstance(by, str):
+            df[by.name] = by
+            by = by.name
+
+    if area:
+        kind = 'area'
+    else:
+        kind = 'line'
+
+    date = pd.Grouper(key=date, freq=freq)
+
+    if by and val:
+        df.groupby([date, by])[val].mean().unstack(by).plot(kind=kind)
+    elif by:
+        df.groupby([date, by]).size().unstack(by).plot(kind=kind)
+    elif val:
+        df.groupby(date)[val].mean().plot(kind=kind)
+    else:
+        df.groupby(date).size().plot(kind=kind)
+
+    if by:
+        plt.legend(title=by, loc=(1, 0))
+
 ######################################
 ##### Model Performance Plotting #####
 ######################################
@@ -316,31 +352,6 @@ def multicol_heatplot(df, by, cols):
     a = a.groupby(by)[cols].mean()
     sns.heatmap(a, annot=True, fmt='.2f')
     plt.xticks(rotation=90)
-
-def tsplot(df, date, by=None, val=None, freq='M', area=False):
-    '''
-    Creates a time series plot of counts for a date variable or of mean values
-    for a continuous variable. Group by an optional 3rd categorical variable.
-
-    ex) df.pipe(tsplot, date='date', by='Category')
-    '''
-
-    if area:
-        kind = 'area'
-    else:
-        kind = 'line'
-
-    if by and val:
-        df.groupby([pd.Grouper(key=date, freq=freq), by])[val].mean().unstack(by).plot(kind=kind)
-    elif by:
-        df.groupby([pd.Grouper(key=date, freq=freq), by]).size().unstack(by).plot(kind=kind)
-    elif val:
-        df.groupby(pd.Grouper(key=date, freq=freq))[val].mean().plot(kind=kind)
-    else:
-        df.groupby(pd.Grouper(key=date, freq=freq)).size().plot(kind=kind)
-
-    if by:
-        plt.legend(title=by, loc=(1, 0))
 
 def tsboxplot(df, date, col, freq='M'):
     '''
