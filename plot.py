@@ -266,6 +266,31 @@ def tslineplot(df, date, by=None, val=None, area=False, freq='M'):
 ######################################
 ##### Model Performance Plotting #####
 ######################################
+def plot_classification_metrics(model, X, y, threshold=0.5):
+    '''
+    Creates line plots of the f1 score, recall, and precision for several
+    threshold values.
+
+    ex) plot_classification_metrics(model, xtest ytest)
+    '''
+
+    f1 = []
+    recall = []
+    precision = []
+
+    for threshold in np.linspace(.1, 1, 10):
+         pred = model.predict_proba(X)[:, 1] > threshold
+
+         f1.append(f1_score(y, pred))
+         recall.append(recall_score(y, pred))
+         precision.append(precision_score(y, pred))
+
+    plt.plot(np.linspace(.1, 1, 10), f1, label='f1')
+    plt.plot(np.linspace(.1, 1, 10), recall, label='recall')
+    plt.plot(np.linspace(.1, 1, 10), precision, label='precision')
+
+    plt.legend(title='Metric', loc=(1, 0))
+
 def plot_classification_report(model, X, y, threshold=0.5):
     '''
     Creates a heat map of the classification report for a model.
@@ -372,6 +397,7 @@ def tsboxplot(df, date, col, freq='M'):
     sns.boxplot(data=data, orient='h')
     plt.xlabel(col)
 
+# deprecate
 def timeunit_barplot(df, date, unit='weekday', col=None):
     '''
     Creates a bar plot of counts or the average of continuous variable grouped
@@ -529,31 +555,6 @@ def plot_2d_projection(df, by, method=None, sample_size=None):
     df['pca2'] = pipeline.fit_transform(X)[:, 1]
 
     df.pipe(scatplot, x='pca1', y='pca2', by=by)
-
-def plot_class_metrics(model, X, y, label=1):
-    '''
-    For each threshold value, calculates the mean 5-fold CV f1, recall, and
-    precision scores. Creates a line plot of the threshold values vs. each of
-    the metrics.
-
-    ex) plot_class_metrics(model, xtest ytest)
-    '''
-
-    outer_f1 = []
-    outer_recall = []
-    outer_precision = []
-    for threshold in np.linspace(.1, 1, 10):
-         true = pd.Series(y).pipe(dummy).iloc[:, label]
-         pred = model.predict_proba(X)[:, label] > threshold
-
-         outer_f1.append(f1_score(true, pred))
-         outer_recall.append(recall_score(true, pred))
-         outer_precision.append(precision_score(true, pred))
-
-    plt.plot(np.linspace(.1, 1, 10), outer_f1, label='f1')
-    plt.plot(np.linspace(.1, 1, 10), outer_recall, label='recall')
-    plt.plot(np.linspace(.1, 1, 10), outer_precision, label='precision')
-    plt.legend(title='Metric', loc=(1, 0))
 
 def plot_roc_curves(model, X, y, label=1):
     '''
