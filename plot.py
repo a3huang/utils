@@ -351,11 +351,12 @@ def plot_confusion_matrix(model, X, y, normalize=False, threshold=0.5):
     plt.ylabel('True')
     plt.title('Predicted')
 
-def plot_score_distribution(model, X, y):
+def plot_predicted_probabilities(model, X, y):
     '''
-    Creates a density plot of model prediction scores grouped by the target class.
+    Creates a density plot of the predicted probabilities for a model grouped by the
+    target class.
 
-    ex) plot_score_distribution(model, xtest, ytest)
+    ex) plot_predicted_probabilities(model, xtest, ytest)
     '''
 
     df = cbind(y, model.predict_proba(X)[:, 1])
