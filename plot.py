@@ -234,6 +234,7 @@ def tslineplot(df, date, by=None, val=None, area=False, freq='M'):
     Creates a time series line plot of counts for a date variable.
 
     ex) df.pipe(tslineplot, date='date', by='diet')
+    ex) df.pipe(tslineplot, date='date', by=pd.qcut(df['purchase_frequency'], 3))
     '''
 
     df = df.copy()
