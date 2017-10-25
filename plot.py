@@ -697,31 +697,24 @@ def plot_explanations(explainer, model, X, i=None):
     plt.legend().remove()
     plt.ylabel('')
 
-def plot_decision_tree(X, y, file_name, default_dir='/Users/alexhuang/',
-                       max_depth=10, min_samples_leaf=100, **kwargs):
+def plot_decision_tree(X, y, filename, directory='/Users/alexhuang', **kwargs):
     '''
-    Generates and saves a graphviz plot of a decision tree to a file and
-    automatically opens the file for convenience.
+    Creates a graphviz plot of a decision tree and saves it to a file.
 
     ex) plot_decision_tree(X, y, 'tree')
     '''
 
-    file_name = default_dir + file_name
+    filename = os.path.join(directory, filename)
 
-    model = DecisionTreeClassifier(max_depth=max_depth,
-                                   min_samples_leaf=min_samples_leaf,
-                                   **kwargs)
+    model = DecisionTreeClassifier(**kwargs)
     model.fit(X, y)
 
-    dot_data = export_graphviz(model,
-                               out_file=None,
-                               feature_names=X.columns,
-                               filled=True, rounded=True,
-                               class_names=y.astype(str).unique())
+    dot_data = export_graphviz(model, class_names=y.astype(str).unique(),
+        feature_names=X.columns, filled=True, out_file=None, rounded=True)
 
     graph = graphviz.Source(dot_data)
-    graph.render(file_name)
-    subprocess.call(('open', file_name + '.pdf'))
+    graph.render(filename)
+    subprocess.call(('open', os.path.join(filename, '.pdf')))
 
 def plot_survival_curves(df, time, event, by=None):
     '''
