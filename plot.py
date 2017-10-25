@@ -557,6 +557,27 @@ def plot_2d_projection(df, by, method=None, sample_size=None):
 
     df.pipe(scatplot, x='pca1', y='pca2', by=by)
 
+def plot_roc_curves2(models, X, y):
+    '''
+    Creates a plot of the roc curve for each binary classification model pipeline.
+
+    ex) plot_roc_curves([model1, model2, model3], xtest, ytest)
+    '''
+
+    models = models if isinstance(models, list) else [models]
+
+    for i, model in enumerate(models):
+        pred = model.predict_proba(X)[:, 1]
+        fpr, tpr, _ = roc_curve(y, pred)
+        plt.plot(fpr, tpr, label=i)
+
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+
+    if len(models) > 1:
+        plt.legend(title='Model', loc=(1, 0))
+
 def plot_roc_curves(model, X, y, label=1):
     '''
     Creates a line plot of the roc curve for the given model and data.
