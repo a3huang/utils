@@ -757,3 +757,14 @@ def plot_gains_curve(model, X, y):
     plt.plot([0, 1], [0, 1], linestyle='--')
     plt.xlabel('Decile')
     plt.ylabel('Gain')
+
+def plot_lift_curve(model, X, y):
+    gains = scoring_table(y, model.predict_proba(X)[:, 1])['Target Metrics', 'Cumulative'].reset_index()
+    gains.columns = ['Decile', 'Cumulative']
+
+    deciles = gains['Decile'].values / 10.
+    gains = gains['Cumulative'].values
+
+    plt.plot(deciles, gains/deciles)
+    plt.xlabel('Decile')
+    plt.ylabel('Lift')
