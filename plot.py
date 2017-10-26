@@ -745,3 +745,15 @@ def plot_survival_curves(df, time, event, by=None):
         kmf.fit(T, event_observed=E)
         kmf.survival_function_.plot(ax=ax)
         plt.legend().remove()
+
+def plot_gains_curve(model, X, y):
+    gains = scoring_table(y, model.predict_proba(X)[:, 1])['Target Metrics', 'Cumulative'].reset_index()
+    gains.columns = ['Decile', 'Cumulative']
+
+    deciles = np.append([0], gains['Decile'].values / 10.)
+    gains = np.append([0], gains['Cumulative'].values)
+
+    plt.plot(deciles, gains)
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('Decile')
+    plt.ylabel('Gain')
