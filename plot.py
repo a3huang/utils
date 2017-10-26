@@ -14,6 +14,7 @@ from sklearn.model_selection import learning_curve, StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
+from statsmodels.graphics.mosaicplot import mosaic
 
 import graphviz
 import os
@@ -364,6 +365,25 @@ def plot_confusion_matrix(model, X, y, normalize=False, threshold=0.5):
     plt.ylabel('True')
     plt.title('Predicted')
 
+def plot_decision_tree(X, y, filename, directory='/Users/alexhuang', **kwargs):
+    '''
+    Creates a graphviz plot of a decision tree and saves it to a file.
+
+    ex) plot_decision_tree(X, y, 'tree')
+    '''
+
+    filename = os.path.join(directory, filename)
+
+    model = DecisionTreeClassifier(**kwargs)
+    model.fit(X, y)
+
+    dot_data = export_graphviz(model, class_names=y.astype(str).unique(),
+        feature_names=X.columns, filled=True, out_file=None, rounded=True)
+
+    graph = graphviz.Source(dot_data)
+    graph.render(filename)
+    subprocess.call(('open', os.path.join(filename, '.pdf')))
+
 def plot_predicted_probabilities(model, X, y):
     '''
     Creates a density plot of the predicted probabilities for a model grouped by the
@@ -696,25 +716,6 @@ def plot_explanations(explainer, model, X, i=None):
     a.plot.barh(color=colors)
     plt.legend().remove()
     plt.ylabel('')
-
-def plot_decision_tree(X, y, filename, directory='/Users/alexhuang', **kwargs):
-    '''
-    Creates a graphviz plot of a decision tree and saves it to a file.
-
-    ex) plot_decision_tree(X, y, 'tree')
-    '''
-
-    filename = os.path.join(directory, filename)
-
-    model = DecisionTreeClassifier(**kwargs)
-    model.fit(X, y)
-
-    dot_data = export_graphviz(model, class_names=y.astype(str).unique(),
-        feature_names=X.columns, filled=True, out_file=None, rounded=True)
-
-    graph = graphviz.Source(dot_data)
-    graph.render(filename)
-    subprocess.call(('open', os.path.join(filename, '.pdf')))
 
 def plot_survival_curves(df, time, event, by=None):
     '''
