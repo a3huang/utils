@@ -34,15 +34,15 @@ def create_explainer(model, X):
     return explainer
 #####
 
-#########################
-##### Basic Ploting #####
-#########################
+##########################
+##### Basic Plotting #####
+##########################
 def barplot(df, col, by=None, prop=False, stacked=False):
     '''
     Creates a bar plot of counts for a categorical variable.
 
     ex) df.pipe(barplot, by='Survived', col='Sex')
-    ex) df.pipe(barplot, by=pd.qcut(df['Age'], 3), col=pd.qcut(df['Fare'], 3))
+    ex) df.pipe(barplot, by=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
     '''
 
     df = df.copy()
@@ -86,18 +86,15 @@ def barplot(df, col, by=None, prop=False, stacked=False):
     plt.xlabel('')
     plt.legend(title=by, loc=(1, 0))
 
-def heatmap(df, row, col, val=None, normalize=False):
+def boxplot(df, by, col, **kwargs):
     '''
-    Creates a heat map of counts for 2 categorical variables.
+    Creates a grouped box plot for a continuous variable.
 
-    ex) df.pipe(heatmap, row='Embarked', col='Sex', val='Survived')
-    ex) df.pipe(heatmap, row=pd.qcut(df['Age'], 3), col=pd.qcut(df['Fare'], 3))
+    ex) df.pipe(boxplot, by='Survived', col='Age')
+    ex) df.pipe(boxplot, by=pd.qcut(df.Age, 3), col='Fare')
     '''
 
-    if val:
-        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
-    else:
-        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
+    sns.boxplot(x=by, y=col, data=df, **kwargs)
 
 def nice_hist(df, col, bin_mult=1, range=None, prop=False):
     '''
@@ -125,14 +122,14 @@ def nice_hist(df, col, bin_mult=1, range=None, prop=False):
     weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
     df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
 
-def hist(a, prop=False, bin_num=None, bin_width=None, bin_range=None, **kwargs):
+def hist(df, col, bin_num=None, bin_width=None, bin_range=None, prop=False, **kwargs):
     '''
     Creates a histogram for a continuous variable.
 
-    Note: This function takes a series rather than a dataframe as an argument.
-
-    ex) hist(df['Age'], bin_width=10, bin_range=(0, 100), prop=True)
+    ex) df.pipe(hist, 'Age', bin_width=10, bin_range=(0, 100), prop=True)
     '''
+
+    a = df[col]
 
     range = (a.min(), a.max()) if bin_range is None else bin_range
 
@@ -152,12 +149,12 @@ def hist(a, prop=False, bin_num=None, bin_width=None, bin_range=None, **kwargs):
     weights = np.ones_like(a) / float(len(a)) if prop else None
     plt.hist(a, bins=bins, range=range, weights=weights, **kwargs)
 
-def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
+def distplot(df, col, by=None, prop=False, **kwargs):
     '''
     Creates a histogram or a grouped density plot for a continuous variable.
 
     ex) df.pipe(distplot, by='Survived', col='Age')
-    ex) df.pipe(distplot, by=pd.qcut(df['Age'], 3), col='Fare')
+    ex) df.pipe(distplot, by=pd.qcut(df.Age, 3), col='Fare')
     '''
 
     df = df.copy()
@@ -177,26 +174,207 @@ def distplot(df, col, by=None, prop=False, facet=False, **kwargs):
         plt.legend(title=by, loc=(1, 0))
 
     else:
-        hist(df[col], prop=prop, alpha=0.4, **kwargs)
+        df.pipe(hist, col, prop=prop, alpha=0.4, **kwargs)
 
     plt.xlabel(col)
+
+def heatmap(df, row, col, val=None, normalize=False):
+    '''
+    Creates a heat map of counts for 2 categorical variables.
+
+    ex) df.pipe(heatmap, row='Cabin', col='Sex', val='Survived')
+    ex) df.pipe(heatmap, row=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
+    '''
+
+    if val:
+        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
+    else:
+        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
+
+def lineplot(df, x, y, by=None, **kwargs):
+    '''
+    Creates a line plot of the mean value for a continuous variable.
+
+    ex) df.pipe(lineplot, x='Cabin', y='Survived', by='Sex')
+    ex) df.pipe(lineplot, x=pd.cut(df.Age, 3), y='Survived')
+    '''
+
+    df = df.copy()
+
+    if by is not None:
+        if not isinstance(by, str):
+            df[by.name] = by
+            by = by.name
+
+    sns.pointplot(x, y, hue=by, data=df, **kwargs)
+    plt.legend(title=by, loc=(1, 0))
+
+def scatterplot(df, x, y, by=None, **kwargs):
+    '''
+    Creates a scatter plot for 2 continuous variables.
+
+    ex) df.pipe(scatterplot, x='Age', y='Fare', by='Survived')
+    '''
+
+    df = df.copy()
+
+    if by is not None:
+        if not isinstance(by, str):
+            df[by.name] = by
+            by = by.name
+
+    sns.lmplot(x, y, hue=by, data=df, **kwargs)
+    plt.legend(title=by, loc=(1, 0))
+
+################################
+##### Time Series Plotting #####
+################################
+def tslineplot(df, date, by=None, val=None, area=False, freq='M'):
+    '''
+    Creates a time series line plot of counts for a date variable.
+
+    ex) df.pipe(tslineplot, date='date', by='diet')
+    ex) df.pipe(tslineplot, date='date', by=pd.qcut(df['purchase_frequency'], 3))
+    '''
+
+    df = df.copy()
+
+    if by is not None:
+        if not isinstance(by, str):
+            df[by.name] = by
+            by = by.name
+
+    if area:
+        kind = 'area'
+    else:
+        kind = 'line'
+
+    date = pd.Grouper(key=date, freq=freq)
+
+    if by and val:
+        df.groupby([date, by])[val].mean().unstack(by).plot(kind=kind)
+    elif by:
+        df.groupby([date, by]).size().unstack(by).plot(kind=kind)
+    elif val:
+        df.groupby(date)[val].mean().plot(kind=kind)
+    else:
+        df.groupby(date).size().plot(kind=kind)
+
+    if by:
+        plt.legend(title=by, loc=(1, 0))
+
+######################################
+##### Model Performance Plotting #####
+######################################
+def plot_calibration_curve(model, X, y):
+    '''
+    Creates a plot of the calibration curve for a binary classification model.
+
+    ex) plot_calibration_curve(model, xtest, ytest)
+    '''
+
+    prob_true, prob_pred = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
+    plt.plot(prob_pred, prob_true)
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('Predicted Proportion')
+    plt.ylabel('True Proportion')
+
+def plot_classification_metrics(model, X, y, threshold=0.5):
+    '''
+    Creates plots of the f1 score, recall, and precision curves over several
+    threshold values.
+
+    ex) plot_classification_metrics(model, xtest, ytest)
+    '''
+
+    f1 = []
+    recall = []
+    precision = []
+
+    for threshold in np.linspace(.1, 1, 10):
+         pred = model.predict_proba(X)[:, 1] > threshold
+
+         f1.append(f1_score(y, pred))
+         recall.append(recall_score(y, pred))
+         precision.append(precision_score(y, pred))
+
+    plt.plot(np.linspace(.1, 1, 10), f1, label='f1')
+    plt.plot(np.linspace(.1, 1, 10), recall, label='recall')
+    plt.plot(np.linspace(.1, 1, 10), precision, label='precision')
+
+    plt.legend(title='Metric', loc=(1, 0))
+
+def plot_classification_report(model, X, y, threshold=0.5):
+    '''
+    Creates a heat map of the classification report for a model.
+
+    ex) plot_classification_report(model, xtest, ytest)
+    '''
+
+    if len(y.value_counts()) > 2:
+        pred = model.predict(X)
+
+    else:
+        try:
+            pred = model.predict_proba(X)[:, 1] > threshold
+        except:
+            pred = model.predict(X)
+
+    a = classification_report(y, pred)
+
+    lines = a.split('\n')[2: -3]
+
+    classes = []
+    matrix = []
+    for line in lines:
+        s = line.split()
+        classes.append(s[0])
+        matrix.append([float(x) for x in s[1: -1]])
+
+    df = pd.DataFrame(matrix, index=classes, columns=['precision', 'recall', 'f1'])
+
+    sns.heatmap(df, annot=True, fmt='.2f')
+    plt.ylabel('Class')
+
+def plot_confusion_matrix(model, X, y, normalize=False, threshold=0.5):
+    '''
+    Creates a heat map of the confusion matrix for a binary or multiclass
+    classification model.
+
+    ex) plot_confusion_matrix(model, xtest, ytest, normalize='index')
+    '''
+
+    if len(y.value_counts()) > 2:
+        pred = model.predict(X)
+
+    else:
+        try:
+            pred = model.predict_proba(X)[:, 1] > threshold
+        except:
+            pred = model.predict(X)
+
+    a = confusion_matrix(y, pred).astype(float)
+
+    if normalize == 'index':
+        a = np.divide(a, np.sum(a, 1).reshape(len(a), 1))
+    elif normalize == 'column':
+        a = np.divide(a, np.sum(a, 0))
+
+    sns.heatmap(a, annot=True, fmt='.2f')
+    plt.ylabel('True')
+    plt.title('Predicted')
+
+def plot_predicted_probabilities(model, X, y):
+    '''
+    Creates a density plot of the predicted probabilities for a model grouped by the
+    target class.
+
+    ex) plot_predicted_probabilities(model, xtest, ytest)
+    '''
+
+    df = cbind(y, model.predict_proba(X)[:, 1])
+    df.pipe(distplot, by=df.columns[0], col=df.columns[1])
 #####
-
-def distplot2(*args, **kwargs):
-    '''
-    Creates a histogram or a grouped density plot for a continuous variable.
-
-    ex) df.pipe(distplot, by='Survived', col='Age')
-    ex) df.pipe(distplot, by=pd.qcut(df['Age'], 3), col='Fare')
-
-    ex) g = sns.FacetGrid(col='Survived', data=df.assign(Fare=pd.qcut(df['Fare'], 3)))
-        g.map(distplot2, 'Age', 'Fare')
-    '''
-
-    cols = [i for i in args if i is not None]
-    df = cbind(cols).T
-    df.columns = [i.name for i in cols]
-    distplot(df, *df.columns, **kwargs)
 
 def multicol_heatplot(df, by, cols):
     '''
@@ -214,31 +392,6 @@ def multicol_heatplot(df, by, cols):
     a = a.groupby(by)[cols].mean()
     sns.heatmap(a, annot=True, fmt='.2f')
     plt.xticks(rotation=90)
-
-def tsplot(df, date, by=None, val=None, freq='M', area=False):
-    '''
-    Creates a time series plot of counts for a date variable or of mean values
-    for a continuous variable. Group by an optional 3rd categorical variable.
-
-    ex) df.pipe(tsplot, date='date', by='Category')
-    '''
-
-    if area:
-        kind = 'area'
-    else:
-        kind = 'line'
-
-    if by and val:
-        df.groupby([pd.Grouper(key=date, freq=freq), by])[val].mean().unstack(by).plot(kind=kind)
-    elif by:
-        df.groupby([pd.Grouper(key=date, freq=freq), by]).size().unstack(by).plot(kind=kind)
-    elif val:
-        df.groupby(pd.Grouper(key=date, freq=freq))[val].mean().plot(kind=kind)
-    else:
-        df.groupby(pd.Grouper(key=date, freq=freq)).size().plot(kind=kind)
-
-    if by:
-        plt.legend(title=by, loc=(1, 0))
 
 def tsboxplot(df, date, col, freq='M'):
     '''
@@ -258,6 +411,7 @@ def tsboxplot(df, date, col, freq='M'):
     sns.boxplot(data=data, orient='h')
     plt.xlabel(col)
 
+# deprecate
 def timeunit_barplot(df, date, unit='weekday', col=None):
     '''
     Creates a bar plot of counts or the average of continuous variable grouped
@@ -386,6 +540,7 @@ def plot_interaction(df, col, by, val, kind='line'):
 
     plt.legend(title=by, loc=(1, 0))
 
+#deprecate
 def plot_2d_projection(df, by, method=None, sample_size=None):
     '''
     Creates a scatter plot of the 2-D projection of the dataset. Groups by a
@@ -393,6 +548,10 @@ def plot_2d_projection(df, by, method=None, sample_size=None):
     dimensionality reduction.
 
     ex) df.pipe(plot_2d_projection, by='Legendary')
+
+    ex) projection = make_pipeline(StandardScaler(), PCA())
+        df1 = cbind(df, projection.fit_transform(df.drop('Survived', 1))[:, :1])
+        df1.pipe(scatterplot, x='PCA1', y='PCA2', by='Survived')
     '''
 
     df = df.copy()
@@ -411,106 +570,28 @@ def plot_2d_projection(df, by, method=None, sample_size=None):
 
     df.pipe(scatplot, x='pca1', y='pca2', by=by)
 
-def plot_class_metrics(model, X, y, label=1):
+def plot_roc_curves2(models, X, y):
     '''
-    For each threshold value, calculates the mean 5-fold CV f1, recall, and
-    precision scores. Creates a line plot of the threshold values vs. each of
-    the metrics.
+    Creates a plot of the roc curve for each binary classification model pipeline.
 
-    ex) plot_class_metrics(model, xtest ytest)
+    ex) plot_roc_curves([model1, model2, model3], xtest, ytest)
     '''
 
-    outer_f1 = []
-    outer_recall = []
-    outer_precision = []
-    for threshold in np.linspace(.1, 1, 10):
-         true = pd.Series(y).pipe(dummy).iloc[:, label]
-         pred = model.predict_proba(X)[:, label] > threshold
+    models = models if isinstance(models, list) else [models]
 
-         outer_f1.append(f1_score(true, pred))
-         outer_recall.append(recall_score(true, pred))
-         outer_precision.append(precision_score(true, pred))
+    for i, model in enumerate(models):
+        pred = model.predict_proba(X)[:, 1]
+        false_pos_rate, true_pos_rate, _ = roc_curve(y, pred)
+        plt.plot(false_pos_rate, true_pos_rate, label=i)
 
-    plt.plot(np.linspace(.1, 1, 10), outer_f1, label='f1')
-    plt.plot(np.linspace(.1, 1, 10), outer_recall, label='recall')
-    plt.plot(np.linspace(.1, 1, 10), outer_precision, label='precision')
-    plt.legend(title='Metric', loc=(1, 0))
+    plt.plot([0, 1], [0, 1], linestyle='--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
 
-def plot_classification_report(model, X, y, threshold=0.5):
-    '''
-    Creates a heat map of the classification report for the given model.
+    if len(models) > 1:
+        plt.legend(title='Model', loc=(1, 0))
 
-    ex) plot_classification_report(model, xtest, ytest)
-    '''
-
-    if len(y.value_counts()) > 2:
-        pred = model.predict(X)
-    else:
-        pred = model.predict_proba(X)[:, 1] > threshold
-
-    a = classification_report(y, pred)
-    lines = a.split('\n')[2:-3]
-
-    classes = []
-    matrix = []
-    for line in lines:
-        s = line.split()
-        classes.append(s[0])
-        matrix.append([float(x) for x in s[1:-1]])
-
-    df = pd.DataFrame(matrix, index=classes, columns=['precision', 'recall', 'f1'])
-
-    sns.heatmap(df, annot=True, fmt='.2f')
-    plt.ylabel('Class')
-
-def plot_confusion_matrix(model, X, y, threshold=0.5, normalize=False, label=1):
-    '''
-    Creates a heat map of the confusion matrix for the given model and data.
-
-    ex) plot_confusion_matrix(model, xtest, ytest, normalize='index')
-    '''
-
-    true = y.pipe(dummy).iloc[:, label]
-
-    try:
-        pred = model.predict_proba(X)[:, label] > threshold
-    except:
-        pred = pd.Series(model.predict(X)).pipe(dummy).iloc[:, label]
-
-    a = confusion_matrix(y, pred).astype(float)
-
-    if normalize == 'index':
-        a = np.divide(a, np.sum(a, 1).reshape(2, 1))
-    elif normalize == 'column':
-        a = np.divide(a, np.sum(a, 0))
-
-    sns.heatmap(a, annot=True, fmt='.2f')
-    plt.ylabel('True')
-    plt.title('Predicted')
-
-
-def plot_multi_confusion_matrix(model, X, y, normalize=False):
-    '''
-    Creates a heat map of the multilabel confusion matrix for the given model
-    and data.
-
-    ex) plot_multi_confusion_matrix(model, xtest, ytest, normalize='index')
-    '''
-
-    true = y
-    pred = model.predict(X)
-
-    a = confusion_matrix(true, pred).astype(float)
-
-    if normalize == 'index':
-        a = np.divide(a, np.sum(a, 1).reshape(len(a), 1))
-    elif normalize == 'column':
-        a = np.divide(a, np.sum(a, 0))
-
-    sns.heatmap(a, annot=True, fmt='.2f')
-    plt.ylabel('True')
-    plt.title('Predicted')
-
+# deprecate
 def plot_roc_curves(model, X, y, label=1):
     '''
     Creates a line plot of the roc curve for the given model and data.
@@ -527,6 +608,7 @@ def plot_roc_curves(model, X, y, label=1):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
 
+# deprecate
 def compare_data_roc_curves(model, datasets, target, omit=None,
                             random_state=42):
     '''
@@ -577,30 +659,6 @@ def plot_learning_curves(model, X, y):
     plt.ylabel('Performance')
     plt.legend(loc=(1, 0))
 
-def plot_calibration_curve(model, X, y):
-    '''
-    Creates a line plot of the calibration curve for the given model and data.
-
-    ex) plot_calibration_curve(model, xtest, ytest)
-    '''
-
-    fp, mv = calibration_curve(y, model.predict_proba(X)[:, 1], n_bins=10)
-    plt.plot(mv, fp)
-    plt.plot([0, 1], [0, 1], linestyle='--')
-    plt.xlabel('Predicted Proportion')
-    plt.ylabel('True Proportion')
-
-def plot_score_dists(model, X, y):
-    '''
-    Creates a density plot of model scores grouped by the target class. Useful
-    for seeing how well the model separates out the target classes.
-
-    ex) plot_score_dists(model, xtest, ytest)
-    '''
-
-    df = cbind(y, model.predict_proba(X)[:, 1]).rename(columns={0: 'score'})
-    df.pipe(distplot, by=df.columns[0], col='score')
-
 def plot_top_features(model, X, attr, n=10, label=0):
     '''
     Creates a bar plot of the top feature importance scores assigned by the
@@ -639,31 +697,24 @@ def plot_explanations(explainer, model, X, i=None):
     plt.legend().remove()
     plt.ylabel('')
 
-def plot_decision_tree(X, y, file_name, default_dir='/Users/alexhuang/',
-                       max_depth=10, min_samples_leaf=100, **kwargs):
+def plot_decision_tree(X, y, filename, directory='/Users/alexhuang', **kwargs):
     '''
-    Generates and saves a graphviz plot of a decision tree to a file and
-    automatically opens the file for convenience.
+    Creates a graphviz plot of a decision tree and saves it to a file.
 
     ex) plot_decision_tree(X, y, 'tree')
     '''
 
-    file_name = default_dir + file_name
+    filename = os.path.join(directory, filename)
 
-    model = DecisionTreeClassifier(max_depth=max_depth,
-                                   min_samples_leaf=min_samples_leaf,
-                                   **kwargs)
+    model = DecisionTreeClassifier(**kwargs)
     model.fit(X, y)
 
-    dot_data = export_graphviz(model,
-                               out_file=None,
-                               feature_names=X.columns,
-                               filled=True, rounded=True,
-                               class_names=y.astype(str).unique())
+    dot_data = export_graphviz(model, class_names=y.astype(str).unique(),
+        feature_names=X.columns, filled=True, out_file=None, rounded=True)
 
     graph = graphviz.Source(dot_data)
-    graph.render(file_name)
-    subprocess.call(('open', file_name + '.pdf'))
+    graph.render(filename)
+    subprocess.call(('open', os.path.join(filename, '.pdf')))
 
 def plot_survival_curves(df, time, event, by=None):
     '''
@@ -693,16 +744,3 @@ def plot_survival_curves(df, time, event, by=None):
         kmf.fit(T, event_observed=E)
         kmf.survival_function_.plot(ax=ax)
         plt.legend().remove()
-
-def plot_cont_vs_binary(df, by, col, bins=5):
-    '''
-    Creates a line plot of the mean of a binary target variable grouped by a
-    binned continuous variable.
-
-    ex) df.pipe(plot_cont_vs_binary, by='HP', col='Legendary', bins=10)
-    '''
-
-    df = df.copy()
-    df[by] = pd.cut(df[by], bins=bins, include_lowest=True)
-    df.groupby(by)[col].mean().plot()
-    plt.xticks(rotation=90)
