@@ -202,6 +202,7 @@ def lineplot(df, x, y, by=None, **kwargs):
 
     ex) df.pipe(lineplot, x='Cabin', y='Survived', by='Sex')
     ex) df.pipe(lineplot, x=pd.cut(df.Age, 3), y='Survived')
+    ex) df.pipe(lineplot, x=df.date.dt.weekday, y='Amount')
     '''
 
     df = df.copy()
@@ -211,7 +212,7 @@ def lineplot(df, x, y, by=None, **kwargs):
             df[by.name] = by
             by = by.name
 
-    sns.pointplot(x, y, hue=by, data=df, **kwargs)
+    sns.pointplot(x, y, hue=by, data=df, ci=False, **kwargs)
     plt.legend(title=by, loc=(1, 0))
 
 def scatterplot(df, x, y, by=None, **kwargs):
