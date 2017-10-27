@@ -44,6 +44,7 @@ def barplot(df, col, by=None, prop=False, stacked=False):
 
     ex) df.pipe(barplot, by='Survived', col='Sex')
     ex) df.pipe(barplot, by=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
+    ex) df.pipe(barplot, col=df.date.dt.weekday)
     '''
 
     df = df.copy()
@@ -77,9 +78,12 @@ def barplot(df, col, by=None, prop=False, stacked=False):
     else:
         colors = sns.color_palette()
 
-        data = df.groupby(col).size()
-        data = data / np.sum(data) if prop else data
-        data = data.reset_index()
+        if np.issubdtype(df[col].dtype, np.number):
+            raise Exception, 'Must specify by when col is continuous.'
+        else:
+            data = df.groupby(col).size()
+            data = data / np.sum(data) if prop else data
+            data = data.reset_index()
 
         sns.barplot(x=0, y=col, data=data, color=colors[0], orient='h')
         plt.ylabel(col)
