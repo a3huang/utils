@@ -35,10 +35,27 @@ def create_explainer(model, X):
     return explainer
 #####
 
+import itertools
+def sns_stacked_bar(col1, col2):
+    df = cbind(col1, col2)
+    df.columns = ['col1', 'col2']
+    data = df.pipe(table, 'col1', 'col2', normalize='columns').unstack().reset_index()
+
+    values = data['col1'].unique()
+    color_gen = itertools.cycle(sns.color_palette())
+
+    # plot layers one at a time from largest to smallest to create
+    # the "stacked" effect
+    for i in reversed(range(len(values))):
+        color = next(color_gen)
+        layer = data[data['col1'].isin(values[:i+1])]
+        sns.barplot(x=0, y='col2', data=layer, ci=False, color=color,
+            estimator=np.sum, label=values[i], orient='h')
+
 ##########################
 ##### Basic Plotting #####
 ##########################
-def barplot(df, col, by=None, prop=False, stacked=False):
+def barplot(df, col, by=None, val=None, prop=False, stacked=False):
     '''
     Creates a bar plot of counts for a categorical variable.
 
@@ -49,47 +66,62 @@ def barplot(df, col, by=None, prop=False, stacked=False):
 
     df = df.copy()
 
-    if not isinstance(col, str):
-        df[col.name] = col
-        col = col.name
+    # if not isinstance(col, str):
+    #     df[col.name] = col
+    #     col = col.name
 
     if by is not None:
-        if not isinstance(by, str):
-            df[by.name] = by
-            by = by.name
+        # if not isinstance(by, str):
+        #     df[by.name] = by
+        #     by = by.name
 
-        normalize = 'index' if prop else False
-        data = df.pipe(table, col, by, normalize=normalize).unstack().reset_index()
+        if val is not None:
+            if not np.issubdtype(df[val].dtype, np.number):
+                raise Exception, 'Argument val needs to be a continuous variable'
 
-        if stacked:
-            values = data[by].unique()
-            colors = sns.color_palette()
-
-            # plot layers one at a time from largest to smallest to create
-            # the "stacked" effect
-            for i in reversed(range(len(values))):
-                layer = data[data[by].isin(values[:i+1])]
-                sns.barplot(x=0, y=col, data=layer, ci=False, color=colors[i],
-                    estimator=np.sum, label=values[i], orient='h')
+            data = df.groupby([by, col])[val].mean()
+            data.index.names = ['col1', 'col2']
+            data = data.reset_index()
+            sns.barplot(x='col1', y=val, hue='col2', data=data)
 
         else:
-            sns.barplot(x=0, y=col, hue=by, data=data, orient='h')
+            normalize = 'index' if prop else False
+            data = df.pipe(table, col, by, normalize=normalize).unstack().reset_index()
+            data.columns = ['col1', 'col2', 0]
+
+            if stacked:
+                sns_stacked_bar(by, col)
+
+                # values = data[by].unique()
+                # colors = sns.color_palette()
+                #
+                # # plot layers one at a time from largest to smallest to create
+                # # the "stacked" effect
+                # for i in reversed(range(len(values))):
+                #     layer = data[data[by].isin(values[:i+1])]
+                #     sns.barplot(x=0, y=col, data=layer, ci=False, color=colors[i],
+                #         estimator=np.sum, label=values[i], orient='h')
+
+            else:
+                sns.barplot(x=0, y='col1', hue='col2', data=data, orient='h')
+
+            title = by if isinstance(by, str) else by.name
+            plt.legend(title=title, loc=(1, 0))
 
     else:
         colors = sns.color_palette()
 
-        if np.issubdtype(df[col].dtype, np.number):
-            raise Exception, 'Must specify by when col is continuous.'
-        else:
-            data = df.groupby(col).size()
-            data = data / np.sum(data) if prop else data
-            data = data.reset_index()
+        data = df.groupby(col).size()
+        data = data / np.sum(data) if prop else data
+        data = data.reset_index()
+        data.columns = ['col1', 0]
 
-        sns.barplot(x=0, y=col, data=data, color=colors[0], orient='h')
-        plt.ylabel(col)
+        sns.barplot(x=0, y='col1', data=data, color=colors[0], orient='h')
+
+        ylab = col if isinstance(col, str) else col.name
+        plt.ylabel(ylab)
 
     plt.xlabel('')
-    plt.legend(title=by, loc=(1, 0))
 
 def boxplot(df, by, col, **kwargs):
     '''
