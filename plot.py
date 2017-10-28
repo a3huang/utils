@@ -136,46 +136,36 @@ def histogram(df, col, by=None, nice=False, prop=False, **kwargs):
     else:
         bins, range = flexible_bin_range(a, **kwargs)
 
-    if by is not None:
+    if by is None:
+        weights = np.ones_like(a) / float(len(a)) if prop else None
+        a.plot.hist(alpha=0.4, bins=bins, range=range, weights=weights)
+
+    else:
         for g, c in df.groupby(by)[col]:
             weights = np.ones_like(c) / float(len(c)) if prop else None
             c.plot.hist(alpha=0.4, bins=bins, label=g, range=range, weights=weights)
 
         plt.legend(loc=(1, 0))
 
-    else:
-        weights = np.ones_like(a) / float(len(a)) if prop else None
-        a.plot.hist(alpha=0.4, bins=bins, range=range, weights=weights)
-
-
-def distplot(df, col, by=None, prop=False, **kwargs):
+def densityplot(df, col, by=None, range=None):
     '''
-    Creates a histogram or a grouped density plot for a continuous variable.
+    Creates a density plot for a continuous variable.
 
-    ex) df.pipe(distplot, by='Survived', col='Age')
-    ex) df.pipe(distplot, by=pd.qcut(df.Age, 3), col='Fare')
+    ex) df.pipe(densityplot, col='Age')
+    ex) df.pipe(densityplot, by=pd.qcut(df.Age, 3), col='Fare')
     '''
 
-    df = df.copy()
-
-    if by is not None:
-        if not isinstance(by, str):
-            df[by.name] = by
-            by = by.name
-
-        for group, column in df.groupby(by)[col]:
-            sns.kdeplot(column, label=group, shade=True)
-
-        if 'range' in kwargs:
-            range = kwargs['range']
-            plt.xlim(range)
-
-        plt.legend(title=by, loc=(1, 0))
+    if by is None:
+        sns.kdeplot(df[col])
+        plt.legend().remove()
 
     else:
-        df.pipe(hist, col, prop=prop, alpha=0.4, **kwargs)
+        for g, c in df.groupby(by)[col]:
+            sns.kdeplot(c, label=g, shade=True)
 
-    plt.xlabel(col)
+        plt.xlim(range)
+        plt.legend(loc=(1, 0))
+
 
 def heatmap(df, row, col, val=None, normalize=False):
     '''
