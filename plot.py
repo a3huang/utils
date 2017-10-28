@@ -35,93 +35,35 @@ def create_explainer(model, X):
     return explainer
 #####
 
-import itertools
-def sns_stacked_bar(col1, col2):
-    df = cbind(col1, col2)
-    df.columns = ['col1', 'col2']
-    data = df.pipe(table, 'col1', 'col2', normalize='columns').unstack().reset_index()
-
-    values = data['col1'].unique()
-    color_gen = itertools.cycle(sns.color_palette())
-
-    # plot layers one at a time from largest to smallest to create
-    # the "stacked" effect
-    for i in reversed(range(len(values))):
-        color = next(color_gen)
-        layer = data[data['col1'].isin(values[:i+1])]
-        sns.barplot(x=0, y='col2', data=layer, ci=False, color=color,
-            estimator=np.sum, label=values[i], orient='h')
-
 ##########################
 ##### Basic Plotting #####
 ##########################
-def barplot(df, col, by=None, val=None, prop=False, stacked=False):
+def barplot(df, col, by=None, val=None, orient='v', prop=False, stacked=False):
     '''
-    Creates a bar plot of counts for a categorical variable.
+    Creates a bar plot of counts for a categorical variable or of the mean for a
+    continuous variable.
 
     ex) df.pipe(barplot, by='Survived', col='Sex')
     ex) df.pipe(barplot, by=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
     ex) df.pipe(barplot, col=df.date.dt.weekday)
     '''
 
-    df = df.copy()
+    kind = 'barh' if orient == 'h' else 'bar'
+    normalize = 'index' if prop else False
 
-    # if not isinstance(col, str):
-    #     df[col.name] = col
-    #     col = col.name
-
-    if by is not None:
-        # if not isinstance(by, str):
-        #     df[by.name] = by
-        #     by = by.name
-
-        if val is not None:
-            if not np.issubdtype(df[val].dtype, np.number):
-                raise Exception, 'Argument val needs to be a continuous variable'
-
-            data = df.groupby([by, col])[val].mean()
-            data.index.names = ['col1', 'col2']
-            data = data.reset_index()
-            sns.barplot(x='col1', y=val, hue='col2', data=data)
-
+    if by is None:
+        if val is None:
+            df = df.groupby(col).size()
+            df = df / len(df) if normalize else df
+            df.plot(kind=kind)
         else:
-            normalize = 'index' if prop else False
-            data = df.pipe(table, col, by, normalize=normalize).unstack().reset_index()
-            data.columns = ['col1', 'col2', 0]
-
-            if stacked:
-                sns_stacked_bar(by, col)
-
-                # values = data[by].unique()
-                # colors = sns.color_palette()
-                #
-                # # plot layers one at a time from largest to smallest to create
-                # # the "stacked" effect
-                # for i in reversed(range(len(values))):
-                #     layer = data[data[by].isin(values[:i+1])]
-                #     sns.barplot(x=0, y=col, data=layer, ci=False, color=colors[i],
-                #         estimator=np.sum, label=values[i], orient='h')
-
-            else:
-                sns.barplot(x=0, y='col1', hue='col2', data=data, orient='h')
-
-            title = by if isinstance(by, str) else by.name
-            plt.legend(title=title, loc=(1, 0))
+            df.groupby(col)[val].mean().plot(kind=kind)
 
     else:
-        colors = sns.color_palette()
-
-        data = df.groupby(col).size()
-        data = data / np.sum(data) if prop else data
-        data = data.reset_index()
-        data.columns = ['col1', 0]
-
-        sns.barplot(x=0, y='col1', data=data, color=colors[0], orient='h')
-
-        ylab = col if isinstance(col, str) else col.name
-        plt.ylabel(ylab)
-
-    plt.xlabel('')
+        if val is None:
+            df.pipe(table, col, by, normalize=normalize).plot(kind=kind, stacked=stacked)
+        else:
+            df.pipe(table, col, by, val).plot(kind=kind)
 
 def boxplot(df, by, col, **kwargs):
     '''
