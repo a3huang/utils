@@ -39,6 +39,7 @@ def create_explainer(model, X):
 ##### Basic Plotting #####
 ##########################
 #TODO: change API to by=['Sex', 'Cabin']?
+#TODO: rename arguments? (e.g. for lineplot)
 
 def barplot(df, col, by=None, val=None, orient='v', prop=False, stacked=False):
     '''
@@ -85,23 +86,37 @@ def boxplot(df, by, col, orient='v', **kwargs):
 
     sns.boxplot(x=x, y=y, data=df, **kwargs)
 
-def nice_bin_range(a, bin_mult=1, bin_range=None):
-    # make temporary plot of min and max just to get the "right" x-axis tick marks
-    pd.DataFrame([a.min(), a.max()]).plot.hist(range=bin_range)
+def densityplot(df, col, by=None, range=None):
+    '''
+    Creates a density plot for a continuous variable.
 
-    ticks = plt.gca().get_xticks()
+    ex) df.pipe(densityplot, col='Age')
+    ex) df.pipe(densityplot, by=pd.qcut(df.Age, 3), col='Fare')
+    '''
 
-    if bin_range is None:
-        bin_range = ticks[1], ticks[-2]
+    if by is None:
+        sns.kdeplot(df[col])
+        plt.legend().remove()
 
-    total_span = bin_range[1] - bin_range[0]
-    bin_width = ticks[1] - ticks[0]
-    num_bins = int(total_span / bin_width)
+    else:
+        for g, c in df.groupby(by)[col]:
+            sns.kdeplot(c, label=g, shade=True)
 
-    # remove temporary plot
-    plt.clf()
+        plt.xlim(range)
+        plt.legend(loc=(1, 0))
 
-    return bin_mult*num_bins, bin_range
+def heatmap(df, row, col, val=None, normalize=False):
+    '''
+    Creates a heat map of counts for 2 categorical variables.
+
+    ex) df.pipe(heatmap, row='Cabin', col='Sex', val='Survived')
+    ex) df.pipe(heatmap, row=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
+    '''
+
+    if val is None:
+        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
+    else:
+        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
 
 def flexible_bin_range(a, bin_num=None, bin_range=None, bin_width=None):
     bin_range = (a.min(), a.max()) if bin_range is None else bin_range
@@ -120,6 +135,24 @@ def flexible_bin_range(a, bin_num=None, bin_range=None, bin_width=None):
         bins = 10
 
     return bins, bin_range
+
+def nice_bin_range(a, bin_mult=1, bin_range=None):
+    # make temporary plot of min and max just to get the "right" x-axis tick marks
+    pd.DataFrame([a.min(), a.max()]).plot.hist(range=bin_range)
+
+    ticks = plt.gca().get_xticks()
+
+    if bin_range is None:
+        bin_range = ticks[1], ticks[-2]
+
+    total_span = bin_range[1] - bin_range[0]
+    bin_width = ticks[1] - ticks[0]
+    num_bins = int(total_span / bin_width)
+
+    # remove temporary plot
+    plt.clf()
+
+    return bin_mult*num_bins, bin_range
 
 def histogram(df, col, by=None, nice=False, prop=False, **kwargs):
     '''
@@ -146,58 +179,22 @@ def histogram(df, col, by=None, nice=False, prop=False, **kwargs):
             c.plot.hist(alpha=0.4, bins=bins, label=g, range=range, weights=weights)
 
         plt.legend(loc=(1, 0))
-
-def densityplot(df, col, by=None, range=None):
-    '''
-    Creates a density plot for a continuous variable.
-
-    ex) df.pipe(densityplot, col='Age')
-    ex) df.pipe(densityplot, by=pd.qcut(df.Age, 3), col='Fare')
-    '''
-
-    if by is None:
-        sns.kdeplot(df[col])
-        plt.legend().remove()
-
-    else:
-        for g, c in df.groupby(by)[col]:
-            sns.kdeplot(c, label=g, shade=True)
-
-        plt.xlim(range)
-        plt.legend(loc=(1, 0))
 #####
 
-def heatmap(df, row, col, val=None, normalize=False):
-    '''
-    Creates a heat map of counts for 2 categorical variables.
-
-    ex) df.pipe(heatmap, row='Cabin', col='Sex', val='Survived')
-    ex) df.pipe(heatmap, row=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
-    '''
-
-    if val:
-        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
-    else:
-        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
-
-def lineplot(df, x, y, by=None, **kwargs):
+def lineplot(df, by, col=None, val=None):
     '''
     Creates a line plot of the mean value for a continuous variable.
 
-    ex) df.pipe(lineplot, x='Cabin', y='Survived', by='Sex')
-    ex) df.pipe(lineplot, x=pd.cut(df.Age, 3), y='Survived')
-    ex) df.pipe(lineplot, x=df.date.dt.weekday, y='Amount')
+    ex) df.pipe(lineplot, by='Cabin', col='Sex', val='Survived')
+    ex) df.pipe(lineplot, by=pd.cut(df.Age, 3), val='Survived')
+    ex) df.pipe(lineplot, by=df.date.dt.weekday, val='Amount')
     '''
 
-    df = df.copy()
-
-    if by is not None:
-        if not isinstance(by, str):
-            df[by.name] = by
-            by = by.name
-
-    sns.pointplot(x, y, hue=by, data=df, ci=False, **kwargs)
-    plt.legend(title=by, loc=(1, 0))
+    if col is None:
+        df.groupby(by)[val].mean().plot()
+    else:
+        df.pipe(table, col, by, val).plot()
+        plt.legend(loc=(1, 0))
 
 def scatterplot(df, x, y, by=None, **kwargs):
     '''
