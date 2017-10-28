@@ -38,6 +38,8 @@ def create_explainer(model, X):
 ##########################
 ##### Basic Plotting #####
 ##########################
+#TODO: change API to by=['Sex', 'Cabin']?
+
 def barplot(df, col, by=None, val=None, orient='v', prop=False, stacked=False):
     '''
     Creates a bar plot of counts for a categorical variable or of the mean for a
@@ -65,58 +67,50 @@ def barplot(df, col, by=None, val=None, orient='v', prop=False, stacked=False):
         else:
             df.pipe(table, col, by, val).plot(kind=kind)
 
-def boxplot(df, by, col, **kwargs):
+def boxplot(df, by, col, orient='v', **kwargs):
     '''
-    Creates a grouped box plot for a continuous variable.
+    Creates a box plot for a continuous variable grouped by a categorical variable.
 
     ex) df.pipe(boxplot, by='Survived', col='Age')
     ex) df.pipe(boxplot, by=pd.qcut(df.Age, 3), col='Fare')
+    ex) df.pipe(boxplot, by='Survived', hue=pd.qcut(df.Age, 3), col='Fare')
     '''
 
-    sns.boxplot(x=by, y=col, data=df, **kwargs)
+    color = sns.color_palette()[0]
 
-def nice_hist(df, col, bin_mult=1, range=None, prop=False):
-    '''
-    Creates a "nice" histogram for a continuous variable, where the bin edges
-    align with the x-axis tick marks.
+    if orient == 'h':
+        x, y = col, by
+    else:
+        x, y = by, col
 
-    ex) df.pipe(nice_hist, col='Age')
-    '''
+    sns.boxplot(x=x, y=y, data=df, **kwargs)
 
+def nice_bin_range(a, bin_mult=1, bin_range=None):
     # make temporary plot of min and max just to get the "right" x-axis tick marks
-    pd.DataFrame([df[col].min(), df[col].max()]).plot.hist(range=range)
+    pd.DataFrame([a.min(), a.max()]).plot.hist(range=bin_range)
 
     ticks = plt.gca().get_xticks()
 
-    if range is None:
-        range = ticks[1], ticks[-2]
+    if bin_range is None:
+        bin_range = ticks[1], ticks[-2]
 
-    total_span = range[1] - range[0]
+    total_span = bin_range[1] - bin_range[0]
     bin_width = ticks[1] - ticks[0]
     num_bins = int(total_span / bin_width)
 
     # remove temporary plot
     plt.clf()
 
-    weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
-    df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
+    return bin_mult*num_bins, bin_range
 
-def hist(df, col, bin_num=None, bin_width=None, bin_range=None, prop=False, **kwargs):
-    '''
-    Creates a histogram for a continuous variable.
-
-    ex) df.pipe(hist, 'Age', bin_width=10, bin_range=(0, 100), prop=True)
-    '''
-
-    a = df[col]
-
-    range = (a.min(), a.max()) if bin_range is None else bin_range
+def flexible_bin_range(a, bin_num=None, bin_width=None, bin_range=None):
+    bin_range = (a.min(), a.max()) if bin_range is None else bin_range
 
     if bin_width and bin_num:
         raise Exception, 'Must specify only one of bin_num or bin_width'
 
     elif bin_width:
-        bin_num = int(round((range[1] - range[0]) / bin_width))
+        bin_num = int(round((bin_range[1] - bin_range[0]) / bin_width))
         bins = [a.min() + bin_width*i for i in np.arange(bin_num+1)]
 
     elif bin_num:
@@ -125,8 +119,34 @@ def hist(df, col, bin_num=None, bin_width=None, bin_range=None, prop=False, **kw
     else:
         bins = 10
 
-    weights = np.ones_like(a) / float(len(a)) if prop else None
-    plt.hist(a, bins=bins, range=range, weights=weights, **kwargs)
+    return bins, bin_range
+
+def histogram(df, col, by=None, nice=False, prop=False, **kwargs):
+    '''
+    Creates a histogram for a continuous variable.
+
+    ex) df.pipe(histogram, col='Age')
+    ex) df.pipe(histogram, by=pd.qcut(df.Age, 3), col='Fare')
+    '''
+
+    a = df[col]
+
+    if nice:
+        bins, range = nice_bin_range(a, **kwargs)
+    else:
+        bins, range = flexible_bin_range(a, **kwargs)
+
+    if by is not None:
+        for g, c in df.groupby(by)[col]:
+            weights = np.ones_like(c) / float(len(c)) if prop else None
+            c.plot.hist(alpha=0.4, bins=bins, label=g, range=range, weights=weights)
+
+        plt.legend(loc=(1, 0))
+
+    else:
+        weights = np.ones_like(a) / float(len(a)) if prop else None
+        a.plot.hist(alpha=0.4, bins=bins, range=range, weights=weights)
+
 
 def distplot(df, col, by=None, prop=False, **kwargs):
     '''
