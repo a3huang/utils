@@ -103,7 +103,7 @@ def nice_bin_range(a, bin_mult=1, bin_range=None):
 
     return bin_mult*num_bins, bin_range
 
-def flexible_bin_range(a, bin_num=None, bin_width=None, bin_range=None):
+def flexible_bin_range(a, bin_num=None, bin_range=None, bin_width=None):
     bin_range = (a.min(), a.max()) if bin_range is None else bin_range
 
     if bin_width and bin_num:
