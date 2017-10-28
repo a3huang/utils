@@ -165,7 +165,7 @@ def densityplot(df, col, by=None, range=None):
 
         plt.xlim(range)
         plt.legend(loc=(1, 0))
-
+#####
 
 def heatmap(df, row, col, val=None, normalize=False):
     '''
