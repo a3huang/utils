@@ -179,7 +179,6 @@ def histogram(df, col, by=None, nice=False, prop=False, **kwargs):
             c.plot.hist(alpha=0.4, bins=bins, label=g, range=range, weights=weights)
 
         plt.legend(loc=(1, 0))
-#####
 
 def lineplot(df, by, col=None, val=None):
     '''
@@ -203,15 +202,8 @@ def scatterplot(df, x, y, by=None, **kwargs):
     ex) df.pipe(scatterplot, x='Age', y='Fare', by='Survived')
     '''
 
-    df = df.copy()
-
-    if by is not None:
-        if not isinstance(by, str):
-            df[by.name] = by
-            by = by.name
-
-    sns.lmplot(x, y, hue=by, data=df, **kwargs)
-    plt.legend(title=by, loc=(1, 0))
+    sns.lmplot(x=x, y=y, hue=by, data=df, **kwargs)
+    plt.legend(loc=(1, 0))
 
 ################################
 ##### Time Series Plotting #####
