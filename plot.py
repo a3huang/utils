@@ -49,9 +49,11 @@ def barplot(df, col, by=None, hue=None, orient='v', prop=False, stacked=False):
     ex) df.pipe(barplot, col='Amount', by=df.date.dt.weekday)
     '''
 
+    df = df.copy()
+
     kind = 'barh' if orient == 'h' else 'bar'
     normalize = 'index' if prop else False
-    col = df[col] if isinstance(col, str) else col
+    df['col'] = df[col] if isinstance(col, str) else col
 
     if by is None and hue is None:
         df = df.groupby(col).size()
@@ -59,14 +61,14 @@ def barplot(df, col, by=None, hue=None, orient='v', prop=False, stacked=False):
         df.plot(kind=kind)
 
     elif hue is None:
-        if np.issubdtype(col.dtype, np.number):
-            df.groupby(col)[val].mean().plot(kind=kind)
+        if np.issubdtype(df['col'].dtype, np.number):
+            df.groupby(by)['col'].mean().plot(kind=kind)
         else:
             df.pipe(table, col, by, normalize=normalize).plot(kind=kind, stacked=stacked)
             plt.legend(loc=(1, 0))
 
     else:
-        if np.issubdtype(col.dtype, np.number):
+        if np.issubdtype(df['col'].dtype, np.number):
             df.pipe(table, by, hue, col).plot(kind=kind)
             plt.legend(loc=(1, 0))
         else:
@@ -88,7 +90,10 @@ def boxplot(df, by, col, hue=None, orient='v', **kwargs):
     else:
         x, y = by, col
 
-    sns.boxplot(x=x, y=y, data=df, **kwargs)
+    sns.boxplot(x=x, y=y, hue=hue, data=df, **kwargs)
+
+    if hue is not None:
+        plt.legend(loc=(1, 0))
 
 def densityplot(df, col, by=None, range=None):
     '''
