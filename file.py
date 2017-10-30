@@ -1,57 +1,67 @@
+import glob
 import os
 import shutil
 
-def split_dir(directory, categories):
-    files = os.listdir(directory)
+def split_dir(train_dir, n=2000):
+    '''
+    Moves random sample of files to valid directory.
 
-    for cat in categories:
-        cat_dir = os.path.join(directory, cat)
-        os.makedirs(cat_dir)
-        print 'folder created: %s' % cat_dir
+    ex) split_dir('~/data/train')
+    '''
 
-        cat_files = [i for i in os.listdir(directory) if cat in i]
-        for f in cat_files:
-            shutil.move(os.path.join(directory, f), cat_dir)
-        print 'files moved to folder: %s' % cat_dir
+    if train_dir[0] == '~':
+        train_dir = os.path.expanduser(train_dir)
 
-def train_valid_split(directory):
-    train_dir = os.path.join(directory, 'train')
-    valid_dir = os.path.join(directory, 'valid')
+    valid_dir = os.path.normpath(os.path.join(train_dir, '../valid'))
     os.makedirs(valid_dir)
 
-    for cls in next(os.walk(train_dir))[1]:
-        cls_dir = os.path.join(train_dir, cls)
+    files = glob.glob(os.path.join(train_dir, '*.jpg'))
+    shuffled = np.random.permutation(files)
 
-        files = os.listdir(cls_dir)
-        random.shuffle(files)
-        valid_files = files[:int(len(files)*0.3)]
-        valid_cls_dir = os.path.join(valid_dir, cls)
-        os.makedirs(valid_cls_dir)
-        print 'folder created: %s' % valid_cls_dir
+    n = min(n, len(shuffled))
 
-        for f in valid_files:
-            shutil.move(os.path.join(cls_dir, f), valid_cls_dir)
-        print 'files moved to folder: %s' % valid_cls_dir
+    for i in range(n):
+        os.rename(shuffled[i], os.path.join(valid_dir, os.path.basename(shuffled[i])))
 
-def sample_dir(directory):
-    parts = directory.split('/')
-    sample_dir = os.path.join(parts[0], 'sample', parts[1])
+def sample_dir(train_dir, n=2000):
+    '''
+    Copies random sample of files to sample directory.
+
+    ex) sample_dir('~/data/train')
+    '''
+
+    if train_dir[0] == '~':
+        train_dir = os.path.expanduser(train_dir)
+
+    sample_dir = os.path.normpath(os.path.join(train_dir, '../sample'))
     os.makedirs(sample_dir)
 
-    for cls in next(os.walk(directory))[1]:
-        cls_dir = os.path.join(directory, cls)
+    files = glob.glob(os.path.join(train_dir, '*.jpg'))
+    shuffled = np.random.permutation(files)
 
-        files = os.listdir(cls_dir)
-        random.shuffle(files)
-        sample_files = files[:100]
+    n = min(n, len(shuffled))
 
-        sample_cls_dir = os.path.join(sample_dir, cls)
-        os.makedirs(sample_cls_dir)
-        print 'folder created: %s' % sample_cls_dir
+    for i in range(n):
+        shutil.copyfile(shuffled[i], os.path.join(valid_dir, os.path.basename(shuffled[i])))
 
-        for f in sample_files:
-            shutil.copy(os.path.join(cls_dir, f), sample_cls_dir)
-        print 'files copied to folder: %s' % sample_cls_dir
+def create_label_dir(folder, categories):
+    '''
+    Moves each file to its own directory based on its name.
+
+    ex) create_label_dir('~/data/train', ['cat', 'dog'])
+    '''
+
+    if folder[0] == '~':
+        folder = os.path.expanduser(folder)
+
+    for label in categories:
+        label_dir = os.path.join(folder, label)
+        os.makedirs(label_dir)
+
+        files = glob.glob(os.path.join(folder, '%s*.txt' % label))
+        for f in files:
+            shutil.move(f, os.path.join(label_dir, os.path.basename(f)))
+#####
 
 def create_dir(folder):
     try:
@@ -91,25 +101,3 @@ def create_pred_csv(model, directory, batch_size):
                 print('Finished batch %s: %s images' % (i+1, num_files))
             else:
                 print('Finished batch %s: %s images' % (i+1, num_finished))
-
-def create_sample_dir(directory, n=500):
-    root = directory.split('/')[0]
-    files = os.listdir(directory)
-    random.shuffle(files)
-
-    sample_files = files[:n]
-    sample_cls_dir = os.path.join(root, 'test_copy')
-    create_dir(sample_cls_dir)
-
-    for f in sample_files:
-        shutil.copy(os.path.join(directory, f), sample_cls_dir)
-
-def move_to_dir(directory):
-    new_dir = os.path.join(directory, 'unknown')
-    create_dir(new_dir)
-
-    if os.listdir(new_dir) == []:
-        files = [i for i in os.listdir(directory) if os.path.isfile(os.path.join(directory, i))
-
-        for f in files:
-            shutil.move(f, new_dir)
