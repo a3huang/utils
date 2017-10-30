@@ -35,146 +35,105 @@ def create_explainer(model, X):
     return explainer
 #####
 
-import itertools
-def sns_stacked_bar(col1, col2):
-    df = cbind(col1, col2)
-    df.columns = ['col1', 'col2']
-    data = df.pipe(table, 'col1', 'col2', normalize='columns').unstack().reset_index()
-
-    values = data['col1'].unique()
-    color_gen = itertools.cycle(sns.color_palette())
-
-    # plot layers one at a time from largest to smallest to create
-    # the "stacked" effect
-    for i in reversed(range(len(values))):
-        color = next(color_gen)
-        layer = data[data['col1'].isin(values[:i+1])]
-        sns.barplot(x=0, y='col2', data=layer, ci=False, color=color,
-            estimator=np.sum, label=values[i], orient='h')
-
 ##########################
 ##### Basic Plotting #####
 ##########################
-def barplot(df, col, by=None, val=None, prop=False, stacked=False):
+def barplot(df, col, by=None, hue=None, orient='v', prop=False, stacked=False):
     '''
-    Creates a bar plot of counts for a categorical variable.
+    Creates a bar plot of counts for a categorical variable or of the mean for a
+    continuous variable.
 
-    ex) df.pipe(barplot, by='Survived', col='Sex')
-    ex) df.pipe(barplot, by=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
+    ex) df.pipe(barplot, col='Sex', by='Survived')
+    ex) df.pipe(barplot, col=pd.qcut(df.Fare, 3), by=pd.qcut(df.Age, 3))
     ex) df.pipe(barplot, col=df.date.dt.weekday)
+    ex) df.pipe(barplot, col='Amount', by=df.date.dt.weekday)
     '''
 
     df = df.copy()
 
-    # if not isinstance(col, str):
-    #     df[col.name] = col
-    #     col = col.name
+    kind = 'barh' if orient == 'h' else 'bar'
+    normalize = 'index' if prop else False
+    df['col'] = df[col] if isinstance(col, str) else col
 
-    if by is not None:
-        # if not isinstance(by, str):
-        #     df[by.name] = by
-        #     by = by.name
+    if by is None and hue is None:
+        df = df.groupby(col).size()
+        df = df / len(df) if normalize else df
+        df.plot(kind=kind)
 
-        if val is not None:
-            if not np.issubdtype(df[val].dtype, np.number):
-                raise Exception, 'Argument val needs to be a continuous variable'
-
-            data = df.groupby([by, col])[val].mean()
-            data.index.names = ['col1', 'col2']
-            data = data.reset_index()
-            sns.barplot(x='col1', y=val, hue='col2', data=data)
-
+    elif hue is None:
+        if np.issubdtype(df['col'].dtype, np.number):
+            df.groupby(by)['col'].mean().plot(kind=kind)
         else:
-            normalize = 'index' if prop else False
-            data = df.pipe(table, col, by, normalize=normalize).unstack().reset_index()
-            data.columns = ['col1', 'col2', 0]
-
-            if stacked:
-                sns_stacked_bar(by, col)
-
-                # values = data[by].unique()
-                # colors = sns.color_palette()
-                #
-                # # plot layers one at a time from largest to smallest to create
-                # # the "stacked" effect
-                # for i in reversed(range(len(values))):
-                #     layer = data[data[by].isin(values[:i+1])]
-                #     sns.barplot(x=0, y=col, data=layer, ci=False, color=colors[i],
-                #         estimator=np.sum, label=values[i], orient='h')
-
-            else:
-                sns.barplot(x=0, y='col1', hue='col2', data=data, orient='h')
-
-            title = by if isinstance(by, str) else by.name
-            plt.legend(title=title, loc=(1, 0))
+            df.pipe(table, col, by, normalize=normalize).plot(kind=kind, stacked=stacked)
+            plt.legend(loc=(1, 0))
 
     else:
-        colors = sns.color_palette()
+        if np.issubdtype(df['col'].dtype, np.number):
+            df.pipe(table, by, hue, col).plot(kind=kind)
+            plt.legend(loc=(1, 0))
+        else:
+            raise Exception, 'col must be numeric if both by and hue are specified'
 
-        data = df.groupby(col).size()
-        data = data / np.sum(data) if prop else data
-        data = data.reset_index()
-        data.columns = ['col1', 0]
-
-        sns.barplot(x=0, y='col1', data=data, color=colors[0], orient='h')
-
-        ylab = col if isinstance(col, str) else col.name
-        plt.ylabel(ylab)
-
-    plt.xlabel('')
-
-def boxplot(df, by, col, **kwargs):
+def boxplot(df, by, col, hue=None, orient='v', **kwargs):
     '''
-    Creates a grouped box plot for a continuous variable.
+    Creates a box plot for a continuous variable grouped by a categorical variable.
 
     ex) df.pipe(boxplot, by='Survived', col='Age')
     ex) df.pipe(boxplot, by=pd.qcut(df.Age, 3), col='Fare')
+    ex) df.pipe(boxplot, by=pd.qcut(df.Age, 3), col='Fare', hue='Survived')
     '''
 
-    sns.boxplot(x=by, y=col, data=df, **kwargs)
+    color = sns.color_palette()[0]
 
-def nice_hist(df, col, bin_mult=1, range=None, prop=False):
+    if orient == 'h':
+        x, y = col, by
+    else:
+        x, y = by, col
+
+    sns.boxplot(x=x, y=y, hue=hue, data=df, **kwargs)
+
+    if hue is not None:
+        plt.legend(loc=(1, 0))
+
+def densityplot(df, col, by=None, range=None):
     '''
-    Creates a "nice" histogram for a continuous variable, where the bin edges
-    align with the x-axis tick marks.
+    Creates a density plot for a continuous variable.
 
-    ex) df.pipe(nice_hist, col='Age')
-    '''
-
-    # make temporary plot of min and max just to get the "right" x-axis tick marks
-    pd.DataFrame([df[col].min(), df[col].max()]).plot.hist(range=range)
-
-    ticks = plt.gca().get_xticks()
-
-    if range is None:
-        range = ticks[1], ticks[-2]
-
-    total_span = range[1] - range[0]
-    bin_width = ticks[1] - ticks[0]
-    num_bins = int(total_span / bin_width)
-
-    # remove temporary plot
-    plt.clf()
-
-    weights = np.ones_like(df[col]) / float(len(df[col])) if prop else None
-    df[col].plot.hist(range=range, bins=bin_mult*num_bins, weights=weights, alpha=0.4)
-
-def hist(df, col, bin_num=None, bin_width=None, bin_range=None, prop=False, **kwargs):
-    '''
-    Creates a histogram for a continuous variable.
-
-    ex) df.pipe(hist, 'Age', bin_width=10, bin_range=(0, 100), prop=True)
+    ex) df.pipe(densityplot, col='Age')
+    ex) df.pipe(densityplot, col='Fare', by=pd.qcut(df.Age, 3))
     '''
 
-    a = df[col]
+    if by is None:
+        sns.kdeplot(df[col])
+        plt.legend().remove()
 
-    range = (a.min(), a.max()) if bin_range is None else bin_range
+    else:
+        for g, c in df.groupby(by)[col]:
+            sns.kdeplot(c, label=g, shade=True)
+
+        plt.xlim(range)
+        plt.legend(loc=(1, 0))
+
+def heatmap(df, row, col, val=None, normalize=False):
+    '''
+    Creates a heat map of counts for 2 categorical variables.
+
+    ex) df.pipe(heatmap, row=pd.qcut(df.Age, 3), col='Sex', val='Survived')
+    '''
+
+    if val is None:
+        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
+    else:
+        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
+
+def flexible_bin_range(a, bin_num=None, bin_range=None, bin_width=None):
+    bin_range = (a.min(), a.max()) if bin_range is None else bin_range
 
     if bin_width and bin_num:
         raise Exception, 'Must specify only one of bin_num or bin_width'
 
     elif bin_width:
-        bin_num = int(round((range[1] - range[0]) / bin_width))
+        bin_num = int(round((bin_range[1] - bin_range[0]) / bin_width))
         bins = [a.min() + bin_width*i for i in np.arange(bin_num+1)]
 
     elif bin_num:
@@ -183,86 +142,78 @@ def hist(df, col, bin_num=None, bin_width=None, bin_range=None, prop=False, **kw
     else:
         bins = 10
 
-    weights = np.ones_like(a) / float(len(a)) if prop else None
-    plt.hist(a, bins=bins, range=range, weights=weights, **kwargs)
+    return bins, bin_range
 
-def distplot(df, col, by=None, prop=False, **kwargs):
+def nice_bin_range(a, bin_mult=1, bin_range=None):
+    # make temporary plot of min and max just to get the "right" x-axis tick marks
+    pd.DataFrame([a.min(), a.max()]).plot.hist(range=bin_range)
+
+    ticks = plt.gca().get_xticks()
+
+    if bin_range is None:
+        bin_range = ticks[1], ticks[-2]
+
+    total_span = bin_range[1] - bin_range[0]
+    bin_width = ticks[1] - ticks[0]
+    num_bins = int(total_span / bin_width)
+
+    # remove temporary plot
+    plt.clf()
+
+    return bin_mult*num_bins, bin_range
+
+def histogram(df, col, by=None, nice=False, prop=False, **kwargs):
     '''
-    Creates a histogram or a grouped density plot for a continuous variable.
+    Creates a histogram for a continuous variable.
 
-    ex) df.pipe(distplot, by='Survived', col='Age')
-    ex) df.pipe(distplot, by=pd.qcut(df.Age, 3), col='Fare')
+    ex) df.pipe(histogram, col='Age')
+    ex) df.pipe(histogram, col='Fare', by=pd.qcut(df.Age, 3))
     '''
 
-    df = df.copy()
+    a = df[col]
 
-    if by is not None:
-        if not isinstance(by, str):
-            df[by.name] = by
-            by = by.name
+    if nice:
+        bins, range = nice_bin_range(a, **kwargs)
+    else:
+        bins, range = flexible_bin_range(a, **kwargs)
 
-        for group, column in df.groupby(by)[col]:
-            sns.kdeplot(column, label=group, shade=True)
-
-        if 'range' in kwargs:
-            range = kwargs['range']
-            plt.xlim(range)
-
-        plt.legend(title=by, loc=(1, 0))
+    if by is None:
+        weights = np.ones_like(a) / float(len(a)) if prop else None
+        a.plot.hist(alpha=0.4, bins=bins, range=range, weights=weights)
 
     else:
-        df.pipe(hist, col, prop=prop, alpha=0.4, **kwargs)
+        for g, c in df.groupby(by)[col]:
+            weights = np.ones_like(c) / float(len(c)) if prop else None
+            c.plot.hist(alpha=0.4, bins=bins, label=g, range=range, weights=weights)
 
-    plt.xlabel(col)
+        plt.legend(loc=(1, 0))
 
-def heatmap(df, row, col, val=None, normalize=False):
+def lineplot(df, x, y, by=None):
     '''
-    Creates a heat map of counts for 2 categorical variables.
+    Creates a line plot of the mean for a continuous variable grouped by a
+    categorical variable.
 
-    ex) df.pipe(heatmap, row='Cabin', col='Sex', val='Survived')
-    ex) df.pipe(heatmap, row=pd.qcut(df.Age, 3), col=pd.qcut(df.Fare, 3))
-    '''
-
-    if val:
-        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
-    else:
-        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
-
-def lineplot(df, x, y, by=None, **kwargs):
-    '''
-    Creates a line plot of the mean value for a continuous variable.
-
-    ex) df.pipe(lineplot, x='Cabin', y='Survived', by='Sex')
     ex) df.pipe(lineplot, x=pd.cut(df.Age, 3), y='Survived')
-    ex) df.pipe(lineplot, x=df.date.dt.weekday, y='Amount')
+    ex) df.pipe(lineplot, x=df.date.dt.weekday, y='Amount', by='Item')
     '''
 
-    df = df.copy()
+    if by is None:
+        df.groupby(x)[y].mean().plot()
+    else:
+        df.pipe(table, x, by, y).plot()
+        plt.legend(loc=(1, 0))
 
-    if by is not None:
-        if not isinstance(by, str):
-            df[by.name] = by
-            by = by.name
-
-    sns.pointplot(x, y, hue=by, data=df, ci=False, **kwargs)
-    plt.legend(title=by, loc=(1, 0))
-
-def scatterplot(df, x, y, by=None, **kwargs):
+def scatterplot(df, x, y, by=None):
     '''
     Creates a scatter plot for 2 continuous variables.
 
     ex) df.pipe(scatterplot, x='Age', y='Fare', by='Survived')
     '''
 
-    df = df.copy()
+    sns.lmplot(x=x, y=y, hue=by, data=df)
 
     if by is not None:
-        if not isinstance(by, str):
-            df[by.name] = by
-            by = by.name
-
-    sns.lmplot(x, y, hue=by, data=df, **kwargs)
-    plt.legend(title=by, loc=(1, 0))
+        plt.legend(loc=(1, 0))
 
 ################################
 ##### Time Series Plotting #####
@@ -467,26 +418,6 @@ def tsboxplot(df, date, col, freq='M'):
     data = pd.concat(columns, axis=1)
     sns.boxplot(data=data, orient='h')
     plt.xlabel(col)
-
-# deprecate
-def timeunit_barplot(df, date, unit='weekday', col=None):
-    '''
-    Creates a bar plot of counts or the average of continuous variable grouped
-    by a unit of time (e.g. minute, hour, day, weekday)
-
-    ex) df.pipe(timeunit_barplot, date='date', unit='weekday', col='Total')
-    '''
-
-    df['unit'] = df[date].pipe(time_unit, unit)
-
-    if col:
-        df.groupby('unit')[col].mean().plot.bar()
-        plt.ylabel('')
-    else:
-        df['unit'].value_counts().sort_index().plot.bar()
-        plt.ylabel(col)
-
-    plt.xlabel(unit)
 
 def timeunit_heatplot(df, date, freq='M', unit='weekday', col=None):
     '''

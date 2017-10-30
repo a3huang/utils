@@ -77,13 +77,14 @@ def table(df, row, col, val=None, **kwargs):
     ex) df.pipe(table, pd.cut(df['Attack'], 3), pd.cut(df['HP'], 3))
     '''
 
-    x = df[row] if isinstance(row, str) else row
-    y = df[col] if isinstance(col, str) else col
+    row = df[row] if isinstance(row, str) else row
+    col = df[col] if isinstance(col, str) else col
+    val = df[val] if isinstance(val, str) else val
 
     if val is None:
-        return pd.crosstab(x, y, **kwargs)
+        return pd.crosstab(row, col, **kwargs)
     else:
-        return pd.crosstab(x, y, df[val], aggfunc=np.mean, **kwargs)
+        return pd.crosstab(row, col, val, aggfunc=np.mean, **kwargs)
 #####
 
 def disjoint_intervals(start, end, step=2):
