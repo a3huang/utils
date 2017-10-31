@@ -47,6 +47,7 @@ def barplot(df, col, by=None, hue=None, orient='v', prop=False, stacked=False):
     ex) df.pipe(barplot, col=pd.qcut(df.Fare, 3), by=pd.qcut(df.Age, 3))
     ex) df.pipe(barplot, col=df.date.dt.weekday)
     ex) df.pipe(barplot, col='Amount', by=df.date.dt.weekday)
+    ex) df.pipe(barplot, col='Amount', by=pd.Grouper(key='date', freq='W'))
     '''
 
     df = df.copy()
@@ -195,6 +196,7 @@ def lineplot(df, x, y, by=None):
 
     ex) df.pipe(lineplot, x=pd.cut(df.Age, 3), y='Survived')
     ex) df.pipe(lineplot, x=df.date.dt.weekday, y='Amount', by='Item')
+    ex) df.pipe(lineplot, x=pd.Grouper(key='date', freq='W'), y='Amount')
     '''
 
     if by is None:
