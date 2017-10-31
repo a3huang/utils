@@ -114,7 +114,7 @@ def densityplot(df, col, by=None, range=None):
         plt.xlim(range)
         plt.legend(loc=(1, 0))
 
-def heatmap(df, row, col, val=None, normalize=False):
+def heatmap(df, row, col, val=None, normalize=False, **kwargs):
     '''
     Creates a heat map of counts for 2 categorical variables.
 
@@ -122,9 +122,9 @@ def heatmap(df, row, col, val=None, normalize=False):
     '''
 
     if val is None:
-        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f')
+        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f', **kwargs)
     else:
-        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f')
+        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f', **kwargs)
 
 def flexible_bin_range(a, bin_num=None, bin_range=None, bin_width=None):
     bin_range = (a.min(), a.max()) if bin_range is None else bin_range
@@ -210,7 +210,7 @@ def scatterplot(df, x, y, by=None):
     ex) df.pipe(scatterplot, x='Age', y='Fare', by='Survived')
     '''
 
-    sns.lmplot(x=x, y=y, hue=by, data=df)
+    sns.lmplot(x=x, y=y, hue=by, data=df, legend=False)
 
     if by is not None:
         plt.legend(loc=(1, 0))
