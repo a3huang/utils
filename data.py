@@ -809,3 +809,9 @@ class OneHotEncode(TransformerMixin):
     def transform(self, X):
         Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
         return cbind(X.drop(self.col, 1), Xdummy.T.reindex(self.columns).T.fillna(0))
+
+def inv_dict(d):
+    return {v: k for k, v in d.items()}
+
+def dict_multi_key(d, keys):
+    return [d[i] for i in keys]
