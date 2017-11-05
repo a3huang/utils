@@ -355,13 +355,15 @@ def plot_confusion_matrix(model, X, y, normalize=False, threshold=0.5):
     plt.ylabel('True')
     plt.title('Predicted')
 
-def plot_decision_tree(X, y, filename, directory='/Users/alexhuang', **kwargs):
+def plot_decision_tree(X, y, filename, directory='~', **kwargs):
     '''
     Creates a graphviz plot of a decision tree and saves it to a file.
 
     ex) plot_decision_tree(X, y, 'tree')
     '''
 
+    if directory[0] == '~':
+        directory = os.path.expanduser(directory)
     filename = os.path.join(directory, filename)
 
     model = DecisionTreeClassifier(**kwargs)
@@ -372,7 +374,7 @@ def plot_decision_tree(X, y, filename, directory='/Users/alexhuang', **kwargs):
 
     graph = graphviz.Source(dot_data)
     graph.render(filename)
-    subprocess.call(('open', os.path.join(filename, '.pdf')))
+    subprocess.call(('open', filename + '.pdf'))
 
 def plot_predicted_probabilities(model, X, y):
     '''
