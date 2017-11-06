@@ -815,3 +815,23 @@ def inv_dict(d):
 
 def dict_multi_key(d, keys):
     return [d[i] for i in keys]
+
+def plot_feat_error(model, df):
+    df = df.copy()
+    df.loc[(df.pred == 1) & (df.Survived == 0), 'error'] = 'FP'
+    df.loc[df.pred == df.Survived, 'error'] = 'C'
+    df.loc[(df.pred == 0) & (df.Survived == 1), 'error'] = 'FN'
+
+    df1 = df.drop('error', 1)
+    s = StandardScaler()
+    df1 = pd.DataFrame(s.fit_transform(df1), columns=df1.columns)
+    df2 = cbind(df1, df['error'])
+    sns.heatmap(df2.groupby('error').mean())
+
+def plot_pca_components(df):
+    pca = make_pipeline(StandardScaler(), PCA())
+    df1 = pd.get_dummies(df).fillna(0)
+
+    pca.fit(df1)
+    sns.heatmap(pca.steps[1][1].components_[:3].T)
+    plt.yticks(range(pca.steps[1][1].components_[:3].T.shape[0], 0, -1), df1.columns, rotation=0);
