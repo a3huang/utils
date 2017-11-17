@@ -835,3 +835,23 @@ def plot_pca_components(df):
     pca.fit(df1)
     sns.heatmap(pca.steps[1][1].components_[:3].T)
     plt.yticks(range(pca.steps[1][1].components_[:3].T.shape[0], 0, -1), df1.columns, rotation=0);
+
+def ts_train_test_split(x, test_size=0.2):
+    train_size = int(len(x) * (1 - test_size))
+    test_size = len(x) - train_size
+    train, test = x[0:train_size], x[train_size:len(x)]
+    return train, test
+
+def ts_create_target(df, lag=1):
+    columns = [df.shift(i) for i in range(1, lag+1)]
+    columns.append(df)
+    df = pd.concat(columns, axis=1)
+    df.columns = range(len(df.columns))
+    df = df.fillna(0)
+    return df
+
+def reshape_for_rnn(x):
+    if len(x.shape) == 1:
+        return x.reshape(x.shape[0], 1, 1)
+    else:
+        return x.reshape(x.shape[0], 1, x.shape[1])
