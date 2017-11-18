@@ -855,3 +855,6 @@ def reshape_for_rnn(x):
         return x.reshape(x.shape[0], 1, 1)
     else:
         return x.reshape(x.shape[0], 1, x.shape[1])
+
+def filter_top(df, col, n=5):
+    return df.pipe(filter, lambda x: x[col].isin(x[col].value_counts()[:n].index))
