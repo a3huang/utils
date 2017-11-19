@@ -8,13 +8,12 @@ from lime.lime_tabular import LimeTabularExplainer
 from pandas.api.types import is_numeric_dtype, is_string_dtype
 from sklearn.calibration import calibration_curve
 from sklearn.decomposition import PCA
-from sklearn.metrics import confusion_matrix, roc_curve, f1_score, \
-        recall_score, precision_score
+from sklearn.metrics import confusion_matrix, f1_score, \
+        precision_score, recall_score, roc_curve
 from sklearn.model_selection import learning_curve, StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
-from statsmodels.graphics.mosaicplot import mosaic
 
 import graphviz
 import os
@@ -23,31 +22,24 @@ import subprocess
 
 from utils.data import *
 
-# deprecate
-def create_explainer(model, X):
-    '''
-    Convenience function for creating a LIME explainer object.
-
-    ex) create_explainer(model, X_train)
-    '''
-
-    explainer = LimeTabularExplainer(X.values, feature_names=X.columns.values)
-    return explainer
-#####
-
 ##########################
 ##### Basic Plotting #####
 ##########################
+# separate into tsbarplot?
 def barplot(df, col, by=None, hue=None, orient='v', prop=False, stacked=False):
     '''
-    Creates a bar plot of counts for a categorical variable or of the mean for a
-    continuous variable.
+    Creates a bar plot of counts for a categorical variable or a bar plot of means
+    for a continuous variable grouped by a categorical variable.
 
-    ex) df.pipe(barplot, col='Sex', by='Survived')
-    ex) df.pipe(barplot, col=pd.qcut(df.Fare, 3), by=pd.qcut(df.Age, 3))
-    ex) df.pipe(barplot, col=df.date.dt.weekday)
-    ex) df.pipe(barplot, col='Amount', by=df.date.dt.weekday)
-    ex) df.pipe(barplot, col='Amount', by=pd.Grouper(key='date', freq='W'))
+    ex) df.pipe(barplot, col='cat')
+    ex) df.pipe(barplot, col='cat', by='cat')
+    ex) df.pipe(barplot, col='cont', by='cat')
+    ex) df.pipe(barplot, col='cont', by='cat', hue='cat')
+    ex) df.pipe(barplot, col=pd.qcut(df['cont'] 3), by=pd.qcut(df['cont'], 3))
+    ex) df.pipe(barplot, col='cont', by=pd.qcut(df['cont'], 3), hue=pd.qcut(df['cont'], 3))
+    ?
+    ex) df.pipe(barplot, col=df['datetime'].dt.weekday)
+    ex) df.pipe(barplot, col='cont', by=df['datetime'].dt.weekday)
     '''
 
     df = df.copy()
@@ -73,15 +65,15 @@ def barplot(df, col, by=None, hue=None, orient='v', prop=False, stacked=False):
             df.pipe(table, by, hue, col).plot(kind=kind)
             plt.legend(loc=(1, 0))
         else:
-            raise Exception, 'col must be numeric if both by and hue are specified'
+            raise Exception, 'col must be numeric if both by and hue are given'
 
-def boxplot(df, by, col, hue=None, orient='v', **kwargs):
+def boxplot(df, col, by, hue=None, orient='v', **kwargs):
     '''
     Creates a box plot for a continuous variable grouped by a categorical variable.
 
-    ex) df.pipe(boxplot, by='Survived', col='Age')
-    ex) df.pipe(boxplot, by=pd.qcut(df.Age, 3), col='Fare')
-    ex) df.pipe(boxplot, by=pd.qcut(df.Age, 3), col='Fare', hue='Survived')
+    ex) df.pipe(boxplot, col='cont', by='cat')
+    ex) df.pipe(boxplot, col='cont', by='cat', hue='cat')
+    ex) df.pipe(boxplot, col='cont', by=pd.qcut(df['cont'], 3))
     '''
 
     color = sns.color_palette()[0]
@@ -100,8 +92,9 @@ def densityplot(df, col, by=None, range=None):
     '''
     Creates a density plot for a continuous variable.
 
-    ex) df.pipe(densityplot, col='Age')
-    ex) df.pipe(densityplot, col='Fare', by=pd.qcut(df.Age, 3))
+    ex) df.pipe(densityplot, col='cont')
+    ex) df.pipe(densityplot, col='cont', by='cat')
+    ex) df.pipe(densityplot, col='cont', by=pd.qcut(df['cont'], 3))
     '''
 
     if by is None:
@@ -117,13 +110,17 @@ def densityplot(df, col, by=None, range=None):
 
 def heatmap(df, row, col, val=None, normalize=False, **kwargs):
     '''
-    Creates a heat map of counts for 2 categorical variables.
+    Creates a heat map of counts for 2 categorical variables or a heat map of
+    means for a continuous variable grouped by 2 categorical variables.
 
-    ex) df.pipe(heatmap, row=pd.qcut(df.Age, 3), col='Sex', val='Survived')
+    ex) df.pipe(heatmap, row='cat', col='cat')
+    ex) df.pipe(heatmap, row='cat', col='cat', val='cont')
+    ex) df.pipe(heatmap, row=pd.qcut(df['cont'], 3), col=pd.qcut(df['cont'], 3))
     '''
 
     if val is None:
-        sns.heatmap(df.pipe(table, row, col, normalize=normalize), annot=True, fmt='.2f', **kwargs)
+        sns.heatmap(df.pipe(table, row, col, normalize=normalize),
+            annot=True, fmt='.2f', **kwargs)
     else:
         sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f', **kwargs)
 
@@ -146,7 +143,7 @@ def flexible_bin_range(a, bin_num=None, bin_range=None, bin_width=None):
     return bins, bin_range
 
 def nice_bin_range(a, bin_mult=1, bin_range=None):
-    # make temporary plot of min and max just to get the "right" x-axis tick marks
+    # make temporary plot using just min and max to get the "right" x-axis tick marks
     pd.DataFrame([a.min(), a.max()]).plot.hist(range=bin_range)
 
     ticks = plt.gca().get_xticks()
@@ -167,8 +164,9 @@ def histogram(df, col, by=None, nice=False, prop=False, **kwargs):
     '''
     Creates a histogram for a continuous variable.
 
-    ex) df.pipe(histogram, col='Age')
-    ex) df.pipe(histogram, col='Fare', by=pd.qcut(df.Age, 3))
+    ex) df.pipe(histogram, col='cont')
+    ex) df.pipe(histogram, col='cont', by='cat')
+    ex) df.pipe(histogram, col='cont', by=pd.qcut(df['cont'], 3))
     '''
 
     a = df[col]
@@ -189,27 +187,13 @@ def histogram(df, col, by=None, nice=False, prop=False, **kwargs):
 
         plt.legend(loc=(1, 0))
 
-def lineplot(df, x, y, by=None):
-    '''
-    Creates a line plot of the mean for a continuous variable grouped by a
-    categorical variable.
-
-    ex) df.pipe(lineplot, x=pd.cut(df.Age, 3), y='Survived')
-    ex) df.pipe(lineplot, x=df.date.dt.weekday, y='Amount', by='Item')
-    ex) df.pipe(lineplot, x=pd.Grouper(key='date', freq='W'), y='Amount')
-    '''
-
-    if by is None:
-        df.groupby(x)[y].mean().plot()
-    else:
-        df.pipe(table, x, by, y).plot()
-        plt.legend(loc=(1, 0))
-
 def scatterplot(df, x, y, by=None):
     '''
     Creates a scatter plot for 2 continuous variables.
 
-    ex) df.pipe(scatterplot, x='Age', y='Fare', by='Survived')
+    ex) df.pipe(scatterplot, x='cont', y='cont')
+    ex) df.pipe(scatterplot, x='cont', y='cont', by='cat')
+    ex) df.pipe(scatterplot, x='cont', y='cont', by=pd.qcut(df['cont'], 3))
     '''
 
     sns.lmplot(x=x, y=y, hue=by, data=df, legend=False)
@@ -220,39 +204,33 @@ def scatterplot(df, x, y, by=None):
 ################################
 ##### Time Series Plotting #####
 ################################
-def tslineplot(df, date, by=None, val=None, area=False, freq='M'):
+def tslineplot(df, date, val=None, by=None, area=False, freq='M'):
     '''
-    Creates a time series line plot of counts for a date variable.
+    Creates a time series line plot of counts for a datetime variable.
 
-    ex) df.pipe(tslineplot, date='date', by='diet')
-    ex) df.pipe(tslineplot, date='date', by=pd.qcut(df['purchase_frequency'], 3))
+    ex) df.pipe(tslineplot, date='datetime', by='cat')
+    ex) df.pipe(tslineplot, date='datetime', val='cont', by='cat')
+    ex) df.pipe(tslineplot, date='datetime', by=pd.qcut(df['cont'], 3))
     '''
 
     df = df.copy()
 
-    if by is not None:
-        if not isinstance(by, str):
-            df[by.name] = by
-            by = by.name
-
-    if area:
-        kind = 'area'
-    else:
-        kind = 'line'
+    kind = 'area' if area == True else 'line'
 
     date = pd.Grouper(key=date, freq=freq)
 
-    if by and val:
-        df.groupby([date, by])[val].mean().unstack(by).plot(kind=kind)
-    elif by:
-        df.groupby([date, by]).size().unstack(by).plot(kind=kind)
-    elif val:
-        df.groupby(date)[val].mean().plot(kind=kind)
-    else:
+    if by is None and val is None:
         df.groupby(date).size().plot(kind=kind)
+    elif by is None:
+        df.groupby(date)[val].mean().fillna(0).plot(kind=kind)
+    elif val is None:
+        df.groupby([date, by]).size().unstack(by).plot(kind=kind)
+    else:
+        df.groupby([date, by])[val].mean().fillna(0).unstack(by).plot(kind=kind)
 
     if by:
         plt.legend(title=by, loc=(1, 0))
+#?!
 
 ######################################
 ##### Model Performance Plotting #####
@@ -445,6 +423,26 @@ def timeunit_heatplot(df, date, freq='M', unit='weekday', col=None):
     new_labels = [i.get_text().split('T')[0] for i in plt.gca().get_xticklabels()]
     plt.gca().set_xticklabels(new_labels)
     plt.ylabel(unit)
+
+# deprecate?
+# split into interact, and binary?
+def lineplot(df, x, y, by=None):
+    '''
+    Creates a line plot of means for a continuous variable grouped by a
+    categorical variable.
+
+    ex) df.pipe(lineplot, x='cat', y='cont')
+    ex) df.pipe(lineplot, x='cat', y='cont', by='cat')
+    ex) df.pipe(lineplot, x=pd.cut(df['cont'], 3), y='cont')
+    ex) df.pipe(lineplot, x=df['datetime'].dt.weekday, y='cont', by='cat')
+    ex) df.pipe(lineplot, x=pd.Grouper(key='datetime', freq='W'), y='cont')
+    '''
+
+    if by is None:
+        df.groupby(x)[y].mean().plot()
+    else:
+        df.pipe(table, x, by, y).plot()
+        plt.legend(loc=(1, 0))
 
 def generate_distribution_plots(df, by, folder_name, omit=None,
                                 default_dir='/Users/alexhuang/'):
@@ -666,6 +664,17 @@ def plot_top_features(model, X, attr, n=10, label=0):
     a.plot.barh(color=colors)
     plt.ylabel('')
     plt.title('Top Features')
+
+# deprecate
+def create_explainer(model, X):
+    '''
+    Convenience function for creating a LIME explainer object.
+
+    ex) create_explainer(model, X_train)
+    '''
+
+    explainer = LimeTabularExplainer(X.values, feature_names=X.columns.values)
+    return explainer
 
 def plot_explanations(explainer, model, X, i=None):
     '''
