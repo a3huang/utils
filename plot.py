@@ -25,7 +25,6 @@ from utils.data import *
 ##########################
 ##### Basic Plotting #####
 ##########################
-# separate into tsbarplot?
 def barplot(df, col, by=None, hue=None, orient='v', prop=False, stacked=False):
     '''
     Creates a bar plot of counts for a categorical variable or a bar plot of means
@@ -33,13 +32,9 @@ def barplot(df, col, by=None, hue=None, orient='v', prop=False, stacked=False):
 
     ex) df.pipe(barplot, col='cat')
     ex) df.pipe(barplot, col='cat', by='cat')
+    ex) df.pipe(barplot, col='cat', by=pd.qcut(df['cont'], 3))
     ex) df.pipe(barplot, col='cont', by='cat')
     ex) df.pipe(barplot, col='cont', by='cat', hue='cat')
-    ex) df.pipe(barplot, col=pd.qcut(df['cont'] 3), by=pd.qcut(df['cont'], 3))
-    ex) df.pipe(barplot, col='cont', by=pd.qcut(df['cont'], 3), hue=pd.qcut(df['cont'], 3))
-    ?
-    ex) df.pipe(barplot, col=df['datetime'].dt.weekday)
-    ex) df.pipe(barplot, col='cont', by=df['datetime'].dt.weekday)
     '''
 
     df = df.copy()
@@ -115,7 +110,7 @@ def heatmap(df, row, col, val=None, normalize=False, **kwargs):
 
     ex) df.pipe(heatmap, row='cat', col='cat')
     ex) df.pipe(heatmap, row='cat', col='cat', val='cont')
-    ex) df.pipe(heatmap, row=pd.qcut(df['cont'], 3), col=pd.qcut(df['cont'], 3))
+    ex) df.pipe(heatmap, row='cat', col=pd.qcut(df['cont'], 3))
     '''
 
     if val is None:
@@ -230,7 +225,47 @@ def tslineplot(df, date, val=None, by=None, area=False, freq='M'):
 
     if by:
         plt.legend(title=by, loc=(1, 0))
+
+def tsbarplot(df, date, unit='weekday', val=None, by=None):
+    '''
+    Creates a bar plot of counts of a time unit (e.g. day of week, hour, minute) for
+    a datetime variable.
+
+    ex) df.pipe(tsbarplot, date='datetime')
+    ex) df.pipe(tsbarplot, date='datetime', val='cont')
+    ex) df.pipe(tsbarplot, date='datetime', val='cont', by='cat')
+    ex) df.pipe(tsbarplot, date='datetime', by=pd.qcut(df['cont'], 3))
+    '''
+    timeunit = getattr(df[date].dt, unit)
+
+    if val is None:
+        df.pipe(barplot, col=timeunit, by=by)
+    else:
+        df.pipe(barplot, col=val, by=timeunit, hue=by)
 #?!
+def tsboxplot(df, date, col, hue=None, freq='M'):
+    '''
+    Creates a time series box plot for a continuous variable.
+
+    ex) df.pipe(tsboxplot, date='date', col='cont')
+    '''
+
+    date = pd.Grouper(key=date, freq=freq)
+
+    columns = []
+    for g, c in df.groupby(date):
+        a = pd.DataFrame(c[col]).reset_index(drop=True).rename(columns={col: g}).melt()
+
+        if hue is not None:
+            b = pd.DataFrame(c[hue]).reset_index(drop=True)
+            a = pd.concat([a, b], axis=1)
+
+        columns.append(a)
+
+    data = pd.concat(columns)
+    sns.boxplot(x='variable', y='value', hue=hue, data=data)
+    plt.xlabel(col)
+    plt.xticks(rotation=90)
 
 ######################################
 ##### Model Performance Plotting #####
@@ -382,24 +417,6 @@ def multicol_heatplot(df, by, cols):
     a = a.groupby(by)[cols].mean()
     sns.heatmap(a, annot=True, fmt='.2f')
     plt.xticks(rotation=90)
-
-def tsboxplot(df, date, col, freq='M'):
-    '''
-    Creates a time series box plot for a continuous variable.
-
-    ex) df.pipe(tsboxplot, date='date', col='Amount')
-    '''
-
-    groups = df.groupby(pd.Grouper(key=date, freq=freq))
-
-    columns = []
-    for i, g in groups:
-        a = pd.DataFrame(g[col]).reset_index(drop=True).rename(columns={col: i})
-        columns.append(a)
-
-    data = pd.concat(columns, axis=1)
-    sns.boxplot(data=data, orient='h')
-    plt.xlabel(col)
 
 def timeunit_heatplot(df, date, freq='M', unit='weekday', col=None):
     '''
