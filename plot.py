@@ -236,18 +236,20 @@ def tsbarplot(df, date, unit='weekday', val=None, by=None):
     ex) df.pipe(tsbarplot, date='datetime', val='cont', by='cat')
     ex) df.pipe(tsbarplot, date='datetime', by=pd.qcut(df['cont'], 3))
     '''
+
     timeunit = getattr(df[date].dt, unit)
 
     if val is None:
         df.pipe(barplot, col=timeunit, by=by)
     else:
         df.pipe(barplot, col=val, by=timeunit, hue=by)
-#?!
+
 def tsboxplot(df, date, col, hue=None, freq='M'):
     '''
     Creates a time series box plot for a continuous variable.
 
     ex) df.pipe(tsboxplot, date='date', col='cont')
+    ex) df.pipe(tsboxplot, date='date', col='cont', hue='cat')
     '''
 
     date = pd.Grouper(key=date, freq=freq)
@@ -266,6 +268,27 @@ def tsboxplot(df, date, col, hue=None, freq='M'):
     sns.boxplot(x='variable', y='value', hue=hue, data=data)
     plt.xlabel(col)
     plt.xticks(rotation=90)
+
+def tsheatmap(df, date, freq='M', unit='weekday', val=None):
+    '''
+    Creates a heat map of counts or a heat map of means for a continuous variable
+    grouped by a time unit (e.g. day of week, hour, minute) and a date frequency.
+
+    ex) df.pipe(tsheatmap, date='datetime', val='cont')
+    '''
+
+    timeunit = getattr(df[date].dt, unit)
+    date = pd.Grouper(key=date, freq=freq)
+
+    if val is None:
+        a = df.groupby([date, timeunit]).size().unstack()
+    else:
+        a = df.groupby([date, timeunit])[val].mean().unstack()
+
+    a.index = a.index.astype(str)
+    sns.heatmap(a)
+    plt.ylabel(unit)
+#?!
 
 ######################################
 ##### Model Performance Plotting #####
@@ -417,29 +440,6 @@ def multicol_heatplot(df, by, cols):
     a = a.groupby(by)[cols].mean()
     sns.heatmap(a, annot=True, fmt='.2f')
     plt.xticks(rotation=90)
-
-def timeunit_heatplot(df, date, freq='M', unit='weekday', col=None):
-    '''
-    Creates a heat plot of counts or the average of a continuous variable
-    grouped by a unit of time (e.g. minute, hour, day, weekday) on the y-axis
-    and a frequency on the x-axis.
-
-    ex) df.pipe(timeunit_heatplot, date='date', col='Total')
-    '''
-
-    df = df.copy()
-    df['unit'] = df[date].pipe(time_unit, unit)
-
-    if col:
-        a = df.groupby(['unit', pd.Grouper(key=date, freq=freq)])[col].mean().unstack()
-    else:
-        a = df.groupby(['unit', pd.Grouper(key=date, freq=freq)]).size().unstack()
-
-    sns.heatmap(a)
-
-    new_labels = [i.get_text().split('T')[0] for i in plt.gca().get_xticklabels()]
-    plt.gca().set_xticklabels(new_labels)
-    plt.ylabel(unit)
 
 # deprecate?
 # split into interact, and binary?
