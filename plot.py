@@ -199,6 +199,69 @@ def scatterplot(df, x, y, by=None):
 ################################
 ##### Time Series Plotting #####
 ################################
+def tsbarplot(df, date, val=None, by=None, unit='weekday'):
+    '''
+    Creates a bar plot of counts of a time unit (e.g. day of week, hour, minute) for
+    a datetime variable.
+
+    ex) df.pipe(tsbarplot, date='datetime')
+    ex) df.pipe(tsbarplot, date='datetime', val='cont')
+    ex) df.pipe(tsbarplot, date='datetime', val='cont', by='cat')
+    ex) df.pipe(tsbarplot, date='datetime', by=pd.qcut(df['cont'], 3))
+    '''
+
+    timeunit = getattr(df[date].dt, unit)
+
+    if val is None:
+        df.pipe(barplot, col=timeunit, by=by)
+    else:
+        df.pipe(barplot, col=val, by=timeunit, hue=by)
+
+def tsboxplot(df, date, val, hue=None, freq='M'):
+    '''
+    Creates a time series box plot for a continuous variable.
+
+    ex) df.pipe(tsboxplot, date='date', val='cont')
+    ex) df.pipe(tsboxplot, date='date', val='cont', hue='cat')
+    '''
+
+    date = pd.Grouper(key=date, freq=freq)
+
+    columns = []
+    for g, c in df.groupby(date):
+        a = pd.DataFrame(c[val]).reset_index(drop=True).rename(columns={val: g}).melt()
+
+        if hue is not None:
+            b = pd.DataFrame(c[hue]).reset_index(drop=True)
+            a = pd.concat([a, b], axis=1)
+
+        columns.append(a)
+
+    data = pd.concat(columns)
+    sns.boxplot(x='variable', y='value', hue=hue, data=data)
+    plt.xlabel(val)
+    plt.xticks(rotation=90)
+
+def tsheatmap(df, date, val=None, freq='M', unit='weekday'):
+    '''
+    Creates a heat map of counts or a heat map of means for a continuous variable
+    grouped by a time unit (e.g. day of week, hour, minute) and a date frequency.
+
+    ex) df.pipe(tsheatmap, date='datetime', val='cont')
+    '''
+
+    timeunit = getattr(df[date].dt, unit)
+    date = pd.Grouper(key=date, freq=freq)
+
+    if val is None:
+        a = df.groupby([date, timeunit]).size().unstack()
+    else:
+        a = df.groupby([date, timeunit])[val].mean().unstack()
+
+    a.index = a.index.astype(str)
+    sns.heatmap(a)
+    plt.xlabel(unit)
+
 def tslineplot(df, date, val=None, by=None, area=False, freq='M'):
     '''
     Creates a time series line plot of counts for a datetime variable.
@@ -225,71 +288,7 @@ def tslineplot(df, date, val=None, by=None, area=False, freq='M'):
 
     if by:
         plt.legend(title=by, loc=(1, 0))
-
-def tsbarplot(df, date, unit='weekday', val=None, by=None):
-    '''
-    Creates a bar plot of counts of a time unit (e.g. day of week, hour, minute) for
-    a datetime variable.
-
-    ex) df.pipe(tsbarplot, date='datetime')
-    ex) df.pipe(tsbarplot, date='datetime', val='cont')
-    ex) df.pipe(tsbarplot, date='datetime', val='cont', by='cat')
-    ex) df.pipe(tsbarplot, date='datetime', by=pd.qcut(df['cont'], 3))
-    '''
-
-    timeunit = getattr(df[date].dt, unit)
-
-    if val is None:
-        df.pipe(barplot, col=timeunit, by=by)
-    else:
-        df.pipe(barplot, col=val, by=timeunit, hue=by)
-
-def tsboxplot(df, date, col, hue=None, freq='M'):
-    '''
-    Creates a time series box plot for a continuous variable.
-
-    ex) df.pipe(tsboxplot, date='date', col='cont')
-    ex) df.pipe(tsboxplot, date='date', col='cont', hue='cat')
-    '''
-
-    date = pd.Grouper(key=date, freq=freq)
-
-    columns = []
-    for g, c in df.groupby(date):
-        a = pd.DataFrame(c[col]).reset_index(drop=True).rename(columns={col: g}).melt()
-
-        if hue is not None:
-            b = pd.DataFrame(c[hue]).reset_index(drop=True)
-            a = pd.concat([a, b], axis=1)
-
-        columns.append(a)
-
-    data = pd.concat(columns)
-    sns.boxplot(x='variable', y='value', hue=hue, data=data)
-    plt.xlabel(col)
-    plt.xticks(rotation=90)
-
-def tsheatmap(df, date, freq='M', unit='weekday', val=None):
-    '''
-    Creates a heat map of counts or a heat map of means for a continuous variable
-    grouped by a time unit (e.g. day of week, hour, minute) and a date frequency.
-
-    ex) df.pipe(tsheatmap, date='datetime', val='cont')
-    '''
-
-    timeunit = getattr(df[date].dt, unit)
-    date = pd.Grouper(key=date, freq=freq)
-
-    if val is None:
-        a = df.groupby([date, timeunit]).size().unstack()
-    else:
-        a = df.groupby([date, timeunit])[val].mean().unstack()
-
-    a.index = a.index.astype(str)
-    sns.heatmap(a)
-    plt.ylabel(unit)
 #?!
-
 ######################################
 ##### Model Performance Plotting #####
 ######################################
@@ -461,6 +460,23 @@ def lineplot(df, x, y, by=None):
         df.pipe(table, x, by, y).plot()
         plt.legend(loc=(1, 0))
 
+def plot_interaction(df, col, by, val, kind='line'):
+    '''
+    Creates an interaction line plot or heat map between 2 predictor variables and
+    a target variable.
+
+    ex) df.pipe(plot_interaction, col='cat', by='cat', val='cont')
+    '''
+
+    a = df.pipe(table, col, by, val)
+
+    if kind == 'heat':
+        sns.heatmap(a, annot=True, fmt='.2f')
+    elif kind == 'line':
+        a.plot()
+
+    plt.legend(loc=(1, 0))
+
 def generate_distribution_plots(df, by, folder_name, omit=None,
                                 default_dir='/Users/alexhuang/'):
     '''
@@ -527,25 +543,6 @@ def generate_partial_dependence_plots(df, target, folder_name, omit=None,
         plt.savefig(directory + '%s.png' % i, bbox_inches="tight")
         plt.close()
         print 'Saved Plot: %s' % col
-
-def plot_interaction(df, col, by, val, kind='line'):
-    '''
-    Creates an interaction line plot or heat map between 2 predictor variables and
-    a 3rd target variable.
-
-    ex) df.pipe(plot_interaction, col='Type 1', by='Type 2', val='Attack')
-    '''
-
-    a = df.pipe(table, col, by, val)
-
-    if kind == 'box':
-        sns.boxplot(x=col, y=val, hue=by, data=df)
-    elif kind == 'heat':
-        sns.heatmap(a, annot=True, fmt='.2f')
-    elif kind == 'line':
-        a.plot()
-
-    plt.legend(title=by, loc=(1, 0))
 
 #deprecate
 def plot_2d_projection(df, by, method=None, sample_size=None):
