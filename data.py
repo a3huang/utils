@@ -874,3 +874,6 @@ def plot_multi_pred(true, pred):
         plt.plot(padding + list(val), label='Prediction at %s' % (i * steps))
 
     plt.legend(loc=(1, 0))
+
+def filter_top(df, col, n=5):
+    return df.pipe(filter, lambda x: x[col].isin(x[col].value_counts()[:n].index))
