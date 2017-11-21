@@ -9,7 +9,7 @@ import pyathena
 import re
 
 config = ConfigParser.ConfigParser()
-config.read(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'config.ini'))
+config.read(os.path.join(os.path.expanduser('~'), 'config.ini'))
 
 def remove_metadata_from_bucket(aws_access_key_id, aws_secret_access_key, bucket,
         region_name):
