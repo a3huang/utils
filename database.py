@@ -11,10 +11,12 @@ import re
 config = ConfigParser.ConfigParser()
 config.read(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'config.ini'))
 
-def remove_metadata_from_bucket(bucket, region_name):
+def remove_metadata_from_bucket(aws_access_key_id, aws_secret_access_key, bucket,
+        region_name):
     pattern = re.compile("[0-F]{8}-[0-F]{4}-[0-F]{4}-[0-F]{4}-[0-F]{12}", re.I)
 
-    client = boto3.client('s3', region_name=region_name)
+    client = boto3.client('s3', aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key, region_name=region_name)
     paginator = client.get_paginator('list_objects')
     page_iterator = paginator.paginate(Bucket=bucket)
 
@@ -51,15 +53,13 @@ class Database(object):
         self.database = database.lower()
 
         if self.database == 'athena':
-            aws_access_key_id = config.get('aws', 'aws_access_key_id')
-            aws_secret_access_key = config.get('aws', 'aws_secret_access_key')
-
+            self.aws_access_key_id = config.get('aws', 'aws_access_key_id')
+            self.aws_secret_access_key = config.get('aws', 'aws_secret_access_key')
             self.s3_staging_bucket = config.get('aws', 's3_staging_bucket')
             self.region_name = config.get('aws', 'region_name')
 
-
-            conn = pyathena.connect(aws_access_key_id=aws_access_key_id,
-                                    aws_secret_access_key=aws_secret_access_key,
+            conn = pyathena.connect(aws_access_key_id=self.aws_access_key_id,
+                                    aws_secret_access_key=self.aws_secret_access_key,
                                     s3_staging_dir='s3://' + self.s3_staging_bucket,
                                     region_name=self.region_name)
 
@@ -86,7 +86,8 @@ class Database(object):
 
     def __exit__(self, exception_type, exception_value, traceback):
         if self.database == 'athena':
-            remove_metadata_from_bucket(self.s3_staging_bucket)
+            remove_metadata_from_bucket(self.s3_staging_bucket, self.aws_access_key_id,
+                self.aws_secret_access_key, self.region_name)
 
         self.cur.close()
         self.conn.close()
