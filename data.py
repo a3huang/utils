@@ -877,3 +877,7 @@ def plot_multi_pred(true, pred):
 
 def filter_top(df, col, n=5):
     return df.pipe(filter, lambda x: x[col].isin(x[col].value_counts()[:n].index))
+
+def df_diff(a, b):
+    merged = a.merge(b, indicator=True, how='outer')
+    return merged[merged['_merge'] != 'both']
