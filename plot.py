@@ -25,42 +25,44 @@ from utils.data import *
 ##########################
 ##### Basic Plotting #####
 ##########################
-def barplot(df, col, by=None, hue=None, orient='v', prop=False, stacked=False):
+def facet(df, col):
+    return sns.FacetGrid(col=col, col_wrap=4, data=df, sharex=False)
+
+def barplot(x, y=None, by=None, orient='v', prop=False, stacked=False, **kwargs):
     '''
     Creates a bar plot of counts for a categorical variable or a bar plot of means
     for a continuous variable grouped by a categorical variable.
 
-    ex) df.pipe(barplot, col='cat')
-    ex) df.pipe(barplot, col='cat', by='cat')
-    ex) df.pipe(barplot, col='cat', by=pd.qcut(df['cont'], 3))
-    ex) df.pipe(barplot, col='cont', by='cat')
-    ex) df.pipe(barplot, col='cont', by='cat', hue='cat')
+    ex) barplot(df.cat)
+    ex) barplot(df.cat, by=df.cat)
+    ex) barplot(df.cat, y=df.cont)
+    ex) barplot(df.cat, y=df.cont, by=df.cat)
+    ex) df.pipe(facet, 'cat').map(barplot, 'cat')
     '''
 
-    df = df.copy()
-
     kind = 'barh' if orient == 'h' else 'bar'
-    normalize = 'index' if prop else False
-    df['col'] = df[col] if isinstance(col, str) else col
 
-    if by is None and hue is None:
-        df = df.groupby(col).size()
-        df = df / len(df) if normalize else df
-        df.plot(kind=kind)
+    if y is None and by is None:
+        df = x.groupby(x).size()
+        df = df / df.sum() if prop else df
+        df.plot(kind=kind, **kwargs)
 
-    elif hue is None:
-        if np.issubdtype(df['col'].dtype, np.number):
-            df.groupby(by)['col'].mean().plot(kind=kind)
-        else:
-            df.pipe(table, col, by, normalize=normalize).plot(kind=kind, stacked=stacked)
-            plt.legend(loc=(1, 0))
+    elif y is None:
+        df = pd.concat([x, by], axis=1)
+        df = df.groupby([x, by]).size()
+        df = df / df.groupby(x).sum() if prop else df
+        df.unstack().plot(kind=kind, stacked=stacked, **kwargs)
+        plt.legend(loc=(1, 0))
+
+    elif by is None:
+        df = pd.concat([x, y], axis=1)
+        df.groupby(x)[y.name].mean().plot(kind=kind, **kwargs)
 
     else:
-        if np.issubdtype(df['col'].dtype, np.number):
-            df.pipe(table, by, hue, col).plot(kind=kind)
-            plt.legend(loc=(1, 0))
-        else:
-            raise Exception, 'col must be numeric if both by and hue are given'
+        df = pd.concat([x, y, by], axis=1)
+        df = df.groupby([x, by])[y.name].mean()
+        df.unstack().plot(kind=kind, **kwargs)
+        plt.legend(loc=(1, 0))
 
 def boxplot(df, col, by, hue=None, orient='v', **kwargs):
     '''
