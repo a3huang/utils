@@ -865,13 +865,16 @@ def reshape_for_rnn(x, y):
     return x_reshaped, y_reshaped
 
 def plot_multi_pred(true, pred):
-    plt.plot(true[:, 0], label='true')
+    true = np.array(true)
+    pred = np.array(pred)
+
+    plt.plot(true, label='Actual')
 
     steps = pred.shape[1]
 
     for i, val in enumerate(pred[::steps]):
         padding = [None for j in range(i * steps)]
-        plt.plot(padding + list(val), label='Prediction at %s' % (i * steps))
+        plt.plot(padding + list(val), label='Prediction for %s' % (i * steps))
 
     plt.legend(loc=(1, 0))
 
@@ -881,3 +884,14 @@ def filter_top(df, col, n=5):
 def df_diff(a, b):
     merged = a.merge(b, indicator=True, how='outer')
     return merged[merged['_merge'] != 'both']
+
+def undiff(s, c):
+    s = pd.Series(s)
+    s[0] = c
+    return s.cumsum()
+
+def undiff2(s, history):
+    s = pd.Series(s)
+    last_obs = len(history) - len(s)
+    s[0] = history[last_obs]
+    return s.cumsum()
