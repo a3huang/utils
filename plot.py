@@ -43,11 +43,27 @@ def barplot2(data, x, y=None, hue=None, col=None, col_wrap=4, prop=False, **kwar
                        ci=False, kind=kind, orient='v', **kwargs)
     g.set_xticklabels(rotation=90)
 
-def histogram2(data, x, col=None, col_wrap=4, bins=10, range=None, **kwargs):
+def histogram2(data, x, hue=None, col=None, col_wrap=4, bins=10, range=None, **kwargs):
+    '''
+    Creates a histogram for a continuous variable.
+
+    ex) df.pipe(histogram, x='cont')
+    ex) df.pipe(histogram, x='cont', hue='cat')
+    '''
+
     col_wrap = None if col is None else col_wrap
 
-    g = sns.FacetGrid(col=col, col_wrap=col_wrap, data=data)
-    g.map(sns.distplot, x, bins=bins, kde=False, hist_kws={'range': range}, **kwargs)
+    if hue is None:
+        g = sns.FacetGrid(col=col, col_wrap=col_wrap, data=data)
+        g.map(sns.distplot, x, bins=bins, kde=False, hist_kws={'range': range}, **kwargs)
+
+    else:
+        x = data[x] if isinstance(x, str) else x
+        hue = data[hue] if isinstance(hue, str) else hue
+        df = pd.concat([x, hue], axis=1)
+
+        for g, c in df.groupby(hue)[x.name]:
+            sns.distplot(c, bins=bins, kde=False, hist_kws={'range': range}, **kwargs)
 
 def facet(df, col):
     return sns.FacetGrid(col=col, col_wrap=4, data=df, sharex=False)
