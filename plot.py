@@ -25,6 +25,35 @@ from utils.data import *
 ##########################
 ##### Basic Plotting #####
 ##########################
+def barplot2(data, x, y=None, hue=None, col=None, prop=False, **kwargs):
+    '''
+    Creates a bar plot of counts for a categorical variable or a bar plot of means
+    for a continuous variable grouped by a categorical variable.
+
+    ex) df.pipe(barplot, x='cat')
+    ex) df.pipe(barplot, x='cat', hue='cat')
+    ex) df.pipe(barplot, x='cat', y='cont')
+    ex) df.pipe(barplot, x='cat', y='cont', hue='cat')
+    '''
+
+    if y is None:
+        if hue is None:
+            y = x
+        else:
+            kind = 'count'
+
+        if prop:
+            estimator = lambda x: len(x) / float(len(data))
+        else:
+            estimator = lambda x: len(x)
+
+    else:
+        estimator = lambda x: np.mean(x)
+
+    g = sns.factorplot(x=x, y=y, col=col, hue=hue, data=data, ci=False,
+                       estimator=estimator, kind=kind, orient='v', **kwargs)
+    g.set_xticklabels(rotation=90)
+
 def facet(df, col):
     return sns.FacetGrid(col=col, col_wrap=4, data=df, sharex=False)
 
