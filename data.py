@@ -12,6 +12,8 @@ from sqlalchemy import create_engine
 import numpy as np
 import pandas as pd
 
+from scipy.sparse import coo_matrix
+
 ###################
 ##### Testing #####
 ###################
@@ -864,17 +866,17 @@ def reshape_for_rnn(x, y):
 
     return x_reshaped, y_reshaped
 
-def plot_multi_pred(true, pred):
+def plot_multi_pred(true, pred, steps=4):
     true = np.array(true)
     pred = np.array(pred)
 
-    plt.plot(true, label='Actual')
+    plt.plot(true[::steps].ravel(), label='Actual')
 
     steps = pred.shape[1]
 
-    for i, val in enumerate(pred[::steps]):
+    for i, valp in enumerate(pred[::steps]):
         padding = [None for j in range(i * steps)]
-        plt.plot(padding + list(val), label='Prediction for %s' % (i * steps))
+        plt.plot(padding + list(valp), label='Prediction for %s' % (i * steps), color='r')
 
     plt.legend(loc=(1, 0))
 
@@ -895,3 +897,13 @@ def undiff2(s, history):
     last_obs = len(history) - len(s)
     s[0] = history[last_obs]
     return s.cumsum()
+
+def get_conversion_dict(a):
+    items = np.sort(a.unique())
+    item2id = dict(zip(items, range(len(items))))
+    return a.map(item2id).values, item2id
+
+def sparse_crosstab(df, col1, col2, col3):
+    col1_ids, col1_dict = get_conversion_dict(df[col1])
+    col2_ids, col2_dict = get_conversion_dict(df[col2])
+    return coo_matrix((df[col3].values, (col1_ids, col2_ids)), shape=(len(col1_dict), len(col2_dict)))
