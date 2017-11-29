@@ -36,22 +36,9 @@ def barplot2(data, x, y=None, hue=None, col=None, prop=False, **kwargs):
     ex) df.pipe(barplot, x='cat', y='cont', hue='cat')
     '''
 
-    if y is None:
-        if hue is None:
-            y = x
-        else:
-            kind = 'count'
-
-        if prop:
-            estimator = lambda x: len(x) / float(len(data))
-        else:
-            estimator = lambda x: len(x)
-
-    else:
-        estimator = lambda x: np.mean(x)
-
-    g = sns.factorplot(x=x, y=y, col=col, hue=hue, data=data, ci=False,
-                       estimator=estimator, kind=kind, orient='v', **kwargs)
+    kind = 'count' if y is None else 'bar'
+    g = sns.factorplot(x=x, y=y, col=col, hue=hue, data=data,
+                       ci=False, kind=kind, orient='v', **kwargs)
     g.set_xticklabels(rotation=90)
 
 def facet(df, col):
