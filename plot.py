@@ -25,7 +25,7 @@ from utils.data import *
 ##########################
 ##### Basic Plotting #####
 ##########################
-def barplot2(data, x, y=None, hue=None, col=None, prop=False, **kwargs):
+def barplot2(data, x, y=None, hue=None, col=None, col_wrap=4, prop=False, **kwargs):
     '''
     Creates a bar plot of counts for a categorical variable or a bar plot of means
     for a continuous variable grouped by a categorical variable.
@@ -37,9 +37,17 @@ def barplot2(data, x, y=None, hue=None, col=None, prop=False, **kwargs):
     '''
 
     kind = 'count' if y is None else 'bar'
-    g = sns.factorplot(x=x, y=y, col=col, hue=hue, data=data,
+    col_wrap = None if col is None else col_wrap
+
+    g = sns.factorplot(x=x, y=y, col=col, col_wrap=col_wrap, hue=hue, data=data,
                        ci=False, kind=kind, orient='v', **kwargs)
     g.set_xticklabels(rotation=90)
+
+def histogram2(data, x, col=None, col_wrap=4, bins=10, range=None, **kwargs):
+    col_wrap = None if col is None else col_wrap
+
+    g = sns.FacetGrid(col=col, col_wrap=col_wrap, data=data)
+    g.map(sns.distplot, x, bins=bins, kde=False, hist_kws={'range': range}, **kwargs)
 
 def facet(df, col):
     return sns.FacetGrid(col=col, col_wrap=4, data=df, sharex=False)
