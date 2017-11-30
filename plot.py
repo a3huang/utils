@@ -25,10 +25,10 @@ from utils.data import *
 ##########################
 ##### Basic Plotting #####
 ##########################
-def barplot2(data, x, y=None, hue=None, col=None, col_wrap=4, prop=False, **kwargs):
+def barplot2(data, x, y=None, hue=None, col=None, col_wrap=4, **kwargs):
     '''
-    Creates a bar plot of counts for a categorical variable or a bar plot of means
-    for a continuous variable grouped by a categorical variable.
+    Creates a bar plot of counts for a categorical variable or a bar plot of
+    grouped means for a continuous variable.
 
     ex) df.pipe(barplot, x='cat')
     ex) df.pipe(barplot, x='cat', hue='cat')
@@ -39,7 +39,7 @@ def barplot2(data, x, y=None, hue=None, col=None, col_wrap=4, prop=False, **kwar
     kind = 'count' if y is None else 'bar'
     col_wrap = None if col is None else col_wrap
 
-    g = sns.factorplot(x=x, y=y, col=col, col_wrap=col_wrap, hue=hue, data=data,
+    g = sns.factorplot(x=x, y=y, hue=hue, col=col, col_wrap=col_wrap, data=data,
                        ci=False, kind=kind, orient='v', **kwargs)
     g.set_xticklabels(rotation=90)
 
@@ -55,54 +55,54 @@ def histogram2(data, x, hue=None, col=None, col_wrap=4, bins=10, range=None, **k
 
     if hue is None:
         g = sns.FacetGrid(col=col, col_wrap=col_wrap, data=data)
-        g.map(sns.distplot, x, bins=bins, kde=False, hist_kws={'range': range}, **kwargs)
+        g.map(sns.distplot, x, bins=bins, hist_kws={'range': range}, kde=False, **kwargs)
 
     else:
         x = data[x] if isinstance(x, str) else x
         hue = data[hue] if isinstance(hue, str) else hue
         df = pd.concat([x, hue], axis=1)
 
-        for g, c in df.groupby(hue)[x.name]:
-            sns.distplot(c, bins=bins, kde=False, hist_kws={'range': range}, **kwargs)
+        for name, group in df.groupby(hue)[x.name]:
+            sns.distplot(group, bins=bins, hist_kws={'range': range, 'label': str(name)},
+                kde=False, **kwargs)
 
-def facet(df, col):
-    return sns.FacetGrid(col=col, col_wrap=4, data=df, sharex=False)
-
-def barplot(x, y=None, by=None, orient='v', prop=False, stacked=False, **kwargs):
-    '''
-    Creates a bar plot of counts for a categorical variable or a bar plot of means
-    for a continuous variable grouped by a categorical variable.
-
-    ex) barplot(df.cat)
-    ex) barplot(df.cat, by=df.cat)
-    ex) barplot(df.cat, y=df.cont)
-    ex) barplot(df.cat, y=df.cont, by=df.cat)
-    ex) df.pipe(facet, 'cat').map(barplot, 'cat')
-    '''
-
-    kind = 'barh' if orient == 'h' else 'bar'
-
-    if y is None and by is None:
-        df = x.groupby(x).size()
-        df = df / df.sum() if prop else df
-        df.plot(kind=kind, **kwargs)
-
-    elif y is None:
-        df = pd.concat([x, by], axis=1)
-        df = df.groupby([x, by]).size()
-        df = df / df.groupby(x).sum() if prop else df
-        df.unstack().plot(kind=kind, stacked=stacked, **kwargs)
         plt.legend(loc=(1, 0))
 
-    elif by is None:
-        df = pd.concat([x, y], axis=1)
-        df.groupby(x)[y.name].mean().plot(kind=kind, **kwargs)
-
-    else:
-        df = pd.concat([x, y, by], axis=1)
-        df = df.groupby([x, by])[y.name].mean()
-        df.unstack().plot(kind=kind, **kwargs)
-        plt.legend(loc=(1, 0))
+# def barplot(x, y=None, by=None, orient='v', prop=False, stacked=False, **kwargs):
+#     '''
+#     Creates a bar plot of counts for a categorical variable or a bar plot of means
+#     for a continuous variable grouped by a categorical variable.
+#
+#     ex) barplot(df.cat)
+#     ex) barplot(df.cat, by=df.cat)
+#     ex) barplot(df.cat, y=df.cont)
+#     ex) barplot(df.cat, y=df.cont, by=df.cat)
+#     ex) df.pipe(facet, 'cat').map(barplot, 'cat')
+#     '''
+#
+#     kind = 'barh' if orient == 'h' else 'bar'
+#
+#     if y is None and by is None:
+#         df = x.groupby(x).size()
+#         df = df / df.sum() if prop else df
+#         df.plot(kind=kind, **kwargs)
+#
+#     elif y is None:
+#         df = pd.concat([x, by], axis=1)
+#         df = df.groupby([x, by]).size()
+#         df = df / df.groupby(x).sum() if prop else df
+#         df.unstack().plot(kind=kind, stacked=stacked, **kwargs)
+#         plt.legend(loc=(1, 0))
+#
+#     elif by is None:
+#         df = pd.concat([x, y], axis=1)
+#         df.groupby(x)[y.name].mean().plot(kind=kind, **kwargs)
+#
+#     else:
+#         df = pd.concat([x, y, by], axis=1)
+#         df = df.groupby([x, by])[y.name].mean()
+#         df.unstack().plot(kind=kind, **kwargs)
+#         plt.legend(loc=(1, 0))
 
 def boxplot(df, col, by, hue=None, orient='v', **kwargs):
     '''
