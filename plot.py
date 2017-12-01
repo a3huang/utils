@@ -53,6 +53,13 @@ def boxplot2(data, x, y, hue=None, col=None, col_wrap=4, **kwargs):
 
     col_wrap = None if col is None else col_wrap
 
+    data = data.copy()
+    if not isinstance(x, str):
+        data[x.name] = x
+        x = x.name
+
+    return data
+
     g = sns.factorplot(x=x, y=y, hue=hue, col=col, col_wrap=col_wrap, data=data,
                        ci=False, kind='box', **kwargs)
     g.set_xticklabels(rotation=90)
