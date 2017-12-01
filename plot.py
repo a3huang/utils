@@ -43,6 +43,63 @@ def barplot2(data, x, y=None, hue=None, col=None, col_wrap=4, **kwargs):
                        ci=False, kind=kind, orient='v', **kwargs)
     g.set_xticklabels(rotation=90)
 
+def boxplot2(data, x, y, hue=None, col=None, col_wrap=4, **kwargs):
+    '''
+    Creates a grouped box plot for a continuous variable.
+
+    ex) df.pipe(boxplot, x='cat', y='cont')
+    ex) df.pipe(boxplot, x='cat', y='cont', hue='cat')
+    '''
+
+    col_wrap = None if col is None else col_wrap
+
+    g = sns.factorplot(x=x, y=y, hue=hue, col=col, col_wrap=col_wrap, data=data,
+                       ci=False, kind='box', **kwargs)
+    g.set_xticklabels(rotation=90)
+
+def densityplot2(data, x, hue=None, col=None, col_wrap=4, range=None, **kwargs):
+    '''
+    Creates a density plot for a continuous variable.
+
+    ex) df.pipe(densityplot, x='cont')
+    ex) df.pipe(densityplot, x='cont', hue='cat')
+    '''
+
+    col_wrap = None if col is None else col_wrap
+
+    if hue is None:
+        g = sns.FacetGrid(col=col, col_wrap=col_wrap, data=data)
+        g.map(sns.distplot, x, hist_kws={'range': range}, hist=False, **kwargs)
+
+    else:
+        x = data[x] if isinstance(x, str) else x
+        hue = data[hue] if isinstance(hue, str) else hue
+        df = pd.concat([x, hue], axis=1)
+
+        for name, group in df.groupby(hue)[x.name]:
+            sns.distplot(group, hist_kws={'range': range, 'label': str(name)},
+                hist=False, **kwargs)
+
+        plt.legend(loc=(1, 0))
+
+def heatmap(data, x, y, z=None, normalize=False, **kwargs):
+    '''
+    Creates a heat map of counts for 2 categorical variables or a heat map of
+    grouped means for a continuous variable.
+
+    ex) df.pipe(heatmap, x='cat', y='cat')
+    ex) df.pipe(heatmap, x='cat', y='cat', z='cont')
+    '''
+
+    x = data[x] if isinstance(x, str) else x
+    y = data[y] if isinstance(y, str) else y
+
+    if z is not None:
+        z = data[z] if isinstance(z, str) else z
+
+    table = pd.crosstab(x, y, z, normalize=normalize)
+    sns.heatmap(table, annot=True, fmt='.2f', **kwargs)
+
 def histogram2(data, x, hue=None, col=None, col_wrap=4, bins=10, range=None, **kwargs):
     '''
     Creates a histogram for a continuous variable.
@@ -67,6 +124,20 @@ def histogram2(data, x, hue=None, col=None, col_wrap=4, bins=10, range=None, **k
                 kde=False, **kwargs)
 
         plt.legend(loc=(1, 0))
+
+def lineplot2(data, x, y, hue=None, col=None, col_wrap=4, **kwargs):
+    '''
+    Creates a grouped line plot for a continuous variable.
+
+    ex) df.pipe(lineplot, x='cat', y='cont')
+    ex) df.pipe(lineplot, x='cat', y='cont', hue='cat')
+    '''
+
+    col_wrap = None if col is None else col_wrap
+
+    g = sns.factorplot(x=x, y=y, hue=hue, col=col, col_wrap=col_wrap, data=data,
+                       ci=False, kind='line', **kwargs)
+    g.set_xticklabels(rotation=90)
 
 # def barplot(x, y=None, by=None, orient='v', prop=False, stacked=False, **kwargs):
 #     '''
@@ -104,62 +175,46 @@ def histogram2(data, x, hue=None, col=None, col_wrap=4, bins=10, range=None, **k
 #         df.unstack().plot(kind=kind, **kwargs)
 #         plt.legend(loc=(1, 0))
 
-def boxplot(df, col, by, hue=None, orient='v', **kwargs):
-    '''
-    Creates a box plot for a continuous variable grouped by a categorical variable.
+# def boxplot(df, col, by, hue=None, orient='v', **kwargs):
+#     '''
+#     Creates a box plot for a continuous variable grouped by a categorical variable.
+#
+#     ex) df.pipe(boxplot, col='cont', by='cat')
+#     ex) df.pipe(boxplot, col='cont', by='cat', hue='cat')
+#     ex) df.pipe(boxplot, col='cont', by=pd.qcut(df['cont'], 3))
+#     '''
+#
+#     color = sns.color_palette()[0]
+#
+#     if orient == 'h':
+#         x, y = col, by
+#     else:
+#         x, y = by, col
+#
+#     sns.boxplot(x=x, y=y, hue=hue, data=df, **kwargs)
+#
+#     if hue is not None:
+#         plt.legend(loc=(1, 0))
 
-    ex) df.pipe(boxplot, col='cont', by='cat')
-    ex) df.pipe(boxplot, col='cont', by='cat', hue='cat')
-    ex) df.pipe(boxplot, col='cont', by=pd.qcut(df['cont'], 3))
-    '''
-
-    color = sns.color_palette()[0]
-
-    if orient == 'h':
-        x, y = col, by
-    else:
-        x, y = by, col
-
-    sns.boxplot(x=x, y=y, hue=hue, data=df, **kwargs)
-
-    if hue is not None:
-        plt.legend(loc=(1, 0))
-
-def densityplot(df, col, by=None, range=None):
-    '''
-    Creates a density plot for a continuous variable.
-
-    ex) df.pipe(densityplot, col='cont')
-    ex) df.pipe(densityplot, col='cont', by='cat')
-    ex) df.pipe(densityplot, col='cont', by=pd.qcut(df['cont'], 3))
-    '''
-
-    if by is None:
-        sns.kdeplot(df[col])
-        plt.legend().remove()
-
-    else:
-        for g, c in df.groupby(by)[col]:
-            sns.kdeplot(c, label=g, shade=True)
-
-        plt.xlim(range)
-        plt.legend(loc=(1, 0))
-
-def heatmap(df, row, col, val=None, normalize=False, **kwargs):
-    '''
-    Creates a heat map of counts for 2 categorical variables or a heat map of
-    means for a continuous variable grouped by 2 categorical variables.
-
-    ex) df.pipe(heatmap, row='cat', col='cat')
-    ex) df.pipe(heatmap, row='cat', col='cat', val='cont')
-    ex) df.pipe(heatmap, row='cat', col=pd.qcut(df['cont'], 3))
-    '''
-
-    if val is None:
-        sns.heatmap(df.pipe(table, row, col, normalize=normalize),
-            annot=True, fmt='.2f', **kwargs)
-    else:
-        sns.heatmap(df.pipe(table, row, col, val), annot=True, fmt='.2f', **kwargs)
+# def densityplot(df, col, by=None, range=None):
+#     '''
+#     Creates a density plot for a continuous variable.
+#
+#     ex) df.pipe(densityplot, col='cont')
+#     ex) df.pipe(densityplot, col='cont', by='cat')
+#     ex) df.pipe(densityplot, col='cont', by=pd.qcut(df['cont'], 3))
+#     '''
+#
+#     if by is None:
+#         sns.kdeplot(df[col])
+#         plt.legend().remove()
+#
+#     else:
+#         for g, c in df.groupby(by)[col]:
+#             sns.kdeplot(c, label=g, shade=True)
+#
+#         plt.xlim(range)
+#         plt.legend(loc=(1, 0))
 
 def flexible_bin_range(a, bin_num=None, bin_range=None, bin_width=None):
     bin_range = (a.min(), a.max()) if bin_range is None else bin_range
