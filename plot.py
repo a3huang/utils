@@ -43,6 +43,12 @@ def barplot2(data, x, y=None, hue=None, col=None, col_wrap=4, **kwargs):
                        ci=False, kind=kind, orient='v', **kwargs)
     g.set_xticklabels(rotation=90)
 
+def process_series_to_string(data, x):
+    data = data.copy()
+    data[x.name] = x
+    x = x.name
+    return data, x
+
 def boxplot2(data, x, y, hue=None, col=None, col_wrap=4, **kwargs):
     '''
     Creates a grouped box plot for a continuous variable.
@@ -53,10 +59,7 @@ def boxplot2(data, x, y, hue=None, col=None, col_wrap=4, **kwargs):
 
     col_wrap = None if col is None else col_wrap
 
-    data = data.copy()
-    if not isinstance(x, str):
-        data[x.name] = x
-        x = x.name
+    data, x = process_series_to_string(data, x)
 
     g = sns.factorplot(x=x, y=y, hue=hue, col=col, col_wrap=col_wrap, data=data,
                        ci=False, kind='box', **kwargs)
@@ -77,11 +80,10 @@ def densityplot2(data, x, hue=None, col=None, col_wrap=4, range=None, **kwargs):
         g.map(sns.distplot, x, hist_kws={'range': range}, hist=False, **kwargs)
 
     else:
-        x = data[x] if isinstance(x, str) else x
-        hue = data[hue] if isinstance(hue, str) else hue
-        df = pd.concat([x, hue], axis=1)
+        data, x = process_series_to_string(data, x)
+        data, hue = process_series_to_string(data, hue)
 
-        for name, group in df.groupby(hue)[x.name]:
+        for name, group in data.groupby(hue)[x]:
             sns.distplot(group, hist_kws={'range': range, 'label': str(name)},
                 hist=False, **kwargs)
 
@@ -96,13 +98,13 @@ def heatmap(data, x, y, z=None, normalize=False, **kwargs):
     ex) df.pipe(heatmap, x='cat', y='cat', z='cont')
     '''
 
-    x = data[x] if isinstance(x, str) else x
-    y = data[y] if isinstance(y, str) else y
+    data, x = process_series_to_string(data, x)
+    data, y = process_series_to_string(data, y)
 
     if z is not None:
-        z = data[z] if isinstance(z, str) else z
+        data, z = process_series_to_string(data, z)
 
-    table = pd.crosstab(x, y, z, normalize=normalize)
+    table = pd.crosstab(data[x], data[y], data[z], normalize=normalize)
     sns.heatmap(table, annot=True, fmt='.2f', **kwargs)
 
 def histogram2(data, x, hue=None, col=None, col_wrap=4, bins=10, range=None, **kwargs):
@@ -120,11 +122,10 @@ def histogram2(data, x, hue=None, col=None, col_wrap=4, bins=10, range=None, **k
         g.map(sns.distplot, x, bins=bins, hist_kws={'range': range}, kde=False, **kwargs)
 
     else:
-        x = data[x] if isinstance(x, str) else x
-        hue = data[hue] if isinstance(hue, str) else hue
-        df = pd.concat([x, hue], axis=1)
+        data, x = process_series_to_string(data, x)
+        data, hue = process_series_to_string(data, hue)
 
-        for name, group in df.groupby(hue)[x.name]:
+        for name, group in data.groupby(hue)[x]:
             sns.distplot(group, bins=bins, hist_kws={'range': range, 'label': str(name)},
                 kde=False, **kwargs)
 
@@ -139,6 +140,8 @@ def lineplot2(data, x, y, hue=None, col=None, col_wrap=4, **kwargs):
     '''
 
     col_wrap = None if col is None else col_wrap
+
+    data, x = process_series_to_string(data, x)
 
     g = sns.factorplot(x=x, y=y, hue=hue, col=col, col_wrap=col_wrap, data=data,
                        ci=False, kind='line', **kwargs)
