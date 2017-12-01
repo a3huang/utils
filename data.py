@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 
 from scipy.sparse import coo_matrix
+from sklearn.datasets import load_iris
 
 ###################
 ##### Testing #####
@@ -907,3 +908,14 @@ def sparse_crosstab(df, col1, col2, col3):
     col1_ids, col1_dict = get_conversion_dict(df[col1])
     col2_ids, col2_dict = get_conversion_dict(df[col2])
     return coo_matrix((df[col3].values, (col1_ids, col2_ids)), shape=(len(col1_dict), len(col2_dict)))
+
+def jaccard(s1, s2):
+    num = len(s1.intersection(s2))
+    den = len(s1.union(s2))
+    return num/float(den)
+
+def iris_example():
+    data, target = load_iris(True)
+    df = pd.concat([pd.DataFrame(data), pd.DataFrame(target)], axis=1)
+    df.columns = ['sepal_l', 'sepal_w', 'petal_l', 'petal_w', 'type']
+    return df

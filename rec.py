@@ -1,13 +1,16 @@
+import numpy as np
+
 from sklearn.metrics import roc_auc_score, recall_score, precision_score
 
 def avg_auc(truth, pred, user_indices, item_indices):
+    # considering all items gives the same result as lightfm
     l = []
     for i in user_indices:
         t = truth[i, item_indices].toarray()[0]
         t = np.where(t > 0, 1, 0)
 
         p = pred[i, item_indices].toarray()[0]
-        p = 1 / (1 + np.exp(-p))
+        #p = 1 / (1 + np.exp(-p))
 
         if np.sum(t) == 0:
             l.append(0.5)
