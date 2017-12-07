@@ -919,3 +919,13 @@ def iris_example():
     df = pd.concat([pd.DataFrame(data), pd.DataFrame(target)], axis=1)
     df.columns = ['sepal_l', 'sepal_w', 'petal_l', 'petal_w', 'type']
     return df
+
+def show_unconvertable(x):
+    def try_convert_int(x):
+        try:
+            return int(x)
+        except:
+            return 'Error'
+
+    a = pd.concat([x, x.apply(try_convert_int)], axis=1)
+    return a[a.iloc[:, 1] == 'Error'].iloc[:, 0]
