@@ -1,26 +1,21 @@
 from datetime import datetime
-from pandas.tseries.offsets import *
-
-from boruta import BorutaPy
+from scipy.sparse import coo_matrix
 from sklearn.base import TransformerMixin
+from sklearn.datasets import load_iris
 from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
 from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
-from sklearn.model_selection import cross_val_score, StratifiedKFold, train_test_split
-from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sqlalchemy import create_engine
 
 import numpy as np
 import pandas as pd
+import itertools
 
-from scipy.sparse import coo_matrix
-from sklearn.datasets import load_iris
 
-###################
-##### Testing #####
-###################
 def dummy_categorical(df, n, shuffle=False):
     '''
-    Creates a categorical column with labels 1 to n for testing purposes.
+    Creates a categorical column with labels 1 to n for testing
+    purposes.
 
     ex) df['dummy'] = df.pipe(dummy_categorical, 5)
     '''
@@ -41,19 +36,19 @@ def dummy_categorical(df, n, shuffle=False):
 
     return a
 
+
 def dummy_continuous(df, loc=0, scale=1):
     '''
-    Creates a continuous column with each value drawn from a normal distribution for
-    testing purposes.
+    Creates a continuous column with each value drawn from a normal
+    distribution for testing purposes.
 
     ex) df['dummy'] = df.pipe(dummy_continuous)
     '''
 
-    return pd.DataFrame(np.random.normal(loc=loc, scale=scale, size=df.shape[0]))
+    values = np.random.normal(loc=loc, scale=scale, size=df.shape[0])
+    return pd.DataFrame(values)
 
-#####################
-##### Numerical #####
-#####################
+
 def round_to_nearest_mult(x, mult):
     '''
     Rounds a floating point number to the nearest multiple of mult.
@@ -68,27 +63,6 @@ def round_to_nearest_mult(x, mult):
 
     return mult * np.round(float(x) / mult)
 
-######################
-##### Dataframes #####
-######################
-def table(df, row, col, val=None, **kwargs):
-    '''
-    Calculates a table containing counts of every combination of levels bewteen 2
-    categorical variables.
-
-    ex) df.pipe(table, 'Type 1', 'Type 2')
-    ex) df.pipe(table, pd.cut(df['Attack'], 3), pd.cut(df['HP'], 3))
-    '''
-
-    row = df[row] if isinstance(row, str) else row
-    col = df[col] if isinstance(col, str) else col
-    val = df[val] if isinstance(val, str) else val
-
-    if val is None:
-        return pd.crosstab(row, col, **kwargs)
-    else:
-        return pd.crosstab(row, col, val, aggfunc=np.mean, **kwargs)
-#####
 
 def disjoint_intervals(start, end, step=2):
     '''
@@ -99,148 +73,89 @@ def disjoint_intervals(start, end, step=2):
     ex) disjoint_intervals(0, 6, 3) -> [(0, 3), (3, 6)]
     '''
 
-    return zip(range(start, end+step, step), range(start+step, end+step, step))
+    left_values = range(start, end+step, step)
+    right_values = range(start+step, end+step, step)
+    return zip(left_values, right_values)
 
-def dummy(a):
+
+def undummy(df):
     '''
-    Turn a categorical variable into indicator variables for each level.
-
-    ex) df['Type'].pipe(dummy)
-    '''
-
-    df = pd.get_dummies(a)
-    df.columns = [str(i) for i in df.columns]
-    return df
-
-def undummy(a):
-    '''
-    Turn a set of dummy indicator variables back into a categorical variable.
+    Turn a set of dummy indicator variables back into a single
+    categorical variable.
 
     ex) df[['earth', 'air', 'fire', 'water']].pipe(undummy)
     '''
 
-    return a.apply(lambda x: x.idxmax(), axis=1)
+    return df.apply(lambda x: x.idxmax(), axis=1)
 
-def dummy_replace(df, cols):
+
+def top_levels(s, n=None):
     '''
-    Create dummy indicators for each categorical column specified and replace
-    the original columns with dummy variables for each level.
+    Keep the top n most common levels of a categorical variable and
+    label the rest as 'other'.
 
-    ex) df.pipe(dummy_replace, cols=['Type 1', 'Type 2'])
-    '''
-
-    a = pd.get_dummies(df, columns=cols, dummy_na=True)
-
-    nan_cols = [i for i in a.columns if '_nan' in i]
-    for col in nan_cols:
-        if len(a[col].value_counts()) == 1:
-            a = a.drop(col, 1)
-
-    return a
-
-def time_unit(a, unit):
-    '''
-    Extract the value of a date variable with respect to a given time unit.
-
-    ex) df['date'].pipe(time_unit, 'weekday')
-    '''
-
-    return getattr(a.dt, unit)
-
-def top(a, n=None):
-    '''
-    Keep the top n most common levels of a categorical variable and label the
-    rest as 'other'.
-
-    ex) df['Type'].pipe(top, 5)
+    ex) df['Type'].pipe(top_levels, 5)
     '''
 
     if n:
-        counts = a.value_counts()
+        counts = s.value_counts()
         top = counts.iloc[:n].index
-        return a.apply(lambda x: x if x in top else 'other')
+        return s.apply(lambda x: x if x in top else 'other')
     else:
-        return a
+        return s
 
-def encode_str(a):
+
+def concat_all(*args):
     '''
-    Encodes a string variable into an integer variable for use in ML algorithms.
+    Concatenate a list of columns or dataframes without worrying about
+    indices.
 
-    ex) df['status'].pipe(encode_str)
-    '''
-
-    encoder = LabelEncoder()
-    return encoder.fit_transform(a)
-
-def cbind(*args):
-    '''
-    Horizontally concatenate a list of columns or dataframes together without
-    worrying about indices.
-
-    ex) cbind(X, y, model.predict(X))
+    ex) concat_all([X, y, model.predict(X)])
     '''
 
-    df_list = args
-    df = pd.concat([pd.DataFrame(df).reset_index(drop=True) for df in df_list], axis=1)
+    dfs = args
+    reindexed_dfs = [pd.DataFrame(df).reset_index(drop=True) for df in dfs]
+    new_df = pd.concat(reindexed_dfs, axis=1)
+    return new_df
 
-    if len(df.columns.value_counts().pipe(filter, lambda x: x > 1)) > 0:
-        print '[WARNING]: May contain duplicate columns.'
 
-    return df
-
-def merge(df_list, on, how, **kwargs):
+def merge_all(dfs, on, how='left'):
     '''
     Merge a list of dataframes together.
 
-    ex) merge([df1, df2, df3], on='user_id', how='left')
+    ex) merge_all([df1, df2, df3], on='user_id')
     '''
 
-    df = df_list[0]
-    for df_i in df_list[1:]:
-        df = df.merge(df_i, on=on, how=how, **kwargs)
-    return df
+    df_base = dfs[0]
+    for df in dfs[1:]:
+        df_base = df_base.merge(df, on=on, how=how)
 
-def filter(df, f):
+    return df_base
+
+
+def filter_users(df, f, user_id_column):
     '''
-    Filter rows of aa dataframe satisfying a complex boolean expression without
-    having to specify its name.
+    Filter rows of a dataframe satisfying a complex boolean expression
+    and include rows belonging to the same user even if they do not
+    satify the condition.
 
-    ex) df.pipe(filter, lambda x: x['date'] > '2017-01-01')
-    '''
-
-    return df[f(df)]
-
-def filter_i(df, f, name):
-    '''
-    Filter rows of a dataframe satisfying a complex boolean expression and
-    create an indicator variable equal to 1 when the condition is true and 0
-    otherwise.
-
-    ex) df.pipe(filter_i, lambda x: x['Attack'] > 200 , 'Strong')
+    ex) df.pipe(filter_users, lambda x: x['source'] == 'google', 'user_id')
     '''
 
-    df = df.copy()
-    df.loc[f(df), name] = 1
-    df.loc[:, name] = df.loc[:, name].fillna(0)
-    return df
+    users = df.loc[f(df), user_id_column].unique()
+    return df[df[user_id_column].isin(users)]
 
-def filter_u(df, f, user_id):
-    '''
-    Filter rows of a dataframe satisfying a complex boolean expression and
-    include rows belonging to the same user even if they do not satify the
-    condition.
 
-    ex) df.pipe(filter_u, lambda x: x['source'] == 'google', 'user_id')
-    '''
+def filter_top(df, col, n=5):
+    top_values = df[col].value_counts()[:n].index
+    return df[df[col].isin(top_values)]
 
-    ids = df.pipe(query, f)[user_id].unique()
-    return df[df[user_id].isin(ids)]
 
-def check_unique(df, col):
+def is_unique(df, col):
     '''
     Check if given column values are unique.
 
-    ex) df.pipe(check_unique, 'user_id')
+    ex) df.pipe(is_unique, 'user_id')
     '''
 
     if len(df.groupby(col).size().value_counts()) > 1:
@@ -248,57 +163,40 @@ def check_unique(df, col):
     else:
         return True
 
-def show_duplicates(df, col):
-    '''
-    Show rows containing duplicate values of a given column.
-
-    ex) df.pipe(show_duplicates, 'user_id')
-    '''
-
-    counts = df.groupby(col).size()
-    duplicates = counts[counts > 1].index
-    return df[df[col].isin(duplicates)].sort_values(by=col)
 
 def show_missing(df, normalize=False):
     '''
     Shows the number of missing values for each variable.
 
-    ex) df.pipe(show_missing).iloc[:5].sort_values().plot.barh()
+    ex) df.pipe(show_missing).iloc[:5].sort_values()
     '''
 
     a = df.isnull().sum()
 
-    if normalize == True:
+    if normalize:
         a = a / df.shape[0]
 
     return a
 
-def show_constant_var(df):
+
+def show_constant_variance(df):
     '''
     Shows variables in dataframe that are constant.
 
     ex) df.pipe(show_constant_var)
     '''
 
-    return df.nunique().pipe(filter, lambda x: x == 1)
+    return df.nunique().pipe(lambda x: x[x == 1])
 
-def show_low_var(df):
-    '''
-    Shows variables in dataframe sorted increasing from lowest standard
-    deviation.
-
-    ex) df.pipe(show_low_var)
-    '''
-
-    return df.std().sort_values()
 
 def time_diff(df, date, user_id):
     '''
-    Calculates the time difference between consecutive rows of a date variable
-    to obtain the duration of each event in seconds. Marks the time differences
-    that occur between users as NaN.
+    Calculates the time difference between consecutive rows of a date
+    variable to obtain the duration of each event in seconds. Marks
+    the time differences that occur between users as NaN.
 
-    Note that the duration of the final event of each user cannot be measured.
+    Note that the duration of the final event of each user cannot be
+    measured.
 
     ex) df.pipe(time_diff, date='date', user_id='customer_id')
     '''
@@ -309,6 +207,7 @@ def time_diff(df, date, user_id):
     df.loc[df[user_id] != df[user_id].shift(), 'time_diff'] = None
     df['duration'] = df['time_diff'].shift(-1)
     return df.drop('time_diff', 1)
+
 
 def feature_scores(model, X, attr, sort_abs=False, top=None, label=0):
     '''
@@ -336,10 +235,11 @@ def feature_scores(model, X, attr, sort_abs=False, top=None, label=0):
     else:
         return df
 
+
 def mi_ranking(X, y):
     '''
-    Ranks the variables in the dataset according to their mutual information
-    scores.
+    Ranks the variables in the dataset according to their mutual
+    information scores.
 
     ex) mi_ranking(xtrain, ytrain)
     '''
@@ -348,11 +248,12 @@ def mi_ranking(X, y):
     model.fit(X, y)
     return feature_scores(model, X, 'scores_')
 
+
 def rfe_ranking(model, X, y, random_state):
     '''
-    Ranks the variables in the dataset according to when they were eliminated
-    via RFE with 5-fold CV AUC as the performance measure. A rank of 1 means
-    that the variable should be kept.
+    Ranks the variables in the dataset according to when they were
+    eliminated via RFE with 5-fold CV AUC as the performance measure.
+    A rank of 1 means that the variable should be kept.
 
     ex) rfe_ranking(model, xtrain, ytrain)
     '''
@@ -361,27 +262,14 @@ def rfe_ranking(model, X, y, random_state):
     feature_selector = RFECV(model, cv=cv, scoring='roc_auc')
     feature_selector.fit(X, y)
 
-    print 'Original AUC: %s' % cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+    mean_cv = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+    print 'Original AUC: %s' % mean_cv
     print 'Best AUC: %s' % feature_selector.grid_scores_.max()
 
     return feature_scores(feature_selector, X, 'ranking_').sort_values(by=1)
 
-def boruta_ranking(model, X, y, random_state):
-    '''
-    Ranks the variables in the dataset according to their relevance in
-    predicting the target variable. A rank of 1 means that the variable is
-    important while a rank of 2 means that it is tenatively important.
 
-    ex) boruta_ranking(model, xtrain, ytrain)
-    '''
-
-    model = RandomForestClassifier(n_jobs=-1, max_depth=5, random_state=random_state)
-    feature_selector = BorutaPy(model, n_estimators='auto', random_state=random_state)
-    feature_selector.fit(X.values, y.values)
-
-    return feature_scores(feature_selector, X, 'ranking_').sort_values(by=1)
-
-def top_corr(df, n=None):
+def top_correlations(df, n=None):
     '''
     Shows the top correlated pairs of variables sorted by magnitude.
 
@@ -389,7 +277,8 @@ def top_corr(df, n=None):
     '''
 
     df = df.corr()
-    df = df.where(np.triu(np.ones(df.shape).astype(np.bool))).stack().reset_index()
+    upper_triangle = np.triu(np.ones(df.shape).astype(np.bool))
+    df = df.where(upper_triangle).stack().reset_index()
     df.columns = ['var1', 'var2', 'corr']
     df['abs'] = df['corr'].abs()
 
@@ -401,18 +290,20 @@ def top_corr(df, n=None):
     else:
         return a
 
+
 def scoring_table(true_vals, preds):
     '''
-    Takes a dataframe containing predicted scores for a binary classification
-    problem in the 1st column and true labels in the 2nd column. Creates an
-    aggregated scoring table based on deciles.
+    Takes a dataframe containing predicted scores for a binary
+    classification problem in the 1st column and true labels in the
+    2nd column. Creates an aggregated scoring table based on deciles.
 
-    ex) scoring_table(cbind(model.predict_proba(xtest)[:, 1], y_test))
+    ex) scoring_table(model.predict_proba(xtest)[:, 1], y_test)
     '''
 
-    scores = cbind(preds, true_vals)
+    scores = concat_all(preds, true_vals)
     scores.columns = ['scores', 'target']
-    scores = scores.sort_values(by='scores', ascending=False).reset_index(drop=True)
+    scores = scores.sort_values(by='scores', ascending=False)\
+                   .reset_index(drop=True)
     scores['Decile'] = pd.qcut(scores.index, 10, labels=False) + 1
 
     df = scores.groupby('Decile')['scores'].agg([min, max])
@@ -421,142 +312,173 @@ def scoring_table(true_vals, preds):
     df['cumulative'] = df['composition'].cumsum()
 
     df['count_0'] = scores[scores['target'] == 0].groupby('Decile').size()
-    df['composition_0'] = df['count_0'] / float(len(scores[scores['target'] == 0]))
+    total_non_targets = float(len(scores[scores['target'] == 0]))
+    df['composition_0'] = df['count_0'] / total_non_targets
     df['cumulative_0'] = df['composition_0'].cumsum()
 
     df['count_1'] = scores[scores['target'] == 1].groupby('Decile').size()
-    df['composition_1'] = df['count_1'] / float(len(scores[scores['target'] == 1]))
+    total_targets = float(len(scores[scores['target'] == 1]))
+    df['composition_1'] = df['count_1'] / total_targets
     df['cumulative_1'] = df['composition_1'].cumsum()
 
     df['KS'] = df['cumulative_1'] - df['cumulative_0']
     df['rate'] = df['count_1'] / df['count']
-    df['index'] = df['rate'] / (len(scores[scores['target'] == 1]) / float(len(scores))) * 100
+    df['index'] = df['rate'] / (total_targets / float(len(scores))) * 100
     df = df.round(2)
 
-    top_columns = ['scores']*2 + ['Population Metrics']*3 + ['Non-Target Metrics']*3 + \
-                  ['Target Metrics']*3 + ['Validation Metrics']*3
-    bottom_columns = ['Min Score', 'Max Score', 'Count', 'Composition', 'Cumulative', 'Count',
-                      'Composition', 'Cumulative', 'Count', 'Composition', 'Cumulative', 'K-S',
-                      'Cancel Rate', 'Cancel Index']
+    top_columns = ['scores']*2 + ['Population Metrics']*3 + \
+                  ['Non-Target Metrics']*3 + ['Target Metrics']*3 + \
+                  ['Validation Metrics']*3
+
+    bottom_columns = ['Min Score', 'Max Score', 'Count', 'Composition',
+                      'Cumulative', 'Count', 'Composition',
+                      'Cumulative', 'Count', 'Composition',
+                      'Cumulative', 'K-S', 'Cancel Rate',
+                      'Cancel Index']
 
     df.columns = pd.MultiIndex.from_tuples(zip(top_columns, bottom_columns))
 
     return df
 
-def compare_data_test(model, datasets, target, omit=None, threshold=0.5, random_state=42):
+
+def create_engine_from_config(config, section, prefix=None):
     '''
-    Compares the AUC, confusion matrix, and classification report (precision,
-    recall, f1 score) for a given model over several datasets.
-
-    ex) compare_datasets_test(model, [df1, df2, df3, df4, df5], target='cancel',
-            omit=['user_id'], threshold=0.1)
-    '''
-
-    if omit is None:
-        omit = []
-
-    for df in datasets:
-        X = df[df.columns.difference(omit + [target])]
-        y = df[target]
-
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,
-            random_state=random_state)
-
-        model.fit(X_train, y_train)
-
-        pred = model.predict_proba(X_test)[:, 1]
-        true = y_test
-
-        print roc_auc_score(true, pred)
-        print confusion_matrix(true, pred > threshold)
-        print classification_report(true, pred > threshold)
-        print
-
-def compare_data_cv(model, datasets, target, omit=None, random_state=42):
-    '''
-    Compares mean 5-fold CV AUC for a given model over several datasets.
-
-    ex) compare_datasets_cv(model, [df1, df2, df3, df4, df5], target='cancel',
-            omit=['user_id'])
+    Takes a config object returned by ConfigParser and returns an
+    sqlalchemy engine object for the given database specified in
+    the section parameter.
     '''
 
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
+    host = config.get(section, 'host')
+    port = config.get(section, 'port')
+    user = config.get(section, 'user')
+    password = config.get(section, 'password')
+    db = config.get(section, 'db')
 
-    if omit is None:
-        omit = []
+    if prefix is None:
+        prefix = section
 
-    for df in datasets:
-        X = df[df.columns.difference(omit + [target])]
-        y = df[target]
-        print cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
+    connection_params = (prefix, user, password, host, port, db)
+    connection_string = '%s://%s:%s@%s:%s/%s' % connection_params
+    return create_engine(connection_string)
 
-def compare_model_cv(models, df, target, omit=None, random_state=42):
-    '''
-    Compares mean 5-fold CV AUC for a given dataset over several models.
 
-    ex) compare_models_cv([model1, model2, model3], df, target='cancel',
-            omit=['user_id'])
-    '''
-
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
-
-    if omit is None:
-        omit = []
-
-    X = df[df.columns.difference(omit + [target])]
-    y = df[target]
-
-    for model in models:
-        print cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
-
-def compare_model_data_cv(models, datasets, target, omit=None, random_state=42):
-    '''
-    Compares mean 5-fold CV AUC for all combinations of the given models and
-    datasets.
-
-    ex) compare_models_data_cv([model1, model2, model3], [df1, df2, df3],
-            target='cancel', omit=['user_id'])
-    '''
-
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
-
-    if omit is None:
-        omit = []
-
-    scores = []
-    for i, df in enumerate(datasets):
-        scores_by_df = []
-        for model in models:
-            X = df[df.columns.difference(omit + [target])]
-            y = df[target]
-            score = cross_val_score(model, X, y, cv=cv, scoring='roc_auc').mean()
-            scores_by_df.append(score)
-
-        scores_df = pd.DataFrame(scores_by_df, columns=['df_%s' % i])
-        scores.append(scores_df)
-
-    df = cbind(scores)
-    df.index = ['model_%s' % i for i in range(len(models))]
+def load_iris_example():
+    data, target = load_iris(True)
+    df = pd.concat([pd.DataFrame(data), pd.DataFrame(target)], axis=1)
+    df.columns = ['sepal_l', 'sepal_w', 'petal_l', 'petal_w', 'type']
     return df
-######
+
+
+def jaccard_similarity(s1, s2):
+    num = len(s1.intersection(s2))
+    den = len(s1.union(s2))
+    return num/float(den)
+
+
+def jaccard_similarity_correlation(df, col1, col2):
+    col1_vals = df[col1].dropna().unique()
+    col2_vals = df[col2].dropna().unique()
+
+    m = col1_vals.shape[0]
+    n = col2_vals.shape[0]
+
+    a = np.zeros((m, n))
+
+    for i, j in itertools.product(range(m), range(n)):
+        top = (df[col1] == col1_vals[i]) & (df[col2] == col2_vals[j])
+        bottom = (df[col1] == col1_vals[i]) | (df[col2] == col2_vals[j])
+
+        numerator = df[top].shape[0]
+        denominator = df[bottom].shape[0]
+
+        a[i, j] = numerator / float(denominator)
+
+    a = pd.DataFrame(a, index=col1_vals, columns=col2_vals)
+    return a
+
 
 def mark_nth_week(df):
     df = df.copy()
     df['date'] = pd.to_datetime(df['date'])
     df['start'] = pd.to_datetime(df['start'])
-    df['nth_week'] = (df['date'] - df['start']).dt.days / 7 + 1
-    df['nth_week'] = df['nth_week'].astype(int)
-    df.loc[df['nth_week'] < 0, 'nth_week'] = 0
+    df['week'] = (df['date'] - df['start']).dt.days / 7 + 1
+    df['week'] = df['week'].astype(int)
+    df.loc[df['week'] < 0, 'week'] = 0
     return df
 
-def mark_nth_day(df):
+
+def invert_dictionary(d):
+    return {v: k for k, v in d.items()}
+
+
+def select_keys(d, keys):
+    return [d[i] for i in keys]
+
+
+def show_unconvertable_integers(x):
+    def try_convert_int(x):
+        try:
+            return int(x)
+        except:
+            return 'Error'
+
+    a = pd.concat([x, x.apply(try_convert_int)], axis=1)
+    return a[a.iloc[:, 1] == 'Error'].iloc[:, 0]
+
+
+class CategoricalImputer(TransformerMixin):
+    '''
+    Uses the training data to get the most common categories for each
+    column. Then when transforming on new data, it makes sure to use
+    the most common categories found in the training data to fill in
+    missing values.
+    '''
+
+    def __init__(self, col):
+        self.col = col
+
+    def fit(self, X, y=None):
+        self.val = X[self.col].apply(lambda x: x.value_counts().index[0])
+        return self
+
+    def transform(self, X):
+        a = X[self.col].fillna(self.val)
+        return concat_all(X.drop(self.col, 1), a)
+
+
+class OneHotEncode(TransformerMixin):
+    '''
+    Uses the training data to get all unique categories for each
+    column and creates one dummy column for each unique category.
+    Then when transforming on new data, it makes sure that the
+    same dummy columns as found in the training data are created.
+    '''
+
+    def __init__(self, col):
+        self.col = col
+
+    def fit(self, X, y=None):
+        X = pd.get_dummies(X[self.col], dummy_na=True)
+        self.columns = X.columns
+        return self
+
+    def transform(self, X):
+        Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
+        dummy_values = Xdummy.T.reindex(self.columns).T.fillna(0)
+        return concat_all(X.drop(self.col, 1), dummy_values)
+
+
+def show_unique_events(df, date, user_id, event):
     df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['start'] = pd.to_datetime(df['start'])
-    df['day'] = (df['date'] - df['start']).dt.days + 1
-    df['day'] = df['day'].astype(int)
-    df.loc[df['day'] < 0, 'day'] = 0
-    return df
+    df = df.sort_values([user_id, date])
+
+    different_event = (df[event] != df[event].shift())
+    different_user = df[user_id] != df[user_id].shift()
+    df['event_change'] = different_event | different_user
+    df['event_id'] = df.groupby(user_id)['event_change'].cumsum()
+    return df.groupby([user_id, 'event_id']).head(1)\
+             .drop(['event_change', 'event_id'], 1)
+####
 
 def get_ts_counts(df, start, end, name):
     a = mark_nth_day(df).groupby(['user_id', 'day']).size().unstack()
@@ -574,52 +496,6 @@ def get_ts_sum(df, start, end, col, name):
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a.reset_index()
 
-# def parse_tree(s, X):
-#     tokens = [i for i in re.split(r'([,()])', s) if i != '']
-#     function_dict = {'add': '+', 'sub': '-', 'log': 'np.log', 'min': 'min', 'div': '/'}
-#
-#     parsed = ''
-#     current_op = None
-#     for i in tokens:
-#         i = i.strip()
-#         if i in function_dict:
-#             if i in ['add', 'sub', 'div']:
-#                 current_op = i
-#             else:
-#                 parsed += i
-#         elif i == '(':
-#             parsed += i
-#         elif i == ',':
-#             if current_op:
-#                 parsed += ' %s ' % function_dict[current_op]
-#                 current_op = None
-#             else:
-#                 parsed += i + ' '
-#         else:
-#             if i[0] == 'X':
-#                 col = X.columns[int(i[1:])]
-#                 parsed += "%s" % col
-#             else:
-#                 parsed += i
-#
-#     return parsed
-
-def relative_time_window(df, left_offset, right_offset, frequency):
-    '''
-    Filter rows of a transactional dataframe with date lying within a relative
-    time window.
-
-    ex) df.pipe(relative_time_window, 1, 2, freq='7D')
-    '''
-
-    df = df.copy()
-    df['date'] = pd.to_datetime(df['date'])
-    df['start'] = pd.to_datetime(df['start'])
-    df['left_bound'] = df.set_index('start').shift(periods=left_offset, freq=freq).index
-    df['right_bound'] = df.set_index('start').shift(periods=right_offset, freq=freq).index
-    df = df.query('left_bound <= date < right_bound')
-    return df
-
 def timeseries(df, datecol, user_col, freq, aggfunc):
     # if want to start on monday -> choose W-SUN
     a = df.set_index(datecol).to_period(freq).reset_index()\
@@ -634,30 +510,6 @@ def timeseries(df, datecol, user_col, freq, aggfunc):
     missing_days = np.setdiff1d(date_range.values, a.columns.values)
     a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
     return a.reset_index()
-
-def sample(a, index=False):
-    if index == True:
-        return a.sample(1).index[0]
-    else:
-        return a.sample(1).values[0]
-
-def binned_barplot(df, col, bins=5):
-    a = pd.cut(df[col], bins=bins).value_counts()
-    a.sort_index(ascending=False).plot.barh()
-
-def plot_parallel_coordinates(df, by, cols, n=1000, ax=None):
-    df1 = df.sample(n)[cols + [by]]
-
-    s = MinMaxScaler()
-
-    df2 = cbind(pd.DataFrame(s.fit_transform(df1.iloc[:, :-1]), columns=cols), df1[by])
-
-    parallel_coordinates(df2, by, ax=ax)
-    plt.xticks(rotation=90)
-
-def plot_radviz(df, by, cols, n=1000, ax=None):
-    df1 = df.sample(n)[cols + [by]]
-    radviz(df1, by, ax=ax)
 
 def cohort_monthly_retention_table(users, by=None):
     users = users.copy()
@@ -692,53 +544,6 @@ def cohort_monthly_retention_table(users, by=None):
     table['new'] = users.groupby(group).size()
     table = table[['new'] + table.columns[:-1].tolist()]
     return table
-
-def unique_events(df, date, user_id, event):
-    df = df.copy()
-    df = df.sort_values([user_id, date])
-    df['event_change'] = (df[event] != df[event].shift()) | (df[user_id] != df[user_id].shift())
-    df['event_id'] = df.groupby(user_id)['event_change'].cumsum()
-    return df.groupby([user_id, 'event_id']).head(1).drop(['event_change', 'event_id'], 1)
-
-def jaccard_similarity_table(df, col1, col2):
-    col1_vals = df[col1].dropna().unique()
-    col2_vals = df[col2].dropna().unique()
-
-    m = col1_vals.shape[0]
-    n = col2_vals.shape[0]
-
-    a = np.zeros((m, n))
-
-    for i, j in product(range(m), range(n)):
-        top = df[(df[col1] == col1_vals[i]) & (df[col2] == col2_vals[j])].shape[0]
-        bot = df[(df[col1] == col1_vals[i]) | (df[col2] == col2_vals[j])].shape[0]
-        a[i, j] = top / float(bot)
-
-    a = pd.DataFrame(a, index=col1_vals, columns=col2_vals)
-    return a
-
-def model_pred_corrs(models, X):
-    scores = []
-    for model in models:
-        scores.append(model.predict_proba(X)[:, 1])
-    return cbind(scores).T.corr()
-
-def create_engine_from_config(config, section, prefix=None):
-    '''
-    Takes a config object returned by ConfigParser and returns an sqlalchemy
-    enging object for the given database specified in the section parameter.
-    '''
-
-    host = config.get(section, 'host')
-    port = config.get(section, 'port')
-    user = config.get(section, 'user')
-    password = config.get(section, 'password')
-    db = config.get(section, 'db')
-    if prefix is None:
-        prefix = section
-    connection_params = (prefix, user, password, host, port, db)
-    connection_string = '%s://%s:%s@%s:%s/%s' % connection_params
-    return create_engine(connection_string)
 
 def fetch_table(name):
     '''
@@ -775,50 +580,6 @@ def create_table_feature_dict(features_file, folder_name):
 
     return d
 
-class CategoricalImputer(TransformerMixin):
-    '''
-    Uses the training data to get the most common categories for each column.
-    Then when transforming on new data, it makes sure to use the most common
-    categories found in the training data to fill in missing values.
-    '''
-
-    def __init__(self, col):
-        self.col = col
-
-    def fit(self, X, y=None):
-        self.val = X[self.col].apply(lambda x: x.value_counts().index[0])
-        return self
-
-    def transform(self, X):
-        a = X[self.col].fillna(self.val)
-        return cbind(X.drop(self.col, 1), a)
-
-class OneHotEncode(TransformerMixin):
-    '''
-    Uses the training data to get all unique categories for each column and
-    creates one dummy column for each unique category. Then when transforming
-    on new data, it makes sure that the same dummy columns as found in the
-    training data are created.
-    '''
-
-    def __init__(self, col):
-        self.col = col
-
-    def fit(self, X, y=None):
-        X = pd.get_dummies(X[self.col], dummy_na=True)
-        self.columns = X.columns
-        return self
-
-    def transform(self, X):
-        Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
-        return cbind(X.drop(self.col, 1), Xdummy.T.reindex(self.columns).T.fillna(0))
-
-def inv_dict(d):
-    return {v: k for k, v in d.items()}
-
-def dict_multi_key(d, keys):
-    return [d[i] for i in keys]
-
 def plot_feat_error(model, df):
     df = df.copy()
     df.loc[(df.pred == 1) & (df.Survived == 0), 'error'] = 'FP'
@@ -831,19 +592,12 @@ def plot_feat_error(model, df):
     df2 = cbind(df1, df['error'])
     sns.heatmap(df2.groupby('error').mean())
 
-def plot_pca_components(df):
-    pca = make_pipeline(StandardScaler(), PCA())
-    df1 = pd.get_dummies(df).fillna(0)
-
-    pca.fit(df1)
-    sns.heatmap(pca.steps[1][1].components_[:3].T)
-    plt.yticks(range(pca.steps[1][1].components_[:3].T.shape[0], 0, -1), df1.columns, rotation=0);
-
 def ts_train_test_split(x, val_size=0.2, test_size=0.2):
     val_size = int(len(x) * val_size)
     test_size = int(len(x) * test_size)
     train_size = len(x) - val_size - test_size
-    train, val, test = x[0:train_size], x[train_size:(train_size + val_size)], x[(train_size + val_size):]
+    train, val, test = x[0:train_size], x[train_size:(train_size + val_size)], \
+        x[(train_size + val_size):]
     return train, val, test
 
 def ts_create_target(df, lag=1):
@@ -881,13 +635,6 @@ def plot_multi_pred(true, pred, steps=4):
 
     plt.legend(loc=(1, 0))
 
-def filter_top(df, col, n=5):
-    return df.pipe(filter, lambda x: x[col].isin(x[col].value_counts()[:n].index))
-
-def df_diff(a, b):
-    merged = a.merge(b, indicator=True, how='outer')
-    return merged[merged['_merge'] != 'both']
-
 def undiff(s, c):
     s = pd.Series(s)
     s[0] = c
@@ -908,24 +655,3 @@ def sparse_crosstab(df, col1, col2, col3):
     col1_ids, col1_dict = get_conversion_dict(df[col1])
     col2_ids, col2_dict = get_conversion_dict(df[col2])
     return coo_matrix((df[col3].values, (col1_ids, col2_ids)), shape=(len(col1_dict), len(col2_dict)))
-
-def jaccard(s1, s2):
-    num = len(s1.intersection(s2))
-    den = len(s1.union(s2))
-    return num/float(den)
-
-def iris_example():
-    data, target = load_iris(True)
-    df = pd.concat([pd.DataFrame(data), pd.DataFrame(target)], axis=1)
-    df.columns = ['sepal_l', 'sepal_w', 'petal_l', 'petal_w', 'type']
-    return df
-
-def show_unconvertable(x):
-    def try_convert_int(x):
-        try:
-            return int(x)
-        except:
-            return 'Error'
-
-    a = pd.concat([x, x.apply(try_convert_int)], axis=1)
-    return a[a.iloc[:, 1] == 'Error'].iloc[:, 0]
