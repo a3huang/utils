@@ -655,3 +655,6 @@ def sparse_crosstab(df, col1, col2, col3):
     col1_ids, col1_dict = get_conversion_dict(df[col1])
     col2_ids, col2_dict = get_conversion_dict(df[col2])
     return coo_matrix((df[col3].values, (col1_ids, col2_ids)), shape=(len(col1_dict), len(col2_dict)))
+
+def insert_between_str_list(l, seps):
+    return ''.join([a+b for a,b in zip(l[:-1], seps)]) + l[-1]
