@@ -478,6 +478,16 @@ def show_unique_events(df, date, user_id, event):
     df['event_id'] = df.groupby(user_id)['event_change'].cumsum()
     return df.groupby([user_id, 'event_id']).head(1)\
              .drop(['event_change', 'event_id'], 1)
+
+def insert_between_str_list(l, seps):
+    return ''.join([a+b for a,b in zip(l[:-1], seps)]) + l[-1]
+
+def check_joins(query, engine):
+    split_query = query.split('join')
+    for i in range(len(split_query)):
+        joins = ['join']*i + ['left join']*(len(split_query) - i)
+        query = insert_between_str_list(split_query, joins)
+        print pd.read_sql_query(query, engine).shape
 ####
 
 def get_ts_counts(df, start, end, name):
@@ -655,6 +665,3 @@ def sparse_crosstab(df, col1, col2, col3):
     col1_ids, col1_dict = get_conversion_dict(df[col1])
     col2_ids, col2_dict = get_conversion_dict(df[col2])
     return coo_matrix((df[col3].values, (col1_ids, col2_ids)), shape=(len(col1_dict), len(col2_dict)))
-
-def insert_between_str_list(l, seps):
-    return ''.join([a+b for a,b in zip(l[:-1], seps)]) + l[-1]
