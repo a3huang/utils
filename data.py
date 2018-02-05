@@ -407,11 +407,11 @@ def mark_nth_week(df):
     return df
 
 
-def invert_dictionary(d):
+def inv_dict(d):
     return {v: k for k, v in d.items()}
 
 
-def select_keys(d, keys):
+def dict_multi_key(d, keys):
     return [d[i] for i in keys]
 
 
@@ -665,3 +665,48 @@ def sparse_crosstab(df, col1, col2, col3):
     col1_ids, col1_dict = get_conversion_dict(df[col1])
     col2_ids, col2_dict = get_conversion_dict(df[col2])
     return coo_matrix((df[col3].values, (col1_ids, col2_ids)), shape=(len(col1_dict), len(col2_dict)))
+
+def check_input_columns(*columns_lists):
+    def decorator(f):
+        def wrapper(*args):
+            for columns, df in zip(columns_lists, args):
+                if columns is None:
+                    continue
+                if not set(columns).issubset(df.columns):
+                    raise Exception("Input does not have required columns")
+            return f(*args)
+        return wrapper
+    return decorator
+
+
+def check_output_columns(columns):
+    def decorator(f):
+        def wrapper(*args):
+            output = f(*args)
+            if not set(columns).issubset(output.columns):
+                raise Exception("Output does not have required columns")
+            return output
+        return wrapper
+    return decorator
+
+def skip_after_event_table(w, c):
+    w['date_str'] = w.date.dt.to_period('W').map(str).apply(lambda x: x.split('/')[0])
+    c['date_str'] = c.date.dt.to_period('W').map(str).apply(lambda x: x.split('/')[0])
+
+    weeks = c['date_str'].unique()
+
+    l = []
+    for week in weeks:
+        users = c[c.date_str == week]['user_id'].unique()
+        future_weeks = [pd.to_datetime(week) + DateOffset(weeks=i) for i in range(1, 5)]
+
+        row = []
+        for i in future_weeks:
+            skip_count = w[(w.user_id.isin(users)) & (w.date == i) & # has cancelled ].shape[0]
+            skip_rate = skip_count / float(len(users))
+            row.append(skip_rate)
+
+        l.append(row)
+
+    df = pd.DataFrame(l, index=weeks, columns=['%s_week_later' % i for i in range(1, 5)])
+    return df
