@@ -731,6 +731,14 @@ def select_from_iterable(iterable, indices):
 
     return elements
 
+def sample(it, length, k):
+    indices = random.sample(xrange(length), k)
+    result = [None]*k
+    for index, datum in enumerate(it):
+        if index in indices:
+            result[indices.index(index)] = datum
+    return result
+
 def reservoir_sample(iterable, n):
     results = []
     iterator = iter(iterable)
