@@ -751,3 +751,37 @@ def reservoir_sample(iterable, n):
             results[r] = v
 
     return results
+
+def itershuffle(iterable, bufsize=1000):
+    iterable = iter(iterable)
+    buf = []
+    try:
+        while True:
+            # add elements to a buffer
+            for i in xrange(random.randint(1, bufsize-len(buf))):
+                buf.append(iterable.next())
+
+            # shuffle the buffer
+            random.shuffle(buf)
+
+            # yield elements from the buffer until empty
+            for i in xrange(random.randint(1, bufsize)):
+                if buf:
+                    yield buf.pop()
+                else:
+                    break
+
+            # go back to iterator and add more elements to buffer
+            # break out of while loop when we run out of elements from original iterator
+    except StopIteration:
+        random.shuffle(buf)
+
+        while buf:
+            yield buf.pop()
+
+        raise StopIteration
+
+def remove_all_except(directory, keep):
+    to_remove = [i for i in os.listdir(directory) if i not in keep]
+    for i in to_remove:
+        os.remove(os.path.join(directory, i))
