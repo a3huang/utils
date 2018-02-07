@@ -710,3 +710,17 @@ def skip_after_event_table(w, c):
 
     df = pd.DataFrame(l, index=weeks, columns=['%s_week_later' % i for i in range(1, 5)])
     return df
+
+def select_from_iterable(iterable, indices):
+    count = 0
+    elements = []
+
+    for x in iterable:
+        if len(indices) == 0:
+            break
+        if count == indices[0]:
+            elements.append(x)
+            indices.pop(0)
+        count += 1
+
+    return elements
