@@ -689,26 +689,32 @@ def check_output_columns(columns):
         return wrapper
     return decorator
 
-def skip_after_event_table(w, c):
-    w['date_str'] = w.date.dt.to_period('W').map(str).apply(lambda x: x.split('/')[0])
-    c['date_str'] = c.date.dt.to_period('W').map(str).apply(lambda x: x.split('/')[0])
+
+def cancel_after_event_table(w, c):
+    w['date_str'] = w.date.dt.to_period('W').map(str).apply(
+        lambda x: x.split('/')[0])
+    c['date_str'] = c.date.dt.to_period('W').map(str).apply(
+        lambda x: x.split('/')[0])
 
     weeks = c['date_str'].unique()
 
     l = []
     for week in weeks:
         users = c[c.date_str == week]['user_id'].unique()
-        future_weeks = [pd.to_datetime(week) + DateOffset(weeks=i) for i in range(1, 5)]
+        future_weeks = [pd.to_datetime(week) + DateOffset(weeks=i)
+                        for i in range(1, 5)]
 
         row = []
         for i in future_weeks:
-            skip_count = w[(w.user_id.isin(users)) & (w.date == i) & # has cancelled ].shape[0]
+            skip_count = w[(w.user_id.isin(users)) & (w.date == i) &
+                           (w.cancelled == 1)].shape[0]
             skip_rate = skip_count / float(len(users))
             row.append(skip_rate)
 
         l.append(row)
 
-    df = pd.DataFrame(l, index=weeks, columns=['%s_week_later' % i for i in range(1, 5)])
+    df = pd.DataFrame(l, index=weeks,
+                     columns=['%s_week_later' % i for i in range(1, 5)])
     return df
 
 def select_from_iterable(iterable, indices):
@@ -724,3 +730,24 @@ def select_from_iterable(iterable, indices):
         count += 1
 
     return elements
+
+def reservoir_sample(iterable, n):
+    results = []
+    iterator = iter(iterable)
+
+    # take the first n elements of the iterator
+    try:
+        for i in xrange(n):
+            results.append(iterator.next())
+    except StopIteration:
+        raise ValueError("Sample larger than population.")
+
+    random.shuffle(results)
+
+    # probability of keeping new item decreases with time
+    for i, v in enumerate(iterator, n):
+        r = random.randint(0, i)
+        if r < n:
+            results[r] = v
+
+    return results
