@@ -1,15 +1,22 @@
+from pandas.tseries.offsets import DateOffset
 from datetime import datetime
 from scipy.sparse import coo_matrix
 from sklearn.base import TransformerMixin
 from sklearn.datasets import load_iris
+from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
-from sklearn.metrics import classification_report, confusion_matrix, roc_auc_score
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sqlalchemy import create_engine
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import itertools
+import collections
+import importlib
+import random
+import os
 
 
 def dummy_categorical(df, n, shuffle=False):
@@ -407,6 +414,16 @@ def mark_nth_week(df):
     return df
 
 
+def mark_nth_day(df):
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
+    df['start'] = pd.to_datetime(df['start'])
+    df['day'] = (df['date'] - df['start']).dt.days
+    df['day'] = df['day'].astype(int)
+    df.loc[df['day'] < 0, 'day'] = 0
+    return df
+
+
 def inv_dict(d):
     return {v: k for k, v in d.items()}
 
@@ -479,8 +496,10 @@ def show_unique_events(df, date, user_id, event):
     return df.groupby([user_id, 'event_id']).head(1)\
              .drop(['event_change', 'event_id'], 1)
 
+
 def insert_between_str_list(l, seps):
-    return ''.join([a+b for a,b in zip(l[:-1], seps)]) + l[-1]
+    return ''.join([a+b for a, b in zip(l[:-1], seps)]) + l[-1]
+
 
 def check_joins(query, engine):
     split_query = query.split('join')
@@ -490,21 +509,26 @@ def check_joins(query, engine):
         print pd.read_sql_query(query, engine).shape
 ####
 
+
 def get_ts_counts(df, start, end, name):
     a = mark_nth_day(df).groupby(['user_id', 'day']).size().unstack()
     missing_days = np.setdiff1d(np.array(range(end)), a.columns)
-    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
+    a = a.reindex(columns=np.append(a.columns.values, missing_days))\
+        .sort_index(1)
     a = a.iloc[:, start:end]
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a.reset_index()
 
+
 def get_ts_sum(df, start, end, col, name):
     a = mark_nth_day(df).groupby(['user_id', 'day'])[col].sum().unstack()
     missing_days = np.setdiff1d(np.array(range(end)), a.columns)
-    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
+    a = a.reindex(columns=np.append(a.columns.values, missing_days))\
+        .sort_index(1)
     a = a.iloc[:, start:end]
     a.columns = ["day_%s_%s" % (i, name) for i in a.columns]
     return a.reset_index()
+
 
 def timeseries(df, datecol, user_col, freq, aggfunc):
     # if want to start on monday -> choose W-SUN
@@ -512,14 +536,19 @@ def timeseries(df, datecol, user_col, freq, aggfunc):
             .groupby([user_col, datecol]).agg(aggfunc).unstack()
     min_date = df[datecol].min()
     max_date = df[datecol].max()
-    date_range = pd.date_range(start=min_date, end=max_date, freq=freq) - DateOffset(days=6)
+    date_range = pd.date_range(start=min_date, end=max_date,
+                               freq=freq) - DateOffset(days=6)
 
-    date_range = date_range.to_series().astype(str).str.split(' ', expand=True)[0]
-    a.columns = a.columns.to_series().astype(str).str.split('/', expand=True)[0]
+    date_range = date_range.to_series().astype(str).str\
+        .split(' ', expand=True)[0]
+    a.columns = a.columns.to_series().astype(str).str\
+        .split('/', expand=True)[0]
 
     missing_days = np.setdiff1d(date_range.values, a.columns.values)
-    a = a.reindex(columns=np.append(a.columns.values, missing_days)).sort_index(1)
+    a = a.reindex(columns=np.append(a.columns.values, missing_days))\
+        .sort_index(1)
     return a.reset_index()
+
 
 def cohort_monthly_retention_table(users, by=None):
     users = users.copy()
@@ -532,15 +561,18 @@ def cohort_monthly_retention_table(users, by=None):
     users = users[cols]
 
     date_range = (datetime.now() - users['start'].min()).days / 30
-    date_buckets = pd.date_range(start=users['start'].min(), periods=date_range, freq='M')
+    date_buckets = pd.date_range(start=users['start'].min(),
+                                 periods=date_range, freq='M')
     date_buckets_names = ['month %s' % i for i in range(1, date_range+1)]
     users = pd.concat([users, pd.DataFrame(columns=date_buckets_names)])
     users.loc[:, date_buckets_names] = date_buckets
 
     df = users.melt(id_vars=cols, value_vars=users.columns.difference(cols))
     df = df.rename(columns={'value': 'date'})
-    df = df.pipe(filter, lambda x: (x['date'].between(x['start'], x['end'])) | (x['end'].isnull()))\
-           .pipe(filter, lambda x: x['date'] <= datetime.now())
+    still_active = (df['date'].between(df['start'], df['end'])) | \
+        (df['end'].isnull())
+
+    df = df[still_active & df['date'] <= datetime.now()]
 
     start = pd.Grouper(key='start', freq='M')
     date = pd.Grouper(key='date', freq='M')
@@ -555,6 +587,7 @@ def cohort_monthly_retention_table(users, by=None):
     table = table[['new'] + table.columns[:-1].tolist()]
     return table
 
+
 def fetch_table(name):
     '''
     Decorator that sets the table name for each function used to generate a
@@ -568,6 +601,7 @@ def fetch_table(name):
 
     return wrapper
 
+
 def create_table_feature_dict(features_file, folder_name):
     '''
     Function that iterates through a given module that contains function
@@ -577,8 +611,8 @@ def create_table_feature_dict(features_file, folder_name):
     create_dataframe function in the model training file.
     '''
 
-    a = import_module(features_file, folder_name)
-    d = defaultdict(list)
+    a = importlib.import_module(features_file, folder_name)
+    d = collections.defaultdict(list)
 
     for i in dir(a):
         item = getattr(a, i)
@@ -590,6 +624,7 @@ def create_table_feature_dict(features_file, folder_name):
 
     return d
 
+
 def plot_feat_error(model, df):
     df = df.copy()
     df.loc[(df.pred == 1) & (df.Survived == 0), 'error'] = 'FP'
@@ -599,16 +634,19 @@ def plot_feat_error(model, df):
     df1 = df.drop('error', 1)
     s = StandardScaler()
     df1 = pd.DataFrame(s.fit_transform(df1), columns=df1.columns)
-    df2 = cbind(df1, df['error'])
+    df2 = concat_all(df1, df['error'])
     sns.heatmap(df2.groupby('error').mean())
+
 
 def ts_train_test_split(x, val_size=0.2, test_size=0.2):
     val_size = int(len(x) * val_size)
     test_size = int(len(x) * test_size)
     train_size = len(x) - val_size - test_size
-    train, val, test = x[0:train_size], x[train_size:(train_size + val_size)], \
+    train, val, test = x[0:train_size], \
+        x[train_size:(train_size + val_size)],\
         x[(train_size + val_size):]
     return train, val, test
+
 
 def ts_create_target(df, lag=1):
     columns = [df.shift(i) for i in range(1, lag+1)]
@@ -617,6 +655,7 @@ def ts_create_target(df, lag=1):
     df.columns = range(len(df.columns))
     df = df.fillna(0)
     return df
+
 
 def reshape_for_rnn(x, y):
     x = np.array(x)
@@ -631,6 +670,7 @@ def reshape_for_rnn(x, y):
 
     return x_reshaped, y_reshaped
 
+
 def plot_multi_pred(true, pred, steps=4):
     true = np.array(true)
     pred = np.array(pred)
@@ -641,14 +681,17 @@ def plot_multi_pred(true, pred, steps=4):
 
     for i, valp in enumerate(pred[::steps]):
         padding = [None for j in range(i * steps)]
-        plt.plot(padding + list(valp), label='Prediction for %s' % (i * steps), color='r')
+        plt.plot(padding + list(valp),
+                 label='Prediction for %s' % (i * steps), color='r')
 
     plt.legend(loc=(1, 0))
+
 
 def undiff(s, c):
     s = pd.Series(s)
     s[0] = c
     return s.cumsum()
+
 
 def undiff2(s, history):
     s = pd.Series(s)
@@ -656,35 +699,43 @@ def undiff2(s, history):
     s[0] = history[last_obs]
     return s.cumsum()
 
+
 def get_conversion_dict(a):
     items = np.sort(a.unique())
     item2id = dict(zip(items, range(len(items))))
     return a.map(item2id).values, item2id
 
+
 def sparse_crosstab(df, col1, col2, col3):
     col1_ids, col1_dict = get_conversion_dict(df[col1])
     col2_ids, col2_dict = get_conversion_dict(df[col2])
-    return coo_matrix((df[col3].values, (col1_ids, col2_ids)), shape=(len(col1_dict), len(col2_dict)))
+    return coo_matrix((df[col3].values, (col1_ids, col2_ids)),
+                      shape=(len(col1_dict), len(col2_dict)))
 
-def check_input_columns(*columns_lists):
+
+def input_columns(*columns_lists):
     def decorator(f):
         def wrapper(*args):
             for columns, df in zip(columns_lists, args):
                 if columns is None:
                     continue
                 if not set(columns).issubset(df.columns):
-                    raise Exception("Input does not have required columns")
+                    missing_columns = list(set(columns) - set(df.columns))
+                    message = "Input missing columns: %s" % missing_columns
+                    raise Exception(message)
             return f(*args)
         return wrapper
     return decorator
 
 
-def check_output_columns(columns):
+def output_columns(columns):
     def decorator(f):
         def wrapper(*args):
             output = f(*args)
             if not set(columns).issubset(output.columns):
-                raise Exception("Output does not have required columns")
+                missing_columns = list(set(columns) - set(output.columns))
+                message = "Output missing columns: %s" % missing_columns
+                raise Exception(message)
             return output
         return wrapper
     return decorator
@@ -714,8 +765,9 @@ def cancel_after_event_table(w, c):
         l.append(row)
 
     df = pd.DataFrame(l, index=weeks,
-                     columns=['%s_week_later' % i for i in range(1, 5)])
+                      columns=['%s_week_later' % i for i in range(1, 5)])
     return df
+
 
 def select_from_iterable(iterable, indices):
     count = 0
@@ -731,6 +783,7 @@ def select_from_iterable(iterable, indices):
 
     return elements
 
+
 def sample(it, length, k):
     indices = random.sample(xrange(length), k)
     result = [None]*k
@@ -738,6 +791,7 @@ def sample(it, length, k):
         if index in indices:
             result[indices.index(index)] = datum
     return result
+
 
 def reservoir_sample(iterable, n):
     results = []
@@ -760,6 +814,7 @@ def reservoir_sample(iterable, n):
 
     return results
 
+
 def itershuffle(iterable, bufsize=1000):
     iterable = iter(iterable)
     buf = []
@@ -780,7 +835,8 @@ def itershuffle(iterable, bufsize=1000):
                     break
 
             # go back to iterator and add more elements to buffer
-            # break out of while loop when we run out of elements from original iterator
+            # break out of while loop when we run out of elements
+            # from original iterator
     except StopIteration:
         random.shuffle(buf)
 
@@ -788,6 +844,7 @@ def itershuffle(iterable, bufsize=1000):
             yield buf.pop()
 
         raise StopIteration
+
 
 def remove_all_except(directory, keep):
     to_remove = [i for i in os.listdir(directory) if i not in keep]
