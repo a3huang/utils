@@ -11,12 +11,14 @@ import re
 config = ConfigParser.ConfigParser()
 config.read(os.path.join(os.path.expanduser('~'), 'config.ini'))
 
-def remove_metadata_from_bucket(aws_access_key_id, aws_secret_access_key, bucket,
-        region_name):
+
+def remove_metadata_from_bucket(aws_access_key_id, aws_secret_access_key,
+                                bucket, region_name):
     pattern = re.compile("[0-F]{8}-[0-F]{4}-[0-F]{4}-[0-F]{4}-[0-F]{12}", re.I)
 
     client = boto3.client('s3', aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key, region_name=region_name)
+                          aws_secret_access_key=aws_secret_access_key,
+                          region_name=region_name)
     paginator = client.get_paginator('list_objects')
     page_iterator = paginator.paginate(Bucket=bucket)
 
@@ -37,6 +39,7 @@ def remove_metadata_from_bucket(aws_access_key_id, aws_secret_access_key, bucket
 
     client.delete_objects(Bucket=bucket, Delete=files_to_delete)
 
+
 class Database(object):
     '''
     ex) with Database('mysql') as db:
@@ -54,14 +57,16 @@ class Database(object):
 
         if self.database == 'athena':
             self.aws_access_key_id = config.get('aws', 'aws_access_key_id')
-            self.aws_secret_access_key = config.get('aws', 'aws_secret_access_key')
+            self.aws_secret_access_key = config.get('aws',
+                                                    'aws_secret_access_key')
             self.s3_staging_bucket = config.get('aws', 's3_staging_bucket')
             self.region_name = config.get('aws', 'region_name')
 
-            conn = pyathena.connect(aws_access_key_id=self.aws_access_key_id,
-                                    aws_secret_access_key=self.aws_secret_access_key,
-                                    s3_staging_dir='s3://' + self.s3_staging_bucket,
-                                    region_name=self.region_name)
+            conn = pyathena.connect(
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+                s3_staging_dir='s3://' + self.s3_staging_bucket,
+                region_name=self.region_name)
 
         else:
             host = config.get(database, 'host')
@@ -71,12 +76,12 @@ class Database(object):
             db = config.get(database, 'db')
 
             if self.database == 'mysql':
-                conn = MySQLdb.connect(host=host, port=port, user=user, passwd=pswd,
-                                       db=db)
+                conn = MySQLdb.connect(host=host, port=port, user=user,
+                                       passwd=pswd, db=db)
 
             elif self.database in ['postgres', 'redshift']:
-                conn = psycopg2.connect(host=host, port=port, user=user, password=pswd,
-                                        dbname=db)
+                conn = psycopg2.connect(host=host, port=port, user=user,
+                                        password=pswd, dbname=db)
 
         self.conn = conn
 
@@ -86,8 +91,10 @@ class Database(object):
 
     def __exit__(self, exception_type, exception_value, traceback):
         if self.database == 'athena':
-            remove_metadata_from_bucket(self.s3_staging_bucket, self.aws_access_key_id,
-                self.aws_secret_access_key, self.region_name)
+            remove_metadata_from_bucket(self.s3_staging_bucket,
+                                        self.aws_access_key_id,
+                                        self.aws_secret_access_key,
+                                        self.region_name)
 
         self.cur.close()
         self.conn.close()

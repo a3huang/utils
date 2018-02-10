@@ -6,21 +6,13 @@ import seaborn as sns
 from lifelines import KaplanMeierFitter
 from lime.lime_tabular import LimeTabularExplainer
 from pandas.api.types import is_numeric_dtype, is_string_dtype
-from sklearn.calibration import calibration_curve
 from sklearn.decomposition import PCA
-from sklearn.metrics import confusion_matrix, f1_score, \
-        precision_score, recall_score, roc_curve
-from sklearn.model_selection import learning_curve, StratifiedKFold
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.pipeline import make_pipeline
-from sklearn.tree import DecisionTreeClassifier, export_graphviz
+from sklearn.model_selction import train_test_split
 
-import graphviz
 import os
-import pydotplus
-import subprocess
 
-from utils.data import *
 
 def multicol_heatplot(df, by, cols):
     '''
@@ -34,15 +26,16 @@ def multicol_heatplot(df, by, cols):
     s = MinMaxScaler()
 
     a = pd.DataFrame(s.fit_transform(df.fillna(0)[cols]), columns=cols)
-    a = cbind(a, df[by])
+    a = concat_all(a, df[by])
     a = a.groupby(by)[cols].mean()
     sns.heatmap(a, annot=True, fmt='.2f')
     plt.xticks(rotation=90)
 
+
 def plot_interaction(df, col, by, val, kind='line'):
     '''
-    Creates an interaction line plot or heat map between 2 predictor variables and
-    a target variable.
+    Creates an interaction line plot or heat map between 2 predictor
+    variables and a target variable.
 
     ex) df.pipe(plot_interaction, col='cat', by='cat', val='cont')
     '''
@@ -56,12 +49,15 @@ def plot_interaction(df, col, by, val, kind='line'):
 
     plt.legend(loc=(1, 0))
 
+
 def plot_binary_target(df, x, y):
     df.groupby(x)[y].mean().plot()
+
 
 def plot_line_interaction(df, x1, x2, y):
     df.pipe(table, x1, x2, y).plot()
     plt.legend(loc=(1, 0))
+
 
 def generate_distribution_plots(df, by, folder_name, omit=None,
                                 default_dir='/Users/alexhuang/'):
@@ -97,6 +93,7 @@ def generate_distribution_plots(df, by, folder_name, omit=None,
         plt.close()
         print 'Saved Plot: %s' % col
 
+
 def plot_2d_projection(df, by, method=None, sample_size=None):
     '''
     Creates a scatter plot of the 2-D projection of the dataset. Groups by a
@@ -106,7 +103,8 @@ def plot_2d_projection(df, by, method=None, sample_size=None):
     ex) df.pipe(plot_2d_projection, by='Legendary')
 
     ex) projection = make_pipeline(StandardScaler(), PCA())
-        df1 = cbind(df, projection.fit_transform(df.drop('Survived', 1))[:, :1])
+        df1 = cbind(df, projection.fit_transform(
+            df.drop('Survived', 1))[:, :1])
         df1.pipe(scatterplot, x='PCA1', y='PCA2', by='Survived')
     '''
 
@@ -126,9 +124,11 @@ def plot_2d_projection(df, by, method=None, sample_size=None):
 
     df.pipe(scatplot, x='pca1', y='pca2', by=by)
 
+
 def plot_roc_curves2(models, X, y):
     '''
-    Creates a plot of the roc curve for each binary classification model pipeline.
+    Creates a plot of the roc curve for each binary classification
+    model pipeline.
 
     ex) plot_roc_curves([model1, model2, model3], xtest, ytest)
     '''
@@ -147,6 +147,7 @@ def plot_roc_curves2(models, X, y):
     if len(models) > 1:
         plt.legend(title='Model', loc=(1, 0))
 
+
 def plot_roc_curves(model, X, y, label=1):
     '''
     Creates a line plot of the roc curve for the given model and data.
@@ -163,13 +164,14 @@ def plot_roc_curves(model, X, y, label=1):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
 
+
 def compare_data_roc_curves(model, datasets, target, omit=None,
                             random_state=42):
     '''
     Compares the ROC curves for a given model over several datasets.
 
-    ex) compare_data_roc_curves(model, [df1, df2, df3, df4, df5], target='cancel',
-            omit=['user_id'])
+    ex) compare_data_roc_curves(model, [df1, df2, df3, df4, df5],
+            target='cancel', omit=['user_id'])
     '''
 
     if omit is None:
@@ -179,8 +181,8 @@ def compare_data_roc_curves(model, datasets, target, omit=None,
         X = df.drop(omit + [target], 1)
         y = df[target]
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,
-            random_state=random_state)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.3, random_state=random_state)
 
         model.fit(X_train, y_train)
 
@@ -195,6 +197,7 @@ def compare_data_roc_curves(model, datasets, target, omit=None,
     plt.ylabel('True Positive Rate')
     plt.legend(title='dataset', loc=(1, 0))
 
+
 def create_explainer(model, X):
     '''
     Convenience function for creating a LIME explainer object.
@@ -204,6 +207,7 @@ def create_explainer(model, X):
 
     explainer = LimeTabularExplainer(X.values, feature_names=X.columns.values)
     return explainer
+
 
 def plot_explanations(explainer, model, X, i=None):
     '''
@@ -221,11 +225,13 @@ def plot_explanations(explainer, model, X, i=None):
 
     explanation = explainer.explain_instance(X.values[i], model.predict_proba)
 
-    a = pd.DataFrame(explanation.as_list()).sort_index(ascending=False).set_index(0)[1]
-    colors = ''.join(['g' if i >= 0 else 'r' for i in a])
+    a = pd.DataFrame(explanation.as_list()).sort_index(ascending=False)\
+        .set_index(0)[1]
+    colors = ''.join(['g' if j >= 0 else 'r' for j in a])
     a.plot.barh(color=colors)
     plt.legend().remove()
     plt.ylabel('')
+
 
 def plot_survival_curves(df, time, event, by=None):
     '''
@@ -256,9 +262,10 @@ def plot_survival_curves(df, time, event, by=None):
         kmf.survival_function_.plot(ax=ax)
         plt.legend().remove()
 
+
 def plot_gains_curve(model, X, y):
-    gains = scoring_table(y, model.predict_proba(X)[:, 1])['Target Metrics',
-        'Cumulative'].reset_index()
+    gains = scoring_table(y, model.predict_proba(X)[:, 1])[
+        'Target Metrics', 'Cumulative'].reset_index()
     gains.columns = ['Decile', 'Cumulative']
 
     deciles = np.append([0], gains['Decile'].values / 10.)
@@ -269,9 +276,10 @@ def plot_gains_curve(model, X, y):
     plt.xlabel('Decile')
     plt.ylabel('Gain')
 
+
 def plot_lift_curve(model, X, y):
-    gains = scoring_table(y, model.predict_proba(X)[:, 1])['Target Metrics',
-        'Cumulative'].reset_index()
+    gains = scoring_table(y, model.predict_proba(X)[:, 1])[
+        'Target Metrics', 'Cumulative'].reset_index()
     gains.columns = ['Decile', 'Cumulative']
 
     deciles = gains['Decile'].values / 10.

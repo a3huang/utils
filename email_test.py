@@ -2,7 +2,8 @@
 
 import smtplib
 
-def send_email_notification(subject, text):
+
+def send_email_notification(subject, text, username, password):
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.ehlo()
     server.starttls()
@@ -12,7 +13,7 @@ def send_email_notification(subject, text):
 
     server.login(username, password)
 
-    message = "From: %s\nTo: %s\nSubject: %s\n\n%s" % (from_addr, ", ".join(to_addr),
-            subject, text)
+    message = "From: %s\nTo: %s\nSubject: %s\n\n%s" % \
+        (from_addr, ", ".join(to_addr), subject, text)
 
     server.sendmail(from_addr, to_addr, message)

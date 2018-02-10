@@ -1,6 +1,9 @@
 import glob
 import os
 import shutil
+import numpy as np
+import csv
+
 
 def split_dir(train_dir, n=2000):
     '''
@@ -21,9 +24,11 @@ def split_dir(train_dir, n=2000):
     n = min(n, len(shuffled))
 
     for i in range(n):
-        os.rename(shuffled[i], os.path.join(valid_dir, os.path.basename(shuffled[i])))
+        os.rename(shuffled[i], os.path.join(
+            valid_dir, os.path.basename(shuffled[i])))
 
-def sample_dir(train_dir, n=2000):
+
+def sample_dir(train_dir, valid_dir, n=2000):
     '''
     Copies random sample of files to sample directory.
 
@@ -42,7 +47,9 @@ def sample_dir(train_dir, n=2000):
     n = min(n, len(shuffled))
 
     for i in range(n):
-        shutil.copyfile(shuffled[i], os.path.join(valid_dir, os.path.basename(shuffled[i])))
+        shutil.copyfile(shuffled[i], os.path.join(
+            valid_dir, os.path.basename(shuffled[i])))
+
 
 def create_label_dir(folder, categories):
     '''
@@ -61,7 +68,7 @@ def create_label_dir(folder, categories):
         files = glob.glob(os.path.join(folder, '%s*.txt' % label))
         for f in files:
             shutil.move(f, os.path.join(label_dir, os.path.basename(f)))
-#####
+
 
 def create_dir(folder):
     try:
@@ -69,6 +76,7 @@ def create_dir(folder):
     except OSError:
         if not os.path.isdir(folder):
             raise
+
 
 def create_pred_csv(model, directory, batch_size):
     unknown_folder = os.path.join(directory, 'unknown')
@@ -78,8 +86,9 @@ def create_pred_csv(model, directory, batch_size):
     num_files = len(files)
 
     generator = image.ImageDataGenerator()
-    batches = generator.flow_from_directory(directory, target_size=(224,224), shuffle=False, class_mode=None,
-                                            batch_size=batch_size)
+    batches = generator.flow_from_directory(
+        directory, target_size=(224, 224), shuffle=False,
+        class_mode=None, batch_size=batch_size)
     filenames = batches.filenames
 
     with open('predictions.csv', "wb") as csv_file:
@@ -90,7 +99,9 @@ def create_pred_csv(model, directory, batch_size):
             if i >= num_files / batch_size:
                 break
 
-            ids = [name.split('/')[1].split('.')[0] for name in filenames[batch_size*i: batch_size*(i+1)]]
+            ids = [name.split('/')[1].split('.')[0]
+                   for name in filenames[batch_size*i: batch_size*(i+1)]]
+
             probs, indices, labels = model.predict(batch)
             preds = [a if b == 1 else 1 - a for a, b in zip(probs, indices)]
             data = zip(ids, preds)
