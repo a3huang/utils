@@ -12,11 +12,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-import itertools
+import boto3
 import collections
 import importlib
-import random
+import itertools
 import os
+import random
 
 
 def dummy_categorical(df, n, shuffle=False):
@@ -850,3 +851,40 @@ def remove_all_except(directory, keep):
     to_remove = [i for i in os.listdir(directory) if i not in keep]
     for i in to_remove:
         os.remove(os.path.join(directory, i))
+
+
+def copy_multiple_files(from_bucket, to_bucket, to_folder, subfolder,
+                        parent_folder):
+    result = boto3.resource('s3').meta.client.list_objects_v2(
+        Bucket=from_bucket, MaxKeys=1000,
+        Prefix=os.path.join(parent_folder, subfolder))
+
+    for content in result['Contents']:
+        parent_levels = len(parent_folder.split('/'))
+        folderfile = os.path.join(*content['Key']
+                                  .split('/')[-parent_levels:])
+
+        boto3.resource('s3').meta.client.copy(CopySource={
+                    'Bucket': from_bucket,
+                    'Key': content['Key'],
+                }, Bucket=to_bucket, Key=os.path.join(to_folder, folderfile))
+
+
+def rename_history(root_folder, subfolder, new_prefix):
+    filename = [i for i in os.listdir(os.path.join(root_folder, subfolder))
+                if i.endswith('_history.csv')][0].split('.')[0]
+
+    original = os.path.join(root_folder, subfolder, filename + '.csv')
+    new = os.path.join(root_folder, subfolder, filename + '_' +
+                       new_prefix + '.csv')
+    os.rename(original, new)
+
+
+def upload_files(bucket, root_folder, subfolder):
+    for i in os.listdir(os.path.join(root_folder, subfolder)):
+        local_path = os.path.join(root_folder, subfolder, i)
+        file_part = os.path.join(*local_path.split('/')[-2:])
+        destination = os.path.join('fenix/data', file_part)
+
+        boto3.resource('s3').meta.client.upload_file(local_path, bucket,
+                                                     destination)
