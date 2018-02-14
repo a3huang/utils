@@ -888,3 +888,12 @@ def upload_files(bucket, root_folder, subfolder):
 
         boto3.resource('s3').meta.client.upload_file(local_path, bucket,
                                                      destination)
+
+
+def read_multi_csv(folder):
+    paths = os.listdir(folder)
+    l = []
+    for i in paths:
+        l.append(pd.read_csv(os.path.join(folder, i), sep='|'))
+    df = pd.concat(l)
+    return df
