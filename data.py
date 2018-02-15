@@ -897,3 +897,8 @@ def read_multi_csv(folder):
         l.append(pd.read_csv(os.path.join(folder, i), sep='|'))
     df = pd.concat(l)
     return df
+
+
+def abs_listdir(root_dir, s):
+    return [os.path.join(root_dir, s, i)
+            for i in os.listdir(os.path.join(root_dir, s))]
