@@ -902,3 +902,17 @@ def read_multi_csv(folder):
 def abs_listdir(root_dir, s):
     return [os.path.join(root_dir, s, i)
             for i in os.listdir(os.path.join(root_dir, s))]
+
+
+def get_feat_importance(model):
+    attributes = ['coef_', 'feature_importances_']
+
+    if hasattr(model, 'steps'):
+        model = model.steps[-1][-1]
+
+    for i in attributes:
+        if hasattr(model, i):
+            feat_attr = i
+            break
+
+    return getattr(model, feat_attr)
