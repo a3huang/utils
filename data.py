@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sqlalchemy import create_engine
+from statsmodels.tsa.api import ExponentialSmoothing, SimpleExpSmoothing, Holt
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -902,25 +903,6 @@ def get_feat_importance(model):
     return getattr(model, feat_attr)
 
 
-def get_forecast_errors(s, predict_func, k=100, h=4):
-    l = []
-    l1 = []
-    lower = []
-    upper = []
-    for i in range(1, len(s)-k-h+1):
-        train_on = s[:(k+i-1)]
-        test_on = s[(k+i-1):(k+i-1)+h].values
-
-        pred = predict_func(train_on)
-
-        l.append(np.sum((test_on - pred)**2))
-        l1.append(pred)
-        lower.append(pred - 1.96*train_on.std())
-        upper.append(pred + 1.96*train_on.std())
-
-    return np.array(l).mean(), np.array(l1), np.array(lower), np.array(upper)
-
-
 def plot_multistep_forecast(s, preds, k=100, h=4, step=4):
     plt.plot(s.values, color='b')
     for i in range(1, len(s)-k-h, step=4):
@@ -928,3 +910,68 @@ def plot_multistep_forecast(s, preds, k=100, h=4, step=4):
         prev_true = s.values[k+i-2:k+i]
         current_preds = np.array(preds)[i-1]
         plt.plot(np.concatenate([blanks, prev_true, current_preds]), color='g')
+
+
+def get_forecast_errors(s, predict_func, k=100, h=4):
+    l = []
+    l1 = []
+    for i in range(1, len(s)-k-h+1):
+        train_on = s[:(k+i-1)]
+        test_on = s[(k+i-1):(k+i-1)+h].values
+
+        pred = predict_func(train_on, h)
+
+        l.append(np.sum((test_on - pred)**2))
+        l1.append(pred)
+
+    return np.array(l).mean(), np.array(l1)
+
+
+def get_regression_forecast_errors(X, y, model, k=100, h=4):
+    l = []
+    l1 = []
+    for i in range(1, len(X)-k-h+1):
+        X_train_on = X[:(k+i-1)]
+        y_train_on = y[:(k+i-1)]
+
+        X_test_on = X[(k+i-1):(k+i-1)+h]
+        y_test_on = y[(k+i-1):(k+i-1)+h]
+
+        model.fit(X_train_on, y_train_on)
+        pred = model.predict(X_test_on)
+
+        l.append(np.sum((y_test_on - pred)**2))
+        l1.append(pred)
+
+    return np.array(l).mean(), np.array(l1)
+
+
+def naive_predict(train_on, h, *args):
+    return train_on.iloc[-h:]
+
+
+def average_predict(train_on, h, *args):
+    return [train_on.mean()]*h
+
+
+def moving_average_predict(train_on, h, *args):
+    return train_on.rolling(14).mean().iloc[-h:].values
+
+
+def exp_smooth_predict(train_on, h, *args):
+    ses = SimpleExpSmoothing(train_on.values).fit(
+        smoothing_level=.1, optimized=False)
+    return ses.forecast(h)[-h:]
+
+
+def holt_predict(train_on, h, *args):
+    holt_model = Holt(train_on.values).fit(
+        smoothing_level=0.1, smoothing_slope=0.01)
+    return holt_model.forecast(h)[-h:]
+
+
+def holt_winters_predict(train_on, h, *args):
+    es_model = ExponentialSmoothing(
+        train_on.values, seasonal_periods=12, trend='additive',
+        seasonal='multiplicative').fit()
+    return es_model.forecast(h)[-h:]
