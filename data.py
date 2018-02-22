@@ -916,3 +916,22 @@ def get_feat_importance(model):
             break
 
     return getattr(model, feat_attr)
+
+
+def get_forecast_errors(s, predict_func, k=100, h=4):
+    l = []
+    l1 = []
+    lower = []
+    upper = []
+    for i in range(1, len(s)-k-h+1):
+        train_on = s[:(k+i-1)]
+        test_on = s[(k+i-1):(k+i-1)+h].values
+
+        pred = predict_func(train_on)
+
+        l.append(np.sum((test_on - pred)**2))
+        l1.append(pred)
+        lower.append(pred - 1.96*train_on.std())
+        upper.append(pred + 1.96*train_on.std())
+
+    return np.array(l).mean(), np.array(l1), np.array(lower), np.array(upper)
