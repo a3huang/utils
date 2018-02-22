@@ -672,22 +672,6 @@ def reshape_for_rnn(x, y):
     return x_reshaped, y_reshaped
 
 
-def plot_multi_pred(true, pred, steps=4):
-    true = np.array(true)
-    pred = np.array(pred)
-
-    plt.plot(true[::steps].ravel(), label='Actual')
-
-    steps = pred.shape[1]
-
-    for i, valp in enumerate(pred[::steps]):
-        padding = [None for j in range(i * steps)]
-        plt.plot(padding + list(valp),
-                 label='Prediction for %s' % (i * steps), color='r')
-
-    plt.legend(loc=(1, 0))
-
-
 def undiff(s, c):
     s = pd.Series(s)
     s[0] = c
@@ -935,3 +919,12 @@ def get_forecast_errors(s, predict_func, k=100, h=4):
         upper.append(pred + 1.96*train_on.std())
 
     return np.array(l).mean(), np.array(l1), np.array(lower), np.array(upper)
+
+
+def plot_multistep_forecast(s, preds, k=100, h=4, step=4):
+    plt.plot(s.values, color='b')
+    for i in range(1, len(s)-k-h, step=4):
+        blanks = np.array([None]*(k+i-2))
+        prev_true = s.values[k+i-2:k+i]
+        current_preds = np.array(preds)[i-1]
+        plt.plot(np.concatenate([blanks, prev_true, current_preds]), color='g')
