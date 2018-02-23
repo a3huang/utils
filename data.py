@@ -975,3 +975,15 @@ def holt_winters_predict(train_on, h, *args):
         train_on.values, seasonal_periods=12, trend='additive',
         seasonal='multiplicative').fit()
     return es_model.forecast(h)[-h:]
+
+
+def fourier_series(dates, p, n):
+    # each column is the series expansion at s(t)
+    seconds_since_epoch = np.array((dates - pd.datetime(1970, 1, 1))
+                                   .dt.total_seconds().astype(np.float))
+    t = seconds_since_epoch / (3600 * 24.)
+
+    fourier = [f((2.0 * (i + 1) * np.pi * t / p))
+               for i in range(n) for f in (np.sin, np.cos)]
+
+    return np.concatenate(fourier)
