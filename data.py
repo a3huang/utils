@@ -987,3 +987,22 @@ def fourier_series(dates, p, n):
                for i in range(n) for f in (np.sin, np.cos)]
 
     return np.concatenate(fourier)
+
+
+def piecewise_linear_cumulative(x, a, c):
+    # evaluates function of form:
+    # sum_(k) [a_k * (x - c_k) * 1_(x > c_k)]
+
+    break_points = np.concatenate(([0], c, [len(x)]))
+    diffs = np.ediff1d(break_points)
+
+    g = a * c
+
+    a_cum = np.cumsum(a)
+    g_cum = np.cumsum(g)
+
+    a_k = np.repeat(np.concatenate(([0], a_cum)), diffs)
+    g_k = np.repeat(np.concatenate(([0], g_cum)), diffs)
+
+    # a_k * x - a_k * c_k = a_k * (x - c_k)
+    return a_k * x - g_k
