@@ -993,6 +993,15 @@ def piecewise_linear_cumulative(x, a, c):
     # evaluates function of form:
     # sum_(k) [a_k * (x - c_k) * 1_(x > c_k)]
 
+    # thus the result will look like:
+    # 0
+    # 0
+    # ...
+    # a_1 * (x_5 - c_1)
+    # a_1 * (x_6 - c_1)
+    # ...
+    # a_1 * (x_10 - c_1) + a_2 * (x_10 - c_2)
+
     break_points = np.concatenate(([0], c, [len(x)]))
     diffs = np.ediff1d(break_points)
 
@@ -1006,3 +1015,8 @@ def piecewise_linear_cumulative(x, a, c):
 
     # a_k * x - a_k * c_k = a_k * (x - c_k)
     return a_k * x - g_k
+
+
+def delta_functions_cdf(w, x):
+    on_weights = np.array([i for i in w if i < x])
+    return np.sum(on_weights)
