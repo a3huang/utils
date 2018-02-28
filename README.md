@@ -1,2 +1,2 @@
 # utils
-Convenience functions to streamline exploratory data analysis, data manipulation, and model building.
+Repository for quick and dirty convenience functions for various data science tasks.
