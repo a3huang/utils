@@ -1043,3 +1043,10 @@ def inverse_sample(x, cdf):
     min_sub_idx = np.argmin(cdf[mask])
     min_idx = np.arange(cdf.shape[0])[mask][min_sub_idx]
     return x[min_idx]
+
+
+def lag_feature(df, col, lags):
+    df = df.copy()
+    for i in range(1, lags+1):
+        df.loc[:, 'lagged_%s_%s' % (col, i)] = df[col].shift(i)
+    return df
