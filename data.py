@@ -927,6 +927,22 @@ def get_forecast_errors(s, predict_func, k=100, h=4):
     return np.array(l).mean(), np.array(l1)
 
 
+def get_forecast_errors2(s, predict_func, train_end=100, h=4):
+    l = []
+    l1 = []
+    for i in range(1, len(s)-train_end-h+1):
+        train_length = train_end + i - 1
+        train_on = s[:train_length]
+        test_on = s[train_length:train_length + h].values
+
+        pred = predict_func(train_on, h)
+
+        l.append(np.sum((test_on - pred)**2))
+        l1.append(pred)
+
+    return np.array(l).mean()
+
+
 def get_regression_forecast_errors(X, y, model, k=100, h=4):
     l = []
     l1 = []
@@ -1020,3 +1036,10 @@ def piecewise_linear_cumulative(x, a, c):
 def delta_functions_cdf(w, x):
     on_weights = np.array([i for i in w if i < x])
     return np.sum(on_weights)
+
+
+def inverse_sample(x, cdf):
+    mask = (np.random.uniform() < cdf)
+    min_sub_idx = np.argmin(cdf[mask])
+    min_idx = np.arange(cdf.shape[0])[mask][min_sub_idx]
+    return x[min_idx]
