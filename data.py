@@ -1050,3 +1050,33 @@ def lag_feature(df, col, lags):
     for i in range(1, lags+1):
         df.loc[:, 'lagged_%s_%s' % (col, i)] = df[col].shift(i)
     return df
+
+
+def error_per_category(categories, test_vectors, pred_vectors):
+    # test_vectors and pred_vectors are list of series
+    l = []
+    for c, i in zip(categories, range(len(test_vectors))):
+        a, b = test_vectors[i].align(pred_vectors[i], join='inner')
+        print "%s %s" % (c, np.sqrt(np.mean((a - b)**2)))
+        l.extend(a - b)
+    l = np.array(l)
+
+    return np.sqrt(np.nanmean(l**2))
+
+
+def plot_ts_by_category(categories, test_vectors, pred_vectors):
+    fig, ax = plt.subplots(len(categories)/3, 3, figsize=(14, 10))
+
+    for ax_i, i, c in zip(ax.flatten(), range(len(test_vectors)),
+                          categories):
+        ax_i.plot(test_vectors[i], label='True')
+        ax_i.plot(pred_vectors[i], label='Estimate')
+        ax_i.set_title(c)
+        plt.setp(ax_i.xaxis.get_majorticklabels(), rotation=45)
+
+    plt.tight_layout()
+    ax_i.legend()
+
+    # delete any unused axes
+    for i in range(1, len(ax.flatten()) - len(test_vectors) + 1):
+        fig.delaxes(ax.flatten()[-i])
