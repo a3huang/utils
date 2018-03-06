@@ -1045,10 +1045,10 @@ def inverse_sample(x, cdf):
     return x[min_idx]
 
 
-def lag_feature(df, col, lags):
+def lag_feature(df, group, col, lags):
     df = df.copy()
     for i in range(1, lags+1):
-        df.loc[:, 'lagged_%s_%s' % (col, i)] = df[col].shift(i)
+        df.loc[:, 'lagged_%s_%s' % (col, i)] = df.groupby(group)[col].shift(i)
     return df
 
 
@@ -1080,3 +1080,15 @@ def plot_ts_by_category(categories, test_vectors, pred_vectors):
     # delete any unused axes
     for i in range(1, len(ax.flatten()) - len(test_vectors) + 1):
         fig.delaxes(ax.flatten()[-i])
+
+
+def window_feature(df, group, col, lengths):
+    df = df.copy()
+    for i in lengths:
+        if i == -1:
+            feature = df.groupby(group)[col].expanding(window=i).mean().values
+            df.loc[:, 'windowed_%s_all' % (col,)] = feature
+        else:
+            feature = df.groupby(group)[col].rolling(window=i).mean().values
+            df.loc[:, 'windowed_%s_%s' % (col, i)] = feature
+    return df
