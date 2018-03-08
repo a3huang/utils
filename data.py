@@ -1092,3 +1092,24 @@ def window_feature(df, group, col, lengths):
             feature = df.groupby(group)[col].rolling(window=i).mean().values
             df.loc[:, 'windowed_%s_%s' % (col, i)] = feature
     return df
+
+
+def ts_grid_search(X, y, model, params, k):
+    d = {}
+    best_params = None
+    for param in itertools.product(*params.values()):
+        param_dict = dict(zip(params.keys(), param))
+        cur_params = tuple(param_dict.values())
+
+        for p, v in param_dict.items():
+            setattr(model, p, v)
+
+        result, _ = get_regression_forecast_errors(X, y, model, k=k)
+        d[cur_params] = np.sqrt(np.mean(result))
+
+        if best_params is None:
+            best_params = cur_params
+        else:
+            if d[cur_params] < d[best_params]:
+                best_params = cur_params
+    return d, best_params
