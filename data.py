@@ -1132,3 +1132,13 @@ def get_regression_forecasts(X, y, model, k=100, h=4):
         l1.append(pred)
 
     return pd.concat(l), pd.concat(l1)
+
+
+def plot_forecasts(X, y, model, k=100, h=4):
+    # requires ds column containing datetime stamp
+    test_vals, pred_vals = get_regression_forecasts(X, y, model, k, h)
+    fig, ax = plt.subplots()
+    test_vals.groupby('ds').head(1).plot(ax=ax, label='True')
+    pred_vals.groupby('ds').apply(list).apply(pd.Series)\
+        .plot(ax=ax, label='Estimate')
+    plt.legend()
