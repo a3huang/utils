@@ -1113,3 +1113,22 @@ def ts_grid_search(X, y, model, params, k):
             if d[cur_params] < d[best_params]:
                 best_params = cur_params
     return d, best_params
+
+
+def get_regression_forecasts(X, y, model, k=100, h=4):
+    l = []
+    l1 = []
+    for i in range(1, len(X)-k-h+1):
+        X_train_on = X[:(k+i-1)]
+        y_train_on = y[:(k+i-1)]
+
+        X_test_on = X[(k+i-1):(k+i-1)+h]
+        y_test_on = y[(k+i-1):(k+i-1)+h]
+
+        model.fit(X_train_on, y_train_on)
+        pred = model.predict(X_test_on)
+
+        l.append(y_test_on)
+        l1.append(pred)
+
+    return pd.concat(l), pd.concat(l1)
