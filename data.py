@@ -1118,7 +1118,7 @@ def ts_grid_search(X, y, model, params, k):
 def get_regression_forecasts(X, y, model, k=100, h=4):
     l = []
     l1 = []
-    for i in range(1, len(X)-k-h+1):
+    for i in range(1, (len(X)-k-h+1)+1):
         X_train_on = X[:(k+i-1)]
         y_train_on = y[:(k+i-1)]
 
