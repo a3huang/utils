@@ -1115,23 +1115,30 @@ def ts_grid_search(X, y, model, params, k):
     return d, best_params
 
 
-def get_regression_forecasts(X, y, model, k=100, h=4):
+def get_regression_forecasts(X, y, model, k=100, h=4, skip=4):
+    errors = []
     l = []
     l1 = []
-    for i in range(1, (len(X)-k-h+1)+1):
+    for i in range(1, (len(X)-k-h+1)+1, skip):
         X_train_on = X[:(k+i-1)]
         y_train_on = y[:(k+i-1)]
 
         X_test_on = X[(k+i-1):(k+i-1)+h]
         y_test_on = y[(k+i-1):(k+i-1)+h]
 
-        model.fit(X_train_on, y_train_on)
-        pred = model.predict(X_test_on)
+        model.fit(X_train_on.drop('ds', 1), y_train_on)
+        pred = model.predict(X_test_on.drop('ds', 1))
 
+        errors.append(np.mean((y_test_on - pred)**2))
+        y_test_on = pd.Series(y_test_on)
+        y_test_on.index = X_test_on.ds
         l.append(y_test_on)
+
+        pred = pd.Series(pred)
+        pred.index = X_test_on.ds
         l1.append(pred)
 
-    return pd.concat(l), pd.concat(l1)
+    return errors, pd.concat(l), pd.concat(l1)
 
 
 def plot_forecasts(X, y, model, k=100, h=4):
