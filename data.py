@@ -1171,3 +1171,9 @@ def plot_forecasts(X, y, model, k=100, h=4):
     pred_vals.groupby('ds').apply(list).apply(pd.Series)\
         .plot(ax=ax, label='Estimate')
     plt.legend()
+
+
+def stacked_area_plot_for_n_step_errors(preds, test):
+    actuals = test.set_index('ds')['y']
+    errors = [abs(preds.iloc[i::4] - actuals) for i in range(4)]
+    pd.concat(errors, axis=1).plot(kind='area', stacked=True)
