@@ -8,7 +8,6 @@ from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sqlalchemy import create_engine
 from statsmodels.tsa.api import ExponentialSmoothing, SimpleExpSmoothing, Holt
-from fbprophet import Prophet
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1142,7 +1141,7 @@ def get_regression_forecasts(X, y, model, k=100, h=4, skip=4):
     return errors, pd.concat(l), pd.concat(l1)
 
 
-def get_prophet_forecast_errors(data, k=100, h=4, skip=4):
+def get_prophet_forecast_errors(data, model_builder, k=100, h=4, skip=4):
     errors = []
     l = []
     l1 = []
@@ -1150,7 +1149,7 @@ def get_prophet_forecast_errors(data, k=100, h=4, skip=4):
         train_on = data[:(k+i-1)]
         test_on = data[(k+i-1):(k+i-1)+h]
 
-        m = Prophet()
+        m = model_builder()
         m.fit(train_on)
 
         pred = m.predict(test_on).set_index('ds').yhat
