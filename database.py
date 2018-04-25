@@ -1,5 +1,6 @@
 from configparser import ConfigParser
 from sqlalchemy import create_engine
+from sqlalchemy.engine.url import URL
 import pandas as pd
 import os
 
@@ -10,21 +11,8 @@ config.read(os.path.join(os.path.expanduser('~'), 'config.ini'))
 class Database(object):
     def __init__(self, database):
         self.database = database.lower()
-        self.engine_dict = {'mysql': 'mysql+pymysql',
-                            'postgres': 'postgresql+psycopg2',
-                            'redshfit': 'redshift+psycopg2'}
-
-        self.host = config.get(database, 'host')
-        self.port = int(config.get(database, 'port'))
-        self.user = config.get(database, 'user')
-        self.password = config.get(database, 'password')
-        self.db = config.get(database, 'db')
-        self.driver = self.engine_dict[database]
-
-        connection_params = (self.driver, self.user, self.password,
-                             self.host, self.port, self.db)
-        connection_string = '%s://%s:%s@%s:%s/%s' % connection_params
-        self.engine = create_engine(connection_string)
+        engine_dict = config._sections[database.lower()]
+        self.engine = create_engine(URL(**engine_dict))
 
     def __enter__(self):
         self.conn = self.engine.connect()
