@@ -1,21 +1,13 @@
 from configparser import ConfigParser
 from sqlalchemy import create_engine
 import pandas as pd
-import boto3
 import os
-import pyathena
-import re
 
 config = ConfigParser()
 config.read(os.path.join(os.path.expanduser('~'), 'config.ini'))
 
 
 class Database(object):
-    '''
-    ex) with Database('mysql') as db:
-            db.execute("select * from table")
-            df = db.get_table()
-    '''
     def __init__(self, database):
         self.database = database.lower()
         self.engine_dict = {'mysql': 'mysql+pymysql',
