@@ -1176,3 +1176,6 @@ def stacked_area_plot_for_n_step_errors(preds, test):
     actuals = test.set_index('ds')['y']
     errors = [abs(preds.iloc[i::4] - actuals) for i in range(4)]
     pd.concat(errors, axis=1).plot(kind='area', stacked=True)
+
+def without_keys(d, keys):
+    return {x: d[x] for x in d if x not in keys}
