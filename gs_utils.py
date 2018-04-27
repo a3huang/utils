@@ -2,6 +2,23 @@ from string import ascii_uppercase
 import pandas as pd
 
 
+def convert_to_grid_range(s):
+    d = dict()
+    d['sheet_name'], cell_range = s.split('!')
+
+    start, end = cell_range.split(':')
+
+    if len(start) == 2:
+        d['start_row_index'] = start[1]
+    d['start_col_index'] = ascii_uppercase.index(start[0])
+
+    if len(end) == 2:
+        d['end_row_index'] = end[1]
+    d['end_col_index'] = ascii_uppercase.index(end[0])
+
+    return d
+
+
 def make_gs_request(gc, spreadsheet_id, request):
     body = {
         'requests': [request]
@@ -11,12 +28,12 @@ def make_gs_request(gc, spreadsheet_id, request):
         spreadsheetId=spreadsheet_id, body=body).execute()
 
 
-def add_conditional_formatting(gc, spreadsheet_id, grid_range):
+def add_conditional_formatting(gc, spreadsheet_id, range):
     request = {
           'addConditionalFormatRule': {
             'rule': {
               'ranges': [
-                grid_range
+                convert_to_grid_range(range)
               ],
               'gradientRule': {
                 'minpoint': {
@@ -44,10 +61,10 @@ def add_conditional_formatting(gc, spreadsheet_id, grid_range):
     make_gs_request(gc, spreadsheet_id, request)
 
 
-def sort_by_column(gc, spreadsheet_id, grid_range):
+def sort_by_column(gc, spreadsheet_id, range):
     request = {
           'sortRange': {
-            'range': grid_range,
+            'range': convert_to_grid_range(range),
             'sortSpecs': [
               {
                 'dimensionIndex': 1,
@@ -60,11 +77,11 @@ def sort_by_column(gc, spreadsheet_id, grid_range):
     make_gs_request(gc, spreadsheet_id, request)
 
 
-def add_protect_range(gc, spreadsheet_id, grid_range):
+def add_protect_range(gc, spreadsheet_id, range):
     request = {
           'addProtectedRange': {
             'protectedRange': {
-              'range': grid_range,
+              'range': convert_to_grid_range(range),
               'warningOnly': True
             }
           }
@@ -73,10 +90,10 @@ def add_protect_range(gc, spreadsheet_id, grid_range):
     make_gs_request(gc, spreadsheet_id, request)
 
 
-def add_decimal_formatting(gc, spreadsheet_id, grid_range):
+def add_decimal_formatting(gc, spreadsheet_id, range):
     request = {
           'repeatCell': {
-            'range': grid_range,
+            'range': convert_to_grid_range(range),
             'cell': {
               'userEnteredFormat': {
                 'numberFormat': {
@@ -92,11 +109,11 @@ def add_decimal_formatting(gc, spreadsheet_id, grid_range):
     make_gs_request(gc, spreadsheet_id, request)
 
 
-def add_filter(gc, spreadsheet_id, grid_range):
+def add_filter(gc, spreadsheet_id, range):
     request = {
         'setBasicFilter': {
           'filter': {
-            'range': grid_range
+            'range': convert_to_grid_range(range)
             }
         }
     }
@@ -121,10 +138,10 @@ def freeze_columns(gc, spreadsheet_id, grid_range):
     make_gs_request(gc, spreadsheet_id, request)
 
 
-def add_background_color(gc, spreadsheet_id, grid_range):
+def add_background_color(gc, spreadsheet_id, range):
     request = {
       'repeatCell': {
-        'range': grid_range,
+        'range': convert_to_grid_range(range),
         'cell': {
           'userEnteredFormat': {
             'backgroundColor': {
