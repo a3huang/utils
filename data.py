@@ -1177,5 +1177,31 @@ def stacked_area_plot_for_n_step_errors(preds, test):
     errors = [abs(preds.iloc[i::4] - actuals) for i in range(4)]
     pd.concat(errors, axis=1).plot(kind='area', stacked=True)
 
+
 def without_keys(d, keys):
     return {x: d[x] for x in d if x not in keys}
+
+
+def simple_kalman_filter(s, Q=1e-5, R=.1**2, xhat0=0, P0=1):
+    n = len(s)
+
+    xhat = np.zeros(n)
+    P = np.zeros(n)
+    xhatminus = np.zeros(n)
+    Pminus = np.zeros(n)
+    K = np.zeros(n)
+
+    xhat[0] = xhat0
+    P[0] = P0
+
+    for k in range(1, n):
+        # time update
+        xhatminus[k] = xhat[k-1]
+        Pminus[k] = P[k-1] + Q
+
+        # measurement update
+        K[k] = Pminus[k] / (Pminus[k] + R)
+        xhat[k] = xhatminus[k] + K[k] * (s[k] - xhatminus[k])
+        P[k] = (1 - K[k]) * Pminus[k]
+
+    return xhat

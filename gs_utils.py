@@ -2,19 +2,21 @@ from string import ascii_uppercase
 import pandas as pd
 
 
-def convert_to_grid_range(s):
+def convert_to_grid_range(spreadsheet, s):
     d = dict()
-    d['sheet_name'], cell_range = s.split('!')
+    sheet_name, cell_range = s.split('!')
+
+    d['sheetId'] = spreadsheet.worksheet_by_title(sheet_name).id
 
     start, end = cell_range.split(':')
 
     if len(start) == 2:
-        d['start_row_index'] = start[1]
-    d['start_col_index'] = ascii_uppercase.index(start[0])
+        d['startRowIndex'] = int(start[1]) - 1
+    d['startColumnIndex'] = ascii_uppercase.index(start[0])
 
     if len(end) == 2:
-        d['end_row_index'] = end[1]
-    d['end_col_index'] = ascii_uppercase.index(end[0])
+        d['endRowIndex'] = int(end[1])
+    d['endColumnIndex'] = ascii_uppercase.index(end[0]) + 1
 
     return d
 
@@ -57,6 +59,17 @@ def add_conditional_formatting(gc, spreadsheet_id, range):
             'index': 0
           }
         }
+
+    make_gs_request(gc, spreadsheet_id, request)
+
+
+def remove_conditional_formatting(gc, spreadsheet_id, sheet_id):
+    request = {
+      'deleteConditionalFormatRule': {
+        'sheetId': sheet_id,
+        'index': 0
+      }
+    }
 
     make_gs_request(gc, spreadsheet_id, request)
 
@@ -121,16 +134,16 @@ def add_filter(gc, spreadsheet_id, range):
     make_gs_request(gc, spreadsheet_id, request)
 
 
-# doesn't take grid range?
-def freeze_columns(gc, spreadsheet_id, grid_range):
+def freeze_rows_and_columns(gc, spreadsheet_id, sheet_id, num_rows,
+                            num_cols):
     request = {
         'updateSheetProperties': {
              'fields': 'gridProperties(frozenRowCount, frozenColumnCount)',
              'properties': {
                 'gridProperties': {
-                    'frozenRowCount': 1,
-                    'frozenColumnCount': 2},
-                'sheetId': grid_range['sheet_id']
+                    'frozenRowCount': num_rows,
+                    'frozenColumnCount': num_cols},
+                'sheetId': sheet_id
                 }
             }
     }
