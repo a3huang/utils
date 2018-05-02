@@ -1205,3 +1205,10 @@ def simple_kalman_filter(s, Q=1e-5, R=.1**2, xhat0=0, P0=1):
         P[k] = (1 - K[k]) * Pminus[k]
 
     return xhat
+
+
+def plot_sample_gp(kernel, n):
+    gp = GaussianProcessRegressor(kernel=kernel, random_state=12)
+    x = np.linspace(-1, 1, 100).reshape(-1, 1)
+    y = gp.sample_y(x, n)
+    plt.plot(x, y)
