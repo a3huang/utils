@@ -1212,3 +1212,17 @@ def plot_sample_gp(kernel, n):
     x = np.linspace(-1, 1, 100).reshape(-1, 1)
     y = gp.sample_y(x, n)
     plt.plot(x, y)
+
+
+def plot_train_test_ts(model, X_train, X_test, y_train, y_test):
+    y = pd.concat([y_train, y_test])
+
+    plt.plot(range(len(y)), y, label='true')
+
+    plt.plot(range(len(y_train)), model.predict(X_train), label='predict_train')
+
+    plt.plot([len(y_train)-1, len(y_train)], model.predict(pd.concat([X_train.iloc[[-1]], X_test.iloc[[0]]])))
+
+    plt.plot(range(len(y_train), len(y)), model.predict(X_test), label='predict_test')
+
+    plt.legend()
