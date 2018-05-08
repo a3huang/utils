@@ -288,3 +288,53 @@ def plot_lift_curve(model, X, y):
     plt.plot(deciles, gains/deciles)
     plt.xlabel('Decile')
     plt.ylabel('Lift')
+
+def get_score(model):
+    model.fit(X_train.pipe(get_features), y_train)
+    error = np.sum((model.predict(X_test.pipe(get_features)) - y_test)**2)
+    error_std = np.std((model.predict(X_test.pipe(get_features)) - y_test)**2)
+    return error, error_std
+
+def get_cv_score(model=None):
+    kf = KFold(n_splits=5, shuffle=True)
+
+    l = []
+    for train_index, test_index in kf.split(X):
+        X_train, X_test = X.iloc[train_index], X.iloc[test_index]
+        y_train, y_test = y.iloc[train_index], y.iloc[test_index]
+
+        if model is None:
+            pred = y_train.mean()
+        else:
+            model.fit(X_train.pipe(get_features), y_train)
+            pred = model.predict(X_test.pipe(get_features))
+
+        error = np.sum((pred - y_test)**2)
+        l.append(error)
+
+    l = np.array(l)
+    return l, np.mean(l), np.std(l)
+
+class OneHotFeature(BaseEstimator, TransformerMixin):
+    def __init__(self, column):
+        self.column = column
+
+    def fit(self, X):
+        dummies = pd.get_dummies(X[[self.column]], columns=[self.column])
+        self.categories = pd.DataFrame(columns=dummies.columns)
+        return self
+
+    def transform(self, X):
+        dummies = pd.get_dummies(X[[self.column]], columns=[self.column])
+        return self.categories.align(dummies, axis=1, join='left')[1].fillna(0)
+
+class FeatureUnion(BaseEstimator, TransformerMixin):
+    def __init__(self, pieces):
+        self.pieces = pieces
+
+    def fit(self, X):
+        self.pieces = [p.fit(X) for p in self.pieces]
+        return self
+
+    def transform(self, X):
+        return pd.concat([p.transform(X).reset_index(drop=True) for p in self.pieces], axis=1)
