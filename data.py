@@ -1226,3 +1226,35 @@ def plot_train_test_ts(model, X_train, X_test, y_train, y_test):
     plt.plot(range(len(y_train), len(y)), model.predict(X_test), label='predict_test')
 
     plt.legend()
+
+
+def cond_drop(df, columns):
+    for col in columns:
+        if col in columns:
+            df = df.drop(col, 1)
+    return df
+
+
+def add_word(d, s):
+    for i in range(len(s)-1):
+        d[(s[i], s[i+1])] += 1
+
+    return d
+
+
+def get_proportions(d):
+    t = defaultdict(list)
+    for i in d:
+        t[i[0]].append((i[1], d[i]))
+
+    for i in t:
+        t[i] = (sum([j[1] for j in t[i]]), t[i])
+        t[i] = (t[i][0], [(j[0], j[1] / t[i][0]) for j in t[i][1]])
+    return t
+
+
+def generate_word(t, n):
+    s = np.random.choice(list(t.keys()))
+    for i in range(n-1):
+        s = s + np.random.choice([i[0] for i in t['n'][1]], p=[i[1] for i in t['n'][1]])
+    return s
