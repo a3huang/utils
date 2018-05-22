@@ -73,16 +73,23 @@ def display_topics(model, vectorizer, docs_df, n_top_words, n_top_documents):
             print wrapper.fill(docs_df.raw.iloc[doc_index])
             print
 
-# twts = clean_comments(tw.text)
-# twts = twts[['raw']].pipe(concat, analyze_sentiment(twts.clean))
-# twts['pol'] = twts['polarity'].apply(lambda x: 1 if x > 0 else x)\
-#   .apply(lambda x: -1 if x < 0 else x)
-#
-# vectorizer = TfidfVectorizer(stop_words='english')
-# text = posts[posts.pol == 1]
-# bow = vectorizer.fit_transform(text.clean)
-#
-# model = NMF(n_components=5)
-# model.fit(bow)
-#
-# display_topics(model, vectorizer, text, 10, 3)
+
+def top_level_split(s):
+    balance = 0
+    parts = []
+    part = ''
+
+    for c in s:
+        part += c
+        if c == '(':
+            balance += 1
+        elif c == ')':
+            balance -= 1
+        elif c == ',' and balance == 0:
+            parts.append(part[:-1].strip())
+            part = ''
+
+    if len(part):
+        parts.append(part.strip())
+
+    return parts
