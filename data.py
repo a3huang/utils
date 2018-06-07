@@ -1,8 +1,10 @@
+from collections import defaultdict
 from pandas.tseries.offsets import DateOffset
 from datetime import datetime
 from scipy.sparse import coo_matrix
 from sklearn.base import TransformerMixin
 from sklearn.datasets import load_iris
+from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import mutual_info_classif, RFECV, SelectKBest
 from sklearn.model_selection import cross_val_score, StratifiedKFold
@@ -32,13 +34,13 @@ def dummy_categorical(df, n, shuffle=False):
     size = df.shape[0] / n
     remainder = df.shape[0] - n * size
 
-    l = []
-    l.append(np.full((size + remainder, 1), 1))
+    lst = []
+    lst.append(np.full((size + remainder, 1), 1))
 
     for i in range(2, n+1):
-        l.append(np.full((size, 1), i))
+        lst.append(np.full((size, 1), i))
 
-    a = pd.DataFrame(np.append(l[0], l[1:]))
+    a = pd.DataFrame(np.append(lst[0], lst[1:]))
 
     if shuffle:
         a = np.random.permutation(a)
@@ -438,7 +440,7 @@ def show_unconvertable_integers(x):
     def try_convert_int(x):
         try:
             return int(x)
-        except:
+        except ValueError:
             return 'Error'
 
     a = pd.concat([x, x.apply(try_convert_int)], axis=1)
@@ -621,7 +623,7 @@ def create_table_feature_dict(features_file, folder_name):
         if callable(item):
             try:
                 d[item.table_name].append(item)
-            except:
+            except KeyError:
                 continue
 
     return d
@@ -735,7 +737,7 @@ def cancel_after_event_table(w, c):
 
     weeks = c['date_str'].unique()
 
-    l = []
+    lst = []
     for week in weeks:
         users = c[c.date_str == week]['user_id'].unique()
         future_weeks = [pd.to_datetime(week) + DateOffset(weeks=i)
@@ -748,9 +750,9 @@ def cancel_after_event_table(w, c):
             skip_rate = skip_count / float(len(users))
             row.append(skip_rate)
 
-        l.append(row)
+        lst.append(row)
 
-    df = pd.DataFrame(l, index=weeks,
+    df = pd.DataFrame(lst, index=weeks,
                       columns=['%s_week_later' % i for i in range(1, 5)])
     return df
 
@@ -877,10 +879,10 @@ def upload_files(bucket, root_folder, subfolder):
 
 def read_multi_csv(folder):
     paths = os.listdir(folder)
-    l = []
+    lst = []
     for i in paths:
-        l.append(pd.read_csv(os.path.join(folder, i), sep='|'))
-    df = pd.concat(l)
+        lst.append(pd.read_csv(os.path.join(folder, i), sep='|'))
+    df = pd.concat(lst)
     return df
 
 
@@ -913,23 +915,23 @@ def plot_multistep_forecast(s, preds, k=100, h=4, step=4):
 
 
 def get_forecast_errors(s, predict_func, k=100, h=4):
-    l = []
     l1 = []
+    l2 = []
     for i in range(1, len(s)-k-h+1):
         train_on = s[:(k+i-1)]
         test_on = s[(k+i-1):(k+i-1)+h].values
 
         pred = predict_func(train_on, h)
 
-        l.append(np.sum((test_on - pred)**2))
-        l1.append(pred)
+        l1.append(np.sum((test_on - pred)**2))
+        l2.append(pred)
 
-    return np.array(l).mean(), np.array(l1)
+    return np.array(l1).mean(), np.array(l2)
 
 
 def get_forecast_errors2(s, predict_func, train_end=100, h=4):
-    l = []
     l1 = []
+    l2 = []
     for i in range(1, len(s)-train_end-h+1):
         train_length = train_end + i - 1
         train_on = s[:train_length]
@@ -937,15 +939,15 @@ def get_forecast_errors2(s, predict_func, train_end=100, h=4):
 
         pred = predict_func(train_on, h)
 
-        l.append(np.sum((test_on - pred)**2))
-        l1.append(pred)
+        l1.append(np.sum((test_on - pred)**2))
+        l2.append(pred)
 
-    return np.array(l).mean()
+    return np.array(l1).mean()
 
 
 def get_regression_forecast_errors(X, y, model, k=100, h=4):
-    l = []
     l1 = []
+    l2 = []
     for i in range(1, len(X)-k-h+1):
         X_train_on = X[:(k+i-1)]
         y_train_on = y[:(k+i-1)]
@@ -956,10 +958,10 @@ def get_regression_forecast_errors(X, y, model, k=100, h=4):
         model.fit(X_train_on, y_train_on)
         pred = model.predict(X_test_on)
 
-        l.append(np.sum((y_test_on - pred)**2))
-        l1.append(pred)
+        l1.append(np.sum((y_test_on - pred)**2))
+        l2.append(pred)
 
-    return np.array(l).mean(), np.array(l1)
+    return np.array(l1).mean(), np.array(l2)
 
 
 def naive_predict(train_on, h, *args):
@@ -1054,14 +1056,14 @@ def lag_feature(df, group, col, lags):
 
 def error_per_category(categories, test_vectors, pred_vectors):
     # test_vectors and pred_vectors are list of series
-    l = []
+    lst = []
     for c, i in zip(categories, range(len(test_vectors))):
         a, b = test_vectors[i].align(pred_vectors[i], join='inner')
         print "%s %s" % (c, np.sqrt(np.mean((a - b)**2)))
-        l.extend(a - b)
-    l = np.array(l)
+        lst.extend(a - b)
+    lst = np.array(lst)
 
-    return np.sqrt(np.nanmean(l**2))
+    return np.sqrt(np.nanmean(lst**2))
 
 
 def plot_ts_by_category(categories, test_vectors, pred_vectors):
@@ -1117,8 +1119,8 @@ def ts_grid_search(X, y, model, params, k):
 
 def get_regression_forecasts(X, y, model, k=100, h=4, skip=4):
     errors = []
-    l = []
     l1 = []
+    l2 = []
     for i in range(1, (len(X)-k-h+1)+1, skip):
         X_train_on = X[:(k+i-1)]
         y_train_on = y[:(k+i-1)]
@@ -1132,19 +1134,19 @@ def get_regression_forecasts(X, y, model, k=100, h=4, skip=4):
         errors.append(np.mean((y_test_on - pred)**2))
         y_test_on = pd.Series(y_test_on)
         y_test_on.index = X_test_on.ds
-        l.append(y_test_on)
+        l1.append(y_test_on)
 
         pred = pd.Series(pred)
         pred.index = X_test_on.ds
-        l1.append(pred)
+        l2.append(pred)
 
-    return errors, pd.concat(l), pd.concat(l1)
+    return errors, pd.concat(l1), pd.concat(l2)
 
 
 def get_prophet_forecast_errors(data, model_builder, k=100, h=4, skip=4):
     errors = []
-    l = []
     l1 = []
+    l2 = []
     for i in range(1, (len(data)-k-h+1)+1, skip):
         train_on = data[:(k+i-1)]
         test_on = data[(k+i-1):(k+i-1)+h]
@@ -1156,10 +1158,10 @@ def get_prophet_forecast_errors(data, model_builder, k=100, h=4, skip=4):
         test_on = test_on.set_index('ds').y
 
         errors.append(np.mean((test_on - pred)**2))
-        l.append(test_on)
-        l1.append(pred)
+        l1.append(test_on)
+        l2.append(pred)
 
-    return errors, pd.concat(l), pd.concat(l1)
+    return errors, pd.concat(l1), pd.concat(l2)
 
 
 def plot_forecasts(X, y, model, k=100, h=4):
@@ -1219,11 +1221,14 @@ def plot_train_test_ts(model, X_train, X_test, y_train, y_test):
 
     plt.plot(range(len(y)), y, label='true')
 
-    plt.plot(range(len(y_train)), model.predict(X_train), label='predict_train')
+    plt.plot(range(len(y_train)), model.predict(X_train),
+             label='predict_train')
 
-    plt.plot([len(y_train)-1, len(y_train)], model.predict(pd.concat([X_train.iloc[[-1]], X_test.iloc[[0]]])))
+    plt.plot([len(y_train)-1, len(y_train)],
+             model.predict(pd.concat([X_train.iloc[[-1]], X_test.iloc[[0]]])))
 
-    plt.plot(range(len(y_train), len(y)), model.predict(X_test), label='predict_test')
+    plt.plot(range(len(y_train), len(y)), model.predict(X_test),
+             label='predict_test')
 
     plt.legend()
 
@@ -1256,5 +1261,11 @@ def get_proportions(d):
 def generate_word(t, n):
     s = np.random.choice(list(t.keys()))
     for i in range(n-1):
-        s = s + np.random.choice([i[0] for i in t['n'][1]], p=[i[1] for i in t['n'][1]])
+        s = s + np.random.choice([i[0] for i in t['n'][1]],
+                                 p=[i[1] for i in t['n'][1]])
     return s
+
+
+def quick_reload(module_name):
+    module = importlib.import_module(module_name)
+    importlib.reload(module)
