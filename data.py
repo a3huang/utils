@@ -2,7 +2,6 @@ from collections import defaultdict
 from pandas.tseries.offsets import DateOffset
 from datetime import datetime
 from scipy.sparse import coo_matrix
-from sklearn.base import TransformerMixin
 from sklearn.datasets import load_iris
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.preprocessing import StandardScaler
@@ -445,48 +444,6 @@ def show_unconvertable_integers(x):
 
     a = pd.concat([x, x.apply(try_convert_int)], axis=1)
     return a[a.iloc[:, 1] == 'Error'].iloc[:, 0]
-
-
-class CategoricalImputer(TransformerMixin):
-    '''
-    Uses the training data to get the most common categories for each
-    column. Then when transforming on new data, it makes sure to use
-    the most common categories found in the training data to fill in
-    missing values.
-    '''
-
-    def __init__(self, col):
-        self.col = col
-
-    def fit(self, X, y=None):
-        self.val = X[self.col].apply(lambda x: x.value_counts().index[0])
-        return self
-
-    def transform(self, X):
-        a = X[self.col].fillna(self.val)
-        return concat_all(X.drop(self.col, 1), a)
-
-
-class OneHotEncode(TransformerMixin):
-    '''
-    Uses the training data to get all unique categories for each
-    column and creates one dummy column for each unique category.
-    Then when transforming on new data, it makes sure that the
-    same dummy columns as found in the training data are created.
-    '''
-
-    def __init__(self, col):
-        self.col = col
-
-    def fit(self, X, y=None):
-        X = pd.get_dummies(X[self.col], dummy_na=True)
-        self.columns = X.columns
-        return self
-
-    def transform(self, X):
-        Xdummy = pd.get_dummies(X[self.col], dummy_na=True)
-        dummy_values = Xdummy.T.reindex(self.columns).T.fillna(0)
-        return concat_all(X.drop(self.col, 1), dummy_values)
 
 
 def show_unique_events(df, date, user_id, event):
